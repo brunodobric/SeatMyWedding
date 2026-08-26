@@ -210,12 +210,17 @@ a { color: var(--color-gold-deep); }
   bottom: 0; left: 0; right: 0;
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
-  height: 60px;
+  height: auto;
   z-index: 10;
+  /* Keep clear of the iPhone home indicator and rounded-corner cutouts so the
+     first/last icons stay fully visible (needs viewport-fit=cover). */
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 .bottom-nav-inner {
   display: flex;
-  height: 100%;
+  height: 60px;
 }
 .bottom-nav-item {
   flex: 1;
@@ -492,8 +497,12 @@ select.form-control { cursor: pointer; }
   transition: all 0.15s;
 }
 .sala-tab.active { color: var(--color-gold-deep); border-bottom-color: var(--color-gold); }
-.sala-tab-panel { display: flex; flex: 1; overflow: hidden; flex-direction: column; }
+.sala-tab-panel { display: flex; flex: 1; min-height: 0; overflow: hidden; flex-direction: column; }
 .sala-layout > .sala-tab-panel:first-child { flex: 0 0 auto; }
+/* The wrapped panels must fill the tab-panel's height so #table-list gets a
+   bounded height and can scroll (applies on desktop and mobile). */
+.sala-tab-panel > .sala-panel,
+.sala-tab-panel > .sala-canvas { height: 100%; min-height: 0; }
 
 /* ── Gosti section ──────────────────────────────────────────────────────────── */
 .gosti-layout { display: flex; flex: 1; overflow: hidden; }
@@ -912,29 +921,44 @@ select[multiple] {
 @media (max-width: 767px) {
   #sidebar { display: none; }
   #bottom-nav { display: block; }
-  #app-body { padding-bottom: 60px; }
+  #app-body { padding-bottom: calc(60px + env(safe-area-inset-bottom)); }
 
   #app-header { padding: 0 12px; gap: 8px; height: 52px; }
   :root { --header-h: 52px; }
   #wedding-title-display { max-width: 130px; font-size: 1.2rem; }
   .stat-badge { font-size: 0.68rem; padding: 3px 6px; }
 
-  /* Sala: show tabs, hide split layout */
-  .sala-layout { display: block; height: 100%; overflow: hidden; }
-  .sala-panel { width: 100%; border-right: none; border-bottom: 1px solid var(--color-border); height: auto; max-height: 40%; }
-  .sala-canvas { height: 60%; }
+  /* Sala: mobile uses tabs instead of the desktop split layout.
+     Every flex ancestor of #table-list needs min-height:0 so it can shrink
+     below its content and hand the overflow to the scroll container. */
   .sala-tabs { display: flex; }
+  #section-sala { flex: 1; min-height: 0; overflow: hidden; }
+  .sala-layout {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  /* Hide the raw desktop split panels; only the tab-wrapped copies show. */
   .sala-layout > .sala-panel,
   .sala-layout > .sala-canvas { display: none; }
 
-  /* On mobile, sala-tab-panels fill the remaining space; only active panel shows */
-  #section-sala { flex: 1; overflow: hidden; }
-  .sala-layout { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-  .sala-tab-panel { display: none; flex: 1; overflow: hidden; }
-  .sala-tab-panel.active { display: flex; flex: 1; }
-  /* Full-height table list (override the 40% cap from the old split layout) */
-  .sala-tab-panel .sala-panel { height: 100%; max-height: none; }
+  /* Only the active tab panel shows; it fills the remaining height. */
+  .sala-tab-panel { display: none; flex: 1; min-height: 0; overflow: hidden; }
+  .sala-tab-panel.active { display: flex; }
+  .sala-layout > .sala-tab-panel:first-child { flex: 1; min-height: 0; }
+
+  .sala-tab-panel .sala-panel {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+    border-right: none;
+    border-bottom: none;
+  }
   .sala-tab-panel .sala-canvas { height: 100%; }
+  #table-list { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
   /* Raspored: stack panels */
   .raspored-layout { flex-direction: column; }

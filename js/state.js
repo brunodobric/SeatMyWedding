@@ -191,7 +191,7 @@ function evaluateRule(rule) {
     const unique = new Set(tableIds);
     return unique.size === tableIds.length; // all on different tables
   }
-  if (rule.type === 'together') {
+  if (rule.type === 'together' || rule.type === 'companion') {
     const assigned = rule.guestIds.map(id => state.guests.find(g => g.id === id)).filter(g => g && g.tableId);
     if (assigned.length < 2) return null;
     const tableIds = new Set(assigned.map(g => g.tableId));
