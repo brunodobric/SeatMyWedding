@@ -399,3 +399,5 @@ class FloorPlan {
     this._renderTables();
   }
 }
+
+window.FloorPlan = FloorPlan;
