@@ -8,6 +8,12 @@ let lastSeatingSnapshot = null;
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
+// iOS Safari ignores user-scalable=no, so block pinch-zoom gestures explicitly.
+// (The floor plan keeps its own +/- zoom controls.)
+['gesturestart', 'gesturechange', 'gestureend'].forEach(evt =>
+  document.addEventListener(evt, e => e.preventDefault(), { passive: false })
+);
+
 async function init() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});

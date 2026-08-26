@@ -34,6 +34,8 @@ body {
   color: var(--color-ink);
   min-height: 100dvh;
   overflow: hidden;
+  /* Disable double-tap-to-zoom (the floor plan keeps its own zoom controls) */
+  touch-action: manipulation;
 }
 
 button { font-family: var(--font-ui); cursor: pointer; border: none; background: none; }
