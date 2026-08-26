@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E6C86E"/>
+      <stop offset="50%" stop-color="#C9A24B"/>
+      <stop offset="100%" stop-color="#A17C33"/>
+    </linearGradient>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDFBF7"/>
+      <stop offset="100%" stop-color="#F5EBDD"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="32" fill="url(#bg)"/>
+  <rect x="4" y="4" width="184" height="184" rx="28" fill="none" stroke="url(#gold)" stroke-width="3"/>
+  <text id="monogram" x="96" y="118" font-family="Georgia, serif" font-size="72" font-style="italic" font-weight="bold" text-anchor="middle" fill="url(#gold)">M</text>
+  <text x="96" y="148" font-family="Georgia, serif" font-size="14" text-anchor="middle" fill="#A17C33" letter-spacing="3">VJENČANJE</text>
+</svg>

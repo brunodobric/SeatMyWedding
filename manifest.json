@@ -1,0 +1,13 @@
+{
+  "name": "Raspored Sjedenja",
+  "short_name": "Sjedenje",
+  "description": "Planiranje rasporeda sjedenja na vjenčanju",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#FDFBF7",
+  "theme_color": "#C9A24B",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

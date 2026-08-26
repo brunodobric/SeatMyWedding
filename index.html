@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#C9A24B">
+  <meta name="description" content="Planiranje rasporeda sjedenja na vjenčanju">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Sjedenje">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="stylesheet" href="css/app.css">
+  <title>Raspored Sjedenja</title>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <header id="app-header">
+    <div class="header-monogram" aria-hidden="true">
+      <span class="monogram-text">♡</span>
+    </div>
+    <span id="wedding-title-display" title="Klikni za uređivanje naslova">Raspored Sjedenja</span>
+    <input id="wedding-title-input" type="text" class="form-control" placeholder="Ana & Marko" autocomplete="off">
+    <div class="header-stats">
+      <span id="stat-assigned" class="stat-badge">Raspoređeno 0/0</span>
+      <span id="stat-violated" class="stat-badge">Prekršena pravila: 0</span>
+    </div>
+  </header>
+
+  <div id="app-body">
+
+    <!-- ── Sidebar (desktop/tablet) ──────────────────────────────────────── -->
+    <nav id="sidebar" aria-label="Navigacija">
+      <button class="nav-item active" data-nav="sala">
+        <span class="nav-icon">🏛️</span>
+        <span>Sala</span>
+      </button>
+      <button class="nav-item" data-nav="gosti">
+        <span class="nav-icon">👥</span>
+        <span>Gosti</span>
+      </button>
+      <button class="nav-item" data-nav="pravila">
+        <span class="nav-icon">⚠️</span>
+        <span>Pravila</span>
+      </button>
+      <button class="nav-item" data-nav="raspored">
+        <span class="nav-icon">🪑</span>
+        <span>Raspored</span>
+      </button>
+      <button class="nav-item" data-nav="pregled">
+        <span class="nav-icon">📤</span>
+        <span>Pregled</span>
+      </button>
+    </nav>
+
+    <!-- ── Main content ──────────────────────────────────────────────────── -->
+    <main id="main-content">
+
+      <!-- ═══ SALA ═══════════════════════════════════════════════════════ -->
+      <section id="section-sala" class="section active">
+        <div class="section-header">
+          <h2 class="section-title">Postavljanje sale</h2>
+        </div>
+
+        <!-- Mobile tabs -->
+        <div class="sala-tabs">
+          <button class="sala-tab active" data-tab="lista">📋 Popis stolova</button>
+          <button class="sala-tab" data-tab="tlocrt">🗺️ Tlocrt</button>
+        </div>
+
+        <div class="sala-layout">
+          <!-- Left panel wrapped in mobile tab panel -->
+          <div class="sala-tab-panel active" data-panel="lista" style="flex-direction:column">
+            <div class="sala-panel">
+              <div class="sala-panel-header">
+                <span class="sala-panel-title">Stolovi</span>
+                <button class="btn-primary" id="btn-add-table">+ Dodaj stol</button>
+              </div>
+              <div id="table-list"></div>
+            </div>
+          </div>
+
+          <!-- Right: floor plan canvas wrapped in mobile tab panel -->
+          <div class="sala-tab-panel" data-panel="tlocrt" style="flex-direction:column">
+            <div class="sala-canvas">
+              <div class="floor-plan-toolbar">
+                <button class="btn-secondary" id="btn-snap-grid">⊞ Mreža</button>
+                <div style="display:flex;gap:4px;margin-left:auto">
+                  <button class="btn-icon" id="btn-zoom-in" title="Povećaj">＋</button>
+                  <button class="btn-icon" id="btn-zoom-out" title="Smanji">－</button>
+                  <button class="btn-icon" id="btn-zoom-reset" title="Resetiraj pogled">⌂</button>
+                </div>
+              </div>
+              <div class="floor-plan-svg-wrap">
+                <svg id="fp-edit-svg" class="floor-plan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ GOSTI ═══════════════════════════════════════════════════════ -->
+      <section id="section-gosti" class="section">
+        <div class="section-header">
+          <h2 class="section-title">Gosti</h2>
+        </div>
+        <div class="gosti-layout">
+          <div class="gosti-main">
+            <div class="gosti-toolbar">
+              <input id="quick-add-guest" class="form-control" type="text" placeholder="Ime gosta + Enter za dodavanje" autocomplete="off" style="flex:1;min-width:160px">
+              <button class="btn-secondary" id="btn-import-guests">📥 Uvoz</button>
+              <button class="btn-secondary" id="btn-manage-categories">🎨 Kategorije</button>
+              <button class="btn-primary" id="btn-add-guest-btn">+ Gost</button>
+            </div>
+            <div class="gosti-filter-bar">
+              <span class="gosti-filter-label">Kategorija:</span>
+              <div id="category-filter-chips"></div>
+              <input id="guest-search" class="form-control" type="search" placeholder="Pretraži..." style="width:140px;margin-left:auto">
+            </div>
+            <div class="guest-count-bar">
+              <span id="guest-count">0 gostiju</span>
+            </div>
+            <div id="guest-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ PRAVILA ═════════════════════════════════════════════════════ -->
+      <section id="section-pravila" class="section">
+        <div class="section-header">
+          <h2 class="section-title">Posebni zahtjevi i pravila</h2>
+        </div>
+        <div class="pravila-toolbar">
+          <button class="btn-primary" id="btn-add-rule">+ Dodaj pravilo</button>
+        </div>
+        <div class="pravila-layout" id="rules-list"></div>
+      </section>
+
+      <!-- ═══ RASPORED ════════════════════════════════════════════════════ -->
+      <section id="section-raspored" class="section">
+        <div class="section-header" style="display:flex;align-items:center;justify-content:space-between">
+          <h2 class="section-title">Raspored sjedenja</h2>
+          <button class="btn-primary" id="btn-suggest-seating">⚡ Predloži raspored</button>
+        </div>
+        <div class="assign-hint">Odaberi gosta s lijeve liste → klikni slobodno mjesto na tlocrtu. Ili klikni direktno na mjesto za dodjelu.</div>
+        <div class="raspored-layout">
+          <!-- Unassigned panel -->
+          <div class="unassigned-panel">
+            <div class="unassigned-header">
+              <h3>Nedodijeljeni gosti</h3>
+              <div id="unassigned-count"></div>
+              <input id="raspored-search" class="form-control" type="search" placeholder="Pretraži..." style="margin-top:6px">
+            </div>
+            <div id="unassigned-list"></div>
+          </div>
+          <!-- Floor plan -->
+          <div class="raspored-canvas">
+            <div class="raspored-toolbar">
+              <button class="btn-icon" id="btn-zoom-in-assign" title="Povećaj">＋</button>
+              <button class="btn-icon" id="btn-zoom-out-assign" title="Smanji">－</button>
+              <button class="btn-icon" id="btn-zoom-reset-assign" title="Resetiraj">⌂</button>
+            </div>
+            <div class="floor-plan-svg-wrap">
+              <svg id="fp-assign-svg" class="floor-plan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ PREGLED ══════════════════════════════════════════════════════ -->
+      <section id="section-pregled" class="section">
+        <div class="section-header">
+          <h2 class="section-title">Pregled i izvoz</h2>
+        </div>
+        <div id="pregled-validation"></div>
+        <div class="pregled-layout">
+          <div class="pregled-toolbar">
+            <div class="pregled-view-btns">
+              <button class="pregled-view-btn active" data-view="tables">📋 Po stolovima</button>
+              <button class="pregled-view-btn" data-view="guests">👤 Po gostima</button>
+              <button class="pregled-view-btn" data-view="floor">🗺️ Tlocrt</button>
+            </div>
+            <div class="pregled-export-btns">
+              <button class="btn-secondary" id="btn-print">📄 Ispiši</button>
+              <button class="btn-secondary" id="btn-export-csv">📊 CSV</button>
+              <button class="btn-secondary" id="btn-export-json">💾 Backup</button>
+              <button class="btn-secondary" id="btn-import-json">📥 Uvezi</button>
+              <input type="file" id="json-import-input" accept=".json" style="display:none">
+            </div>
+          </div>
+          <div id="pregled-content"></div>
+        </div>
+      </section>
+
+    </main>
+  </div><!-- /app-body -->
+
+  <!-- ── Bottom nav (mobile) ──────────────────────────────────────────── -->
+  <nav id="bottom-nav" aria-label="Mobilna navigacija">
+    <div class="bottom-nav-inner">
+      <button class="bottom-nav-item active" data-nav="sala">
+        <span class="nav-icon">🏛️</span>
+        <span>Sala</span>
+      </button>
+      <button class="bottom-nav-item" data-nav="gosti">
+        <span class="nav-icon">👥</span>
+        <span>Gosti</span>
+      </button>
+      <button class="bottom-nav-item" data-nav="pravila">
+        <span class="nav-icon">⚠️</span>
+        <span>Pravila</span>
+      </button>
+      <button class="bottom-nav-item" data-nav="raspored">
+        <span class="nav-icon">🪑</span>
+        <span>Raspored</span>
+      </button>
+      <button class="bottom-nav-item" data-nav="pregled">
+        <span class="nav-icon">📤</span>
+        <span>Pregled</span>
+      </button>
+    </div>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     MODALS
+     ═══════════════════════════════════════════════════════════════════════ -->
+
+<!-- Onboarding -->
+<div id="modal-onboarding" class="modal-backdrop" style="display:none">
+  <div class="modal modal-onboarding">
+    <div class="onboarding-icon">💍</div>
+    <div class="onboarding-title">Raspored Sjedenja</div>
+    <p class="onboarding-subtitle">Dobrodošli! Postavimo vaše vjenčanje.</p>
+
+    <div class="ob-step" data-step="1">
+      <p>Kako se zovete? Unesite naslove koji će se prikazivati u aplikaciji.</p>
+      <div class="ob-fields">
+        <div class="form-group">
+          <label for="ob-title">Naslov vjenčanja</label>
+          <input id="ob-title" class="form-control" type="text" placeholder="Ana & Marko" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="ob-monogram">Monogram (inicijali)</label>
+          <input id="ob-monogram" class="form-control" type="text" placeholder="A&M" maxlength="5" autocomplete="off">
+        </div>
+      </div>
+    </div>
+
+    <div class="ob-step" data-step="2" style="display:none">
+      <p>Koliko stolova imate? (Možeš ih uvijek urediti kasnije.)</p>
+      <div class="ob-fields">
+        <div class="ob-grid">
+          <div class="form-group">
+            <label for="ob-tables">Broj stolova</label>
+            <input id="ob-tables" class="form-control" type="number" value="10" min="0" max="50">
+          </div>
+          <div class="form-group">
+            <label for="ob-seats">Mjesta po stolu</label>
+            <input id="ob-seats" class="form-control" type="number" value="8" min="1" max="30">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ob-step" data-step="3" style="display:none">
+      <p>Sve je postavljeno! 🎉</p>
+      <p>Možeš dodavati goste jednog po jednog ili uvesti popis (jednog po redku ili CSV). Gosti se mogu dodavati, micati i premještati u bilo kojem trenutku.</p>
+      <p style="margin-top:10px"><strong>Savjet:</strong> Kreni s postavljanjem stolova → dodaj goste → postavi pravila → rasporedi sjedenje.</p>
+    </div>
+
+    <button id="onboarding-next" class="btn-primary">Dalje →</button>
+  </div>
+</div>
+
+<!-- Table edit modal -->
+<div id="modal-table" class="modal-backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-table-title">Dodaj stol</h3>
+      <button class="modal-close">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="form-group">
+        <label for="table-name">Naziv stola</label>
+        <input id="table-name" class="form-control" type="text" placeholder="Stol 1" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>Oblik stola</label>
+        <div class="shape-btn-group">
+          <button class="shape-btn active" data-shape="round">⭕ Okrugli</button>
+          <button class="shape-btn" data-shape="square">⬜ Kvadratni</button>
+          <button class="shape-btn" data-shape="rectangular">▭ Pravokutni</button>
+          <button class="shape-btn" data-shape="royal">▬ Kraljevski</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="table-seats">Broj mjesta</label>
+        <input id="table-seats" class="form-control" type="number" value="8" min="1" max="50">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="btn-delete-table" style="margin-right:auto;color:var(--color-error);border-color:var(--color-error)">🗑️ Obriši</button>
+      <button class="btn-secondary" id="btn-duplicate-table">📋 Dupliciraj</button>
+      <button class="btn-primary" id="btn-save-table">Spremi</button>
+    </div>
+  </div>
+</div>
+
+<!-- Guest edit modal -->
+<div id="modal-guest" class="modal-backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modal-guest-title">Uredi gosta</h3>
+      <button class="modal-close">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="form-group">
+        <label for="guest-edit-name">Ime i prezime</label>
+        <input id="guest-edit-name" class="form-control" type="text" placeholder="Ivona Horvat" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="guest-edit-category">Kategorija</label>
+        <select id="guest-edit-category" class="form-control"></select>
+      </div>
+      <div class="form-group">
+        <label for="guest-edit-status">Status</label>
+        <select id="guest-edit-status" class="form-control">
+          <option value="unassigned">Nedodijeljen</option>
+          <option value="assigned">Dodijeljen</option>
+          <option value="maybe">Možda (na čekanju)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="guest-edit-notes">Bilješka</label>
+        <textarea id="guest-edit-notes" class="form-control" placeholder="Npr. vegetarijanac, blizu izlaza..."></textarea>
+      </div>
+      <label class="checkbox-row">
+        <input id="guest-edit-locked" type="checkbox">
+        <span>🔒 Zaključano mjesto (automatika ne smije premjestiti)</span>
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="btn-delete-guest" style="margin-right:auto;color:var(--color-error);border-color:var(--color-error)">🗑️ Obriši gosta</button>
+      <button class="btn-primary" id="btn-save-guest">Spremi</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import guests modal -->
+<div id="modal-import" class="modal-backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Uvoz gostiju</h3>
+      <button class="modal-close">✕</button>
+    </div>
+    <p style="font-size:0.88rem;color:var(--color-muted);margin-bottom:12px">
+      Zalijepi popis — jedan gost po retku, ili CSV (prvi stupac = ime).
+    </p>
+    <textarea id="import-textarea" class="form-control" rows="8" placeholder="Ivona Horvat&#10;Marko Knežević&#10;Sara Ilić&#10;..."></textarea>
+    <div class="modal-footer">
+      <button class="btn-primary" id="btn-import-confirm">Uvezi</button>
+    </div>
+  </div>
+</div>
+
+<!-- Categories management modal -->
+<div id="modal-categories" class="modal-backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Kategorije gostiju</h3>
+      <button class="modal-close">✕</button>
+    </div>
+    <div id="category-manager-list" style="display:flex;flex-direction:column;gap:4px;max-height:300px;overflow-y:auto"></div>
+    <div class="modal-footer">
+      <button class="btn-primary" id="btn-add-category">+ Nova kategorija</button>
+    </div>
+  </div>
+</div>
+
+<!-- Category edit modal -->
+<div id="modal-category-edit" class="modal-backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Uredi kategoriju</h3>
+      <button class="modal-close">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="form-group">
+        <label for="cat-edit-name">Naziv kategorije</label>
+        <input id="cat-edit-name" class="form-control" type="text" placeholder="Josipova obitelj" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>Boja</label>
+        <div class="color-swatch-grid">
+          <button class="color-swatch-btn active" data-color="#7B9E87" style="background:#7B9E87" title="Sage"></button>
+          <button class="color-swatch-btn" data-color="#7A8FA6" style="background:#7A8FA6" title="Plava"></button>
+          <button class="color-swatch-btn" data-color="#B07B72" style="background:#B07B72" title="Terrakota"></button>
+          <button class="color-swatch-btn" data-color="#9B8EA8" style="background:#9B8EA8" title="Mauve"></button>
+          <button class="color-swatch-btn" data-color="#8A9A6A" style="background:#8A9A6A" title="Maslinasta"></button>
+          <button class="color-swatch-btn" data-color="#C4956A" style="background:#C4956A" title="Breskva"></button>
+          <button class="color-swatch-btn" data-color="#6B8FAA" style="background:#6B8FAA" title="Čelična plava"></button>
+          <button class="color-swatch-btn" data-color="#A88FA8" style="background:#A88FA8" title="Lavanda"></button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary" id="btn-save-category">Spremi</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rule add modal -->
+<div id="modal-rule" class="modal-backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Dodaj pravilo</h3>
+      <button class="modal-close">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="form-group">
+        <label>Vrsta pravila</label>
+        <div class="rule-type-btns">
+          <button class="rule-type-btn active" data-type="apart">❌ Odvojeni</button>
+          <button class="rule-type-btn" data-type="together">✅ Zajedno</button>
+          <button class="rule-type-btn" data-type="fixed">📌 Fiksno mjesto</button>
+          <button class="rule-type-btn" data-type="category-together">👪 Kategorija zajedno</button>
+        </div>
+      </div>
+      <div id="rule-guest-picker-wrap" class="form-group">
+        <label for="rule-guest-select">Odaberi goste</label>
+        <select id="rule-guest-select" class="form-control" multiple size="5"></select>
+        <span style="font-size:0.78rem;color:var(--color-muted)">Drži Ctrl (Cmd na Mac) za višestruki odabir</span>
+      </div>
+      <div id="rule-cat-picker-wrap" class="form-group" style="display:none">
+        <label for="rule-cat-select">Kategorija</label>
+        <select id="rule-cat-select" class="form-control"></select>
+      </div>
+      <div id="rule-table-picker-wrap" class="form-group" style="display:none">
+        <label for="rule-table-select">Stol</label>
+        <select id="rule-table-select" class="form-control"></select>
+      </div>
+      <div id="rule-seat-picker-wrap" class="form-group" style="display:none">
+        <label for="rule-seat-select">Mjesto (opcionalno)</label>
+        <select id="rule-seat-select" class="form-control"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary" id="btn-save-rule">Spremi pravilo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Assign seat modal -->
+<div id="modal-assign-seat" class="modal-backdrop" style="display:none">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-header">
+      <h3 class="modal-title">Dodijeli mjesto</h3>
+      <button class="modal-close">✕</button>
+    </div>
+    <p id="assign-seat-label" style="font-size:0.9rem;color:var(--color-muted);margin-bottom:12px"></p>
+    <div class="form-group">
+      <label for="assign-guest-select">Odaberi gosta</label>
+      <select id="assign-guest-select" class="form-control"></select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary" id="btn-confirm-assign">Dodijeli</button>
+    </div>
+  </div>
+</div>
+
+<!-- Seat options modal -->
+<div id="modal-seat-options" class="modal-backdrop" style="display:none">
+  <div class="modal" style="max-width:320px">
+    <div class="modal-header">
+      <h3 class="modal-title">Opcije mjesta</h3>
+      <button class="modal-close">✕</button>
+    </div>
+    <p id="seat-options-label" style="font-size:0.95rem;font-weight:500;margin-bottom:16px"></p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn-secondary" id="btn-seat-unassign" style="justify-content:flex-start">🚫 Ukloni s mjesta</button>
+      <button class="btn-secondary" id="btn-seat-lock" style="justify-content:flex-start">🔒 Zaključaj</button>
+      <button class="btn-secondary" id="btn-seat-edit-guest" style="justify-content:flex-start">✏️ Uredi gosta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Seating result modal -->
+<div id="modal-seating-result" class="modal-backdrop" style="display:none">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3 class="modal-title">⚡ Rezultat raspoređivanja</h3>
+      <button class="modal-close">✕</button>
+    </div>
+    <div id="seating-result-body" style="margin-bottom:8px"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="btn-undo-seating">↩ Poništi</button>
+      <button class="btn-primary" id="btn-close-seating-result">U redu</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
