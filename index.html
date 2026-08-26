@@ -88,12 +88,14 @@
             <div class="sala-canvas">
               <div class="floor-plan-toolbar">
                 <button class="btn-secondary" id="btn-snap-grid">⊞ Mreža</button>
+                <button class="btn-secondary" id="btn-tap-move" title="Premjesti dodirom: dodirni stol pa dodirni novo mjesto">↔ Premjesti dodirom</button>
                 <div style="display:flex;gap:4px;margin-left:auto">
                   <button class="btn-icon" id="btn-zoom-in" title="Povećaj">＋</button>
                   <button class="btn-icon" id="btn-zoom-out" title="Smanji">－</button>
                   <button class="btn-icon" id="btn-zoom-reset" title="Resetiraj pogled">⌂</button>
                 </div>
               </div>
+              <div id="tap-move-hint" class="tap-move-hint" style="display:none">Dodirni stol koji želiš premjestiti, zatim dodirni novo mjesto.</div>
               <div class="floor-plan-svg-wrap">
                 <svg id="fp-edit-svg" class="floor-plan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
               </div>
@@ -337,7 +339,7 @@
     <div style="display:flex;flex-direction:column;gap:14px">
       <div class="form-group">
         <label for="guest-edit-name">Ime i prezime</label>
-        <input id="guest-edit-name" class="form-control" type="text" placeholder="Ivona Horvat" autocomplete="off">
+        <input id="guest-edit-name" class="form-control" type="text" autocomplete="off">
       </div>
       <div class="form-group">
         <label for="guest-edit-category">Kategorija</label>
@@ -377,7 +379,7 @@
     <p style="font-size:0.88rem;color:var(--color-muted);margin-bottom:12px">
       Zalijepi popis — jedan gost po retku, ili CSV (prvi stupac = ime).
     </p>
-    <textarea id="import-textarea" class="form-control" rows="8" placeholder="Ivona Horvat&#10;Marko Knežević&#10;Sara Ilić&#10;..."></textarea>
+    <textarea id="import-textarea" class="form-control" rows="8" placeholder="Ime Prezime (jedan gost po retku)"></textarea>
     <div class="modal-footer">
       <button class="btn-primary" id="btn-import-confirm">Uvezi</button>
     </div>
@@ -408,7 +410,7 @@
     <div style="display:flex;flex-direction:column;gap:14px">
       <div class="form-group">
         <label for="cat-edit-name">Naziv kategorije</label>
-        <input id="cat-edit-name" class="form-control" type="text" placeholder="Josipova obitelj" autocomplete="off">
+        <input id="cat-edit-name" class="form-control" type="text" autocomplete="off">
       </div>
       <div class="form-group">
         <label>Boja</label>

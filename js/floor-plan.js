@@ -23,6 +23,7 @@ class FloorPlan {
     this.onTableClick = options.onTableClick || (() => {});
     this.onSeatClick = options.onSeatClick || (() => {});
     this.mode = options.mode || 'edit'; // 'edit' | 'assign'
+    this.tapMoveMode = false;
 
     this.viewBox = { x: 0, y: 0, w: CANVAS_W, h: CANVAS_H };
     this.tables = [];
@@ -201,7 +202,7 @@ class FloorPlan {
       g.addEventListener('click', (e) => {
         if (!this._didDrag) {
           e.stopPropagation();
-          this.onTableClick(table.id);
+          this._handleTableTap(table);
         }
       });
     }
@@ -295,6 +296,15 @@ class FloorPlan {
     g.setAttribute('transform', `translate(${table.x},${table.y}) rotate(${table.rotation || 0})`);
   }
 
+  _handleTableTap(table) {
+    if (this.tapMoveMode) {
+      // In tap-move mode a tap just selects the table; next canvas tap moves it.
+      this.selectTable(table.id);
+    } else {
+      this.onTableClick(table.id);
+    }
+  }
+
   _startDrag(e, table, g) {
     if (e.button !== 0) return;
     e.preventDefault();
@@ -342,12 +352,14 @@ class FloorPlan {
     };
     const onEnd = () => {
       const dragged = this._dragging && this._didDrag;
+      const tapped = this._dragging && !this._didDrag;
       const tbl = this._dragging ? this._dragging.table : null;
       this._dragging = null;
       window.removeEventListener('touchmove', onMove);
       window.removeEventListener('touchend', onEnd);
       window.removeEventListener('touchcancel', onEnd);
       if (dragged) this.onTableMove(tbl);
+      else if (tapped) this._handleTableTap(tbl);
     };
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onEnd);
@@ -355,6 +367,17 @@ class FloorPlan {
   }
 
   _bindEvents() {
+    // Tap-move: after selecting a table, a tap on empty canvas moves it there.
+    this.svg.addEventListener('click', (e) => {
+      if (this.mode !== 'edit' || !this.tapMoveMode || !this.selectedTableId) return;
+      const table = this.tables.find(t => t.id === this.selectedTableId);
+      if (!table) return;
+      const p = this._svgPoint(e.clientX, e.clientY);
+      table.x = this._snap(Math.max(0, Math.min(CANVAS_W, p.x)));
+      table.y = this._snap(Math.max(0, Math.min(CANVAS_H, p.y)));
+      this.onTableMove(table);
+    });
+
     // Pan by middle-mouse or two-finger touch
     this.svg.addEventListener('wheel', (e) => {
       e.preventDefault();
@@ -412,6 +435,12 @@ class FloorPlan {
 
   setMode(mode) {
     this.mode = mode;
+    this._renderTables();
+  }
+
+  setTapMoveMode(val) {
+    this.tapMoveMode = val;
+    if (!val) this.selectedTableId = null;
     this._renderTables();
   }
 }

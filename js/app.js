@@ -351,6 +351,15 @@ function setupTableModal() {
     document.getElementById('btn-snap-grid').classList.toggle('active', active);
   });
 
+  document.getElementById('btn-tap-move').addEventListener('click', () => {
+    if (!floorPlanEdit) return;
+    const active = !floorPlanEdit.tapMoveMode;
+    floorPlanEdit.setTapMoveMode(active);
+    document.getElementById('btn-tap-move').classList.toggle('active', active);
+    const hint = document.getElementById('tap-move-hint');
+    if (hint) hint.style.display = active ? 'block' : 'none';
+  });
+
   document.getElementById('btn-zoom-in').addEventListener('click', () => floorPlanEdit && floorPlanEdit.zoomIn());
   document.getElementById('btn-zoom-out').addEventListener('click', () => floorPlanEdit && floorPlanEdit.zoomOut());
   document.getElementById('btn-zoom-reset').addEventListener('click', () => floorPlanEdit && floorPlanEdit.resetView());
@@ -582,7 +591,7 @@ function renderPravila() {
   if (!list) return;
   if (state.rules.length === 0) {
     list.innerHTML = `<div class="empty-state">
-      <p>Nema pravila.<br><small>Primjeri: Ivona i Sara ne smiju za isti stol, Josipova obitelj mora zajedno.</small></p>
+      <p>Nema pravila.</p>
     </div>`;
     return;
   }

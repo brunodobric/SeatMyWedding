@@ -435,6 +435,14 @@ select.form-control { cursor: pointer; }
   border-color: var(--color-gold-deep);
 }
 
+.tap-move-hint {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--color-gold-bronze);
+  background: var(--color-champagne);
+  border-bottom: 1px solid var(--color-border);
+}
+
 .floor-plan-svg-wrap {
   flex: 1;
   overflow: hidden;
