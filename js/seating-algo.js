@@ -3,9 +3,15 @@
  * Returns { assignments: [{guestId, tableId, seatIndex}], violations: [{ruleId, reason}] }
  */
 function suggestSeating(tables, guests, rules, categories) {
+  // Bridal table(s): reserved for the newlyweds and best men. Auto-seating must
+  // never place regular guests here, so they are treated as fully occupied and
+  // anyone already seated there is pinned in place.
+  const headTableIds = new Set(tables.filter(t => t.shape === 'head').map(t => t.id));
+
   // Build seat availability map: tableId -> Set of free seatIndexes
   const seatMap = {};
   for (const t of tables) {
+    if (headTableIds.has(t.id)) { seatMap[t.id] = []; continue; }
     const occupied = new Set(
       guests.filter(g => g.tableId === t.id && g.locked).map(g => g.seatIndex)
     );
@@ -16,16 +22,17 @@ function suggestSeating(tables, guests, rules, categories) {
     seatMap[t.id] = free;
   }
 
-  // Current assignments (start from locked only)
+  // Current assignments: keep locked guests and anyone already at the bridal
+  // table (newlyweds / best men stay put — auto-seating won't relocate them).
   const assignments = {};
   for (const g of guests) {
-    if (g.locked && g.tableId !== null) {
+    if (g.tableId !== null && (g.locked || headTableIds.has(g.tableId))) {
       assignments[g.id] = { tableId: g.tableId, seatIndex: g.seatIndex };
     }
   }
 
-  // Guests to place
-  const toPlace = guests.filter(g => !g.locked && g.status !== 'maybe');
+  // Guests to place (skip locked, "maybe", and anyone pinned to the bridal table)
+  const toPlace = guests.filter(g => !g.locked && g.status !== 'maybe' && !headTableIds.has(g.tableId));
 
   // Handle fixed rules first (non-locked guests with fixed rule)
   const fixedRules = rules.filter(r => r.type === 'fixed');
@@ -101,7 +108,10 @@ function suggestSeating(tables, guests, rules, categories) {
   }
 
   // Local improvement: swap pairs to reduce rule violations
-  const lockedIds = new Set(guests.filter(g => g.locked).map(g => g.id));
+  // (locked guests and bridal-table guests are immovable)
+  const lockedIds = new Set(
+    guests.filter(g => g.locked || (g.tableId !== null && headTableIds.has(g.tableId))).map(g => g.id)
+  );
 
   function countViolations(map) {
     let v = 0;
