@@ -26,7 +26,7 @@ async function init() {
 
 function onStateChange(e) {
   updateHeader();
-  const type = e.detail?.type;
+  const type = (e.detail ? e.detail.type : null);
   if (type === 'settings') { updateHeader(); updateMonogram(); }
   if (type === 'tables' || type === 'guests' || type === 'categories') {
     refreshCurrentSection();
@@ -134,11 +134,18 @@ function showOnboarding() {
     } else if (step === 2) {
       const numTables = parseInt(document.getElementById('ob-tables').value) || 0;
       const numSeats = parseInt(document.getElementById('ob-seats').value) || 8;
+      const headSeats = parseInt(document.getElementById('ob-head-seats').value) || 5;
+      await saveTable({
+        id: crypto.randomUUID(), name: 'Stol mladenaca',
+        shape: 'head', seats: headSeats * 2,
+        seatsLong: headSeats, seatsEnd: 0,
+        x: 500, y: 55, rotation: 0
+      });
       for (let i = 1; i <= numTables; i++) {
         await saveTable({
-          id: crypto.randomUUID(), name: `Stol ${i}`,
+          id: crypto.randomUUID(), name: 'Stol ' + i,
           shape: 'round', seats: numSeats,
-          x: 100 + ((i - 1) % 5) * 170, y: 120 + Math.floor((i - 1) / 5) * 170,
+          x: 100 + ((i - 1) % 5) * 170, y: 160 + Math.floor((i - 1) / 5) * 170,
           rotation: 0
         });
       }
@@ -233,23 +240,23 @@ function openTableModal(id) {
   const title = document.getElementById('modal-table-title');
   title.textContent = table ? 'Uredi stol' : 'Dodaj stol';
 
-  document.getElementById('table-name').value = table?.name || `Stol ${state.tables.length + 1}`;
-  const shape = table?.shape || 'round';
+  document.getElementById('table-name').value = (table ? table.name : undefined) || `Stol ${state.tables.length + 1}`;
+  const shape = (table ? table.shape : undefined) || 'round';
   document.querySelectorAll('.shape-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.shape === shape);
   });
 
   if (shape === 'round') {
-    document.getElementById('table-seats').value = table?.seats || 8;
+    document.getElementById('table-seats').value = (table ? table.seats : undefined) || 8;
   } else if (shape === 'square') {
-    const perSide = table?.seatsLong ?? Math.round((table?.seats || 8) / 4) || 2;
+    const perSide = (table ? table.seatsLong : undefined) || Math.round(((table ? table.seats : undefined) || 8) / 4) || 2;
     document.getElementById('table-seats-long').value = perSide;
   } else if (shape === 'head') {
-    document.getElementById('table-seats-long').value = table?.seatsLong ?? 8;
-    document.getElementById('table-seats-end').value = table?.seatsEnd ?? 1;
+    document.getElementById('table-seats-long').value = (table ? table.seatsLong : undefined) || 8;
+    document.getElementById('table-seats-end').value = (table ? table.seatsEnd : undefined) || 1;
   } else {
-    document.getElementById('table-seats-long').value = table?.seatsLong ?? 4;
-    document.getElementById('table-seats-end').value = table?.seatsEnd ?? 1;
+    document.getElementById('table-seats-long').value = (table ? table.seatsLong : undefined) || 4;
+    document.getElementById('table-seats-end').value = (table ? table.seatsEnd : undefined) || 1;
   }
 
   updateSeatsUI(shape);
@@ -271,8 +278,8 @@ function setupTableModal() {
   });
 
   ['table-seats-long', 'table-seats-end'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', () => {
-      const shape = document.querySelector('.shape-btn.active')?.dataset.shape || 'round';
+    document.getElementById(id).addEventListener('input', () => {
+      const shape = document.querySelector('.shape-btn.active').dataset.shape || 'round';
       updateSeatsTotalDisplay(shape);
     });
   });
@@ -281,7 +288,7 @@ function setupTableModal() {
     const modal = document.getElementById('modal-table');
     const id = modal.dataset.editId || crypto.randomUUID();
     const existing = state.tables.find(t => t.id === id);
-    const shape = document.querySelector('.shape-btn.active')?.dataset.shape || 'round';
+    const shape = document.querySelector('.shape-btn.active').dataset.shape || 'round';
 
     let seats, seatsLong, seatsEnd;
     if (shape === 'round') {
@@ -307,7 +314,7 @@ function setupTableModal() {
       seats,
       seatsLong,
       seatsEnd,
-      x: existing?.x ?? 200, y: existing?.y ?? 200, rotation: existing?.rotation ?? 0
+      x: (existing ? existing.x : undefined) || 200, y: (existing ? existing.y : undefined) || 200, rotation: (existing ? existing.rotation : undefined) || 0
     };
     await saveTable(table);
     modal.style.display = 'none';
@@ -344,9 +351,9 @@ function setupTableModal() {
     document.getElementById('btn-snap-grid').classList.toggle('active', active);
   });
 
-  document.getElementById('btn-zoom-in').addEventListener('click', () => floorPlanEdit?.zoomIn());
-  document.getElementById('btn-zoom-out').addEventListener('click', () => floorPlanEdit?.zoomOut());
-  document.getElementById('btn-zoom-reset').addEventListener('click', () => floorPlanEdit?.resetView());
+  document.getElementById('btn-zoom-in').addEventListener('click', () => floorPlanEdit && floorPlanEdit.zoomIn());
+  document.getElementById('btn-zoom-out').addEventListener('click', () => floorPlanEdit && floorPlanEdit.zoomOut());
+  document.getElementById('btn-zoom-reset').addEventListener('click', () => floorPlanEdit && floorPlanEdit.resetView());
 }
 
 // ── GOSTI ──────────────────────────────────────────────────────────────────────
@@ -391,7 +398,7 @@ function renderGuestList() {
   list.innerHTML = guests.map(g => {
     const cat = state.categories.find(c => c.id === g.categoryId);
     const table = g.tableId ? state.tables.find(t => t.id === g.tableId) : null;
-    const statusLabel = g.status === 'assigned' ? `<span class="status-badge assigned">Stol: ${esc(table?.name || '?')}</span>`
+    const statusLabel = g.status === 'assigned' ? `<span class="status-badge assigned">Stol: ${esc((table ? table.name : undefined) || '?')}</span>`
       : g.status === 'maybe' ? '<span class="status-badge maybe">Možda</span>'
       : '<span class="status-badge unassigned">Nedodijeljen</span>';
     return `<div class="guest-row" data-id="${g.id}">
@@ -412,7 +419,7 @@ function renderGuestList() {
 
 function setupGostiEvents() {
   const input = document.getElementById('quick-add-guest');
-  input?.addEventListener('keydown', async (e) => {
+  input && input.addEventListener('keydown', async (e) => {
     if (e.key === 'Enter') {
       const name = input.value.trim();
       if (!name) return;
@@ -422,11 +429,11 @@ function setupGostiEvents() {
     }
   });
 
-  document.getElementById('btn-import-guests')?.addEventListener('click', () => {
+  document.getElementById('btn-import-guests').addEventListener('click', () => {
     document.getElementById('modal-import').style.display = 'flex';
   });
 
-  document.getElementById('btn-import-confirm')?.addEventListener('click', async () => {
+  document.getElementById('btn-import-confirm').addEventListener('click', async () => {
     const raw = document.getElementById('import-textarea').value;
     const names = raw.split('\n').map(n => n.trim().split(',')[0].trim()).filter(Boolean);
     for (const name of names) {
@@ -439,17 +446,17 @@ function setupGostiEvents() {
     renderGosti();
   });
 
-  document.getElementById('guest-search')?.addEventListener('input', (e) => {
+  document.getElementById('guest-search').addEventListener('input', (e) => {
     guestSearchQuery = e.target.value;
     renderGuestList();
   });
 
-  document.getElementById('btn-manage-categories')?.addEventListener('click', () => {
+  document.getElementById('btn-manage-categories').addEventListener('click', () => {
     renderCategoryManager();
     document.getElementById('modal-categories').style.display = 'flex';
   });
 
-  document.getElementById('btn-add-guest-btn')?.addEventListener('click', () => openGuestModal(null));
+  document.getElementById('btn-add-guest-btn').addEventListener('click', () => openGuestModal(null));
 }
 
 function renderCategoryManager() {
@@ -476,10 +483,10 @@ function renderCategoryManager() {
 function openCategoryEditModal(id) {
   const cat = id ? state.categories.find(c => c.id === id) : null;
   const modal = document.getElementById('modal-category-edit');
-  document.getElementById('cat-edit-name').value = cat?.name || '';
+  document.getElementById('cat-edit-name').value = (cat ? cat.name : undefined) || '';
   document.querySelectorAll('.color-swatch-btn').forEach((btn, i) => {
     btn.style.background = CATEGORY_COLORS[i];
-    btn.classList.toggle('active', CATEGORY_COLORS[i] === (cat?.color || CATEGORY_COLORS[0]));
+    btn.classList.toggle('active', CATEGORY_COLORS[i] === ((cat ? cat.color : undefined) || CATEGORY_COLORS[0]));
     btn.dataset.color = CATEGORY_COLORS[i];
   });
   modal.dataset.editId = id || '';
@@ -493,12 +500,12 @@ function setupCategoryEditModal() {
       btn.classList.add('active');
     });
   });
-  document.getElementById('btn-save-category')?.addEventListener('click', async () => {
+  document.getElementById('btn-save-category').addEventListener('click', async () => {
     const modal = document.getElementById('modal-category-edit');
     const id = modal.dataset.editId || crypto.randomUUID();
     const name = document.getElementById('cat-edit-name').value.trim();
     if (!name) return;
-    const color = document.querySelector('.color-swatch-btn.active')?.dataset.color || CATEGORY_COLORS[0];
+    const color = document.querySelector('.color-swatch-btn.active').dataset.color || CATEGORY_COLORS[0];
     await saveCategory({ id, name, color });
     modal.style.display = 'none';
     renderCategoryManager();
@@ -507,21 +514,21 @@ function setupCategoryEditModal() {
 }
 
 function setupAddCategoryBtn() {
-  document.getElementById('btn-add-category')?.addEventListener('click', () => openCategoryEditModal(null));
+  document.getElementById('btn-add-category').addEventListener('click', () => openCategoryEditModal(null));
 }
 
 function openGuestModal(id) {
   const guest = id ? state.guests.find(g => g.id === id) : null;
   const modal = document.getElementById('modal-guest');
   document.getElementById('modal-guest-title').textContent = guest ? 'Uredi gosta' : 'Dodaj gosta';
-  document.getElementById('guest-edit-name').value = guest?.name || '';
-  document.getElementById('guest-edit-notes').value = guest?.notes || '';
-  document.getElementById('guest-edit-locked').checked = guest?.locked || false;
-  document.getElementById('guest-edit-status').value = guest?.status || 'unassigned';
+  document.getElementById('guest-edit-name').value = (guest ? guest.name : undefined) || '';
+  document.getElementById('guest-edit-notes').value = (guest ? guest.notes : undefined) || '';
+  document.getElementById('guest-edit-locked').checked = (guest ? guest.locked : undefined) || false;
+  document.getElementById('guest-edit-status').value = (guest ? guest.status : undefined) || 'unassigned';
 
   const catSel = document.getElementById('guest-edit-category');
   catSel.innerHTML = '<option value="">— bez kategorije —</option>' +
-    state.categories.map(c => `<option value="${c.id}"${guest?.categoryId === c.id ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
+    state.categories.map(c => `<option value="${c.id}"${(guest ? guest.categoryId : undefined) === c.id ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
 
   document.getElementById('btn-delete-guest').style.display = guest ? '' : 'none';
   modal.dataset.editId = id || '';
@@ -529,7 +536,7 @@ function openGuestModal(id) {
 }
 
 function setupGuestModal() {
-  document.getElementById('btn-save-guest')?.addEventListener('click', async () => {
+  document.getElementById('btn-save-guest').addEventListener('click', async () => {
     const modal = document.getElementById('modal-guest');
     const id = modal.dataset.editId || crypto.randomUUID();
     const existing = state.guests.find(g => g.id === id);
@@ -541,8 +548,8 @@ function setupGuestModal() {
     const notes = document.getElementById('guest-edit-notes').value.trim();
     const guest = {
       id, name, categoryId: catId, status,
-      tableId: existing?.tableId ?? null,
-      seatIndex: existing?.seatIndex ?? null,
+      tableId: (existing ? existing.tableId : undefined) || null,
+      seatIndex: (existing ? existing.seatIndex : undefined) || null,
       locked, notes
     };
     if (status !== 'assigned') { guest.tableId = null; guest.seatIndex = null; }
@@ -552,11 +559,11 @@ function setupGuestModal() {
     if (currentSection === 'raspored') renderRaspored();
   });
 
-  document.getElementById('btn-delete-guest')?.addEventListener('click', async () => {
+  document.getElementById('btn-delete-guest').addEventListener('click', async () => {
     const modal = document.getElementById('modal-guest');
     const id = modal.dataset.editId;
     if (!id) return;
-    const rulesAffected = state.rules.filter(r => r.guestIds?.includes(id));
+    const rulesAffected = state.rules.filter(r => r.guestIds && guestIds.includes(id));
     let msg = 'Obrisati gosta?';
     if (rulesAffected.length > 0) msg += ` Gost je u ${rulesAffected.length} pravil(u/ima) — bit će uklonjen iz njih.`;
     if (confirm(msg)) {
@@ -584,14 +591,14 @@ function renderPravila() {
     const labels = { apart: 'Odvojeni', together: 'Zajedno', fixed: 'Fiksno', 'category-together': 'Kategorija zajedno' };
     let desc = '';
     if (r.type === 'apart' || r.type === 'together') {
-      desc = r.guestIds.map(id => state.guests.find(g => g.id === id)?.name || '?').join(', ');
+      desc = r.guestIds.map(id => (function(g){return g ? g.name : '?'})(state.guests.find(g => g.id === id))).join(', ');
     } else if (r.type === 'fixed') {
       const g = state.guests.find(x => x.id === r.guestIds[0]);
       const t = state.tables.find(x => x.id === r.tableId);
-      desc = `${g?.name || '?'} → ${t?.name || '?'}${r.seatIndex !== null ? `, mj. ${r.seatIndex + 1}` : ''}`;
+      desc = `${(g ? g.name : undefined) || '?'} → ${(t ? t.name : undefined) || '?'}${r.seatIndex !== null ? `, mj. ${r.seatIndex + 1}` : ''}`;
     } else if (r.type === 'category-together') {
       const cat = state.categories.find(c => c.id === r.categoryId);
-      desc = cat?.name || '?';
+      desc = (cat ? cat.name : undefined) || '?';
     }
     const status = r.satisfied === true ? '<span class="rule-status ok">✔</span>'
       : r.satisfied === false ? '<span class="rule-status bad">✖</span>'
@@ -615,7 +622,7 @@ function renderPravila() {
 }
 
 function setupPravilaEvents() {
-  document.getElementById('btn-add-rule')?.addEventListener('click', () => {
+  document.getElementById('btn-add-rule').addEventListener('click', () => {
     openRuleModal();
   });
 }
@@ -654,7 +661,7 @@ function updateRuleModalFields(type) {
 }
 
 function updateSeatOptions() {
-  const tableId = document.getElementById('rule-table-select')?.value;
+  const tableId = document.getElementById('rule-table-select').value;
   const table = state.tables.find(t => t.id === tableId);
   const seatSel = document.getElementById('rule-seat-select');
   if (!seatSel) return;
@@ -671,10 +678,10 @@ function setupRuleModal() {
     });
   });
 
-  document.getElementById('rule-table-select')?.addEventListener('change', updateSeatOptions);
+  document.getElementById('rule-table-select').addEventListener('change', updateSeatOptions);
 
-  document.getElementById('btn-save-rule')?.addEventListener('click', async () => {
-    const type = document.querySelector('.rule-type-btn.active')?.dataset.type || 'apart';
+  document.getElementById('btn-save-rule').addEventListener('click', async () => {
+    const type = document.querySelector('.rule-type-btn.active').dataset.type || 'apart';
     const rule = { id: crypto.randomUUID(), type, guestIds: [], categoryId: null, tableId: null, seatIndex: null, satisfied: null };
 
     if (type === 'apart' || type === 'together') {
@@ -769,7 +776,7 @@ async function handleSeatClick(tableId, seatIndex, guest) {
 function showAssignSeatModal(tableId, seatIndex) {
   const modal = document.getElementById('modal-assign-seat');
   const table = state.tables.find(t => t.id === tableId);
-  document.getElementById('assign-seat-label').textContent = `${table?.name || 'Stol'} — Mjesto ${seatIndex + 1}`;
+  document.getElementById('assign-seat-label').textContent = `${(table ? table.name : undefined) || 'Stol'} — Mjesto ${seatIndex + 1}`;
   const sel = document.getElementById('assign-guest-select');
   const unassigned = state.guests.filter(g => g.status !== 'assigned' && g.status !== 'maybe');
   sel.innerHTML = '<option value="">— odaberi gosta —</option>' +
@@ -780,7 +787,7 @@ function showAssignSeatModal(tableId, seatIndex) {
 }
 
 function setupAssignSeatModal() {
-  document.getElementById('btn-confirm-assign')?.addEventListener('click', async () => {
+  document.getElementById('btn-confirm-assign').addEventListener('click', async () => {
     const modal = document.getElementById('modal-assign-seat');
     const guestId = document.getElementById('assign-guest-select').value;
     if (!guestId) return;
@@ -793,21 +800,21 @@ function setupAssignSeatModal() {
 function showSeatOptionsModal(tableId, seatIndex, guest) {
   const modal = document.getElementById('modal-seat-options');
   const table = state.tables.find(t => t.id === tableId);
-  document.getElementById('seat-options-label').textContent = `${esc(guest.name)} — ${table?.name || 'Stol'}, Mj. ${seatIndex + 1}`;
+  document.getElementById('seat-options-label').textContent = `${esc(guest.name)} — ${(table ? table.name : undefined) || 'Stol'}, Mj. ${seatIndex + 1}`;
   document.getElementById('seat-options-locked').textContent = guest.locked ? '🔓 Otključaj' : '🔒 Zaključaj';
   modal.dataset.guestId = guest.id;
   modal.style.display = 'flex';
 }
 
 function setupSeatOptionsModal() {
-  document.getElementById('btn-seat-unassign')?.addEventListener('click', async () => {
+  document.getElementById('btn-seat-unassign').addEventListener('click', async () => {
     const modal = document.getElementById('modal-seat-options');
     await unassignGuest(modal.dataset.guestId);
     modal.style.display = 'none';
     renderRaspored();
   });
 
-  document.getElementById('btn-seat-lock')?.addEventListener('click', async () => {
+  document.getElementById('btn-seat-lock').addEventListener('click', async () => {
     const modal = document.getElementById('modal-seat-options');
     const guest = state.guests.find(g => g.id === modal.dataset.guestId);
     if (guest) { guest.locked = !guest.locked; await saveGuest(guest); }
@@ -815,7 +822,7 @@ function setupSeatOptionsModal() {
     renderRaspored();
   });
 
-  document.getElementById('btn-seat-edit-guest')?.addEventListener('click', () => {
+  document.getElementById('btn-seat-edit-guest').addEventListener('click', () => {
     const modal = document.getElementById('modal-seat-options');
     modal.style.display = 'none';
     openGuestModal(modal.dataset.guestId);
@@ -823,7 +830,7 @@ function setupSeatOptionsModal() {
 }
 
 function setupAutoSeating() {
-  document.getElementById('btn-suggest-seating')?.addEventListener('click', async () => {
+  document.getElementById('btn-suggest-seating').addEventListener('click', async () => {
     lastSeatingSnapshot = state.guests.map(g => ({ ...g }));
     const result = suggestSeating(state.tables, state.guests, state.rules, state.categories);
     await applySeatingResult(result.assignments);
@@ -849,7 +856,7 @@ function showSeatingResultModal(result) {
 }
 
 function setupSeatingResultModal() {
-  document.getElementById('btn-undo-seating')?.addEventListener('click', async () => {
+  document.getElementById('btn-undo-seating').addEventListener('click', async () => {
     if (!lastSeatingSnapshot) return;
     for (const g of lastSeatingSnapshot) {
       const curr = state.guests.find(x => x.id === g.id);
@@ -859,19 +866,19 @@ function setupSeatingResultModal() {
     document.getElementById('modal-seating-result').style.display = 'none';
     renderRaspored();
   });
-  document.getElementById('btn-close-seating-result')?.addEventListener('click', () => {
+  document.getElementById('btn-close-seating-result').addEventListener('click', () => {
     document.getElementById('modal-seating-result').style.display = 'none';
   });
 }
 
 function setupRasporedSearch() {
-  document.getElementById('raspored-search')?.addEventListener('input', e => {
+  document.getElementById('raspored-search').addEventListener('input', e => {
     rasporedSearch = e.target.value;
     renderUnassignedPanel();
   });
-  document.getElementById('btn-zoom-in-assign')?.addEventListener('click', () => floorPlanAssign?.zoomIn());
-  document.getElementById('btn-zoom-out-assign')?.addEventListener('click', () => floorPlanAssign?.zoomOut());
-  document.getElementById('btn-zoom-reset-assign')?.addEventListener('click', () => floorPlanAssign?.resetView());
+  document.getElementById('btn-zoom-in-assign').addEventListener('click', () => floorPlanAssign && floorPlanAssign.zoomIn());
+  document.getElementById('btn-zoom-out-assign').addEventListener('click', () => floorPlanAssign && floorPlanAssign.zoomOut());
+  document.getElementById('btn-zoom-reset-assign').addEventListener('click', () => floorPlanAssign && floorPlanAssign.resetView());
 }
 
 // ── PREGLED ────────────────────────────────────────────────────────────────────
@@ -944,29 +951,29 @@ function setupPregledEvents() {
     });
   });
 
-  document.getElementById('btn-print')?.addEventListener('click', () => window.print());
+  document.getElementById('btn-print').addEventListener('click', () => window.print());
 
-  document.getElementById('btn-export-csv')?.addEventListener('click', () => {
+  document.getElementById('btn-export-csv').addEventListener('click', () => {
     const rows = [['Ime', 'Kategorija', 'Stol', 'Mjesto', 'Status', 'Bilješka']];
     state.guests.sort((a, b) => a.name.localeCompare(b.name)).forEach(g => {
-      const cat = state.categories.find(c => c.id === g.categoryId)?.name || '';
-      const table = g.tableId ? state.tables.find(t => t.id === g.tableId)?.name || '' : '';
+      const cat = (function(c){return c ? c.name : ''})(state.categories.find(c => c.id === g.categoryId));
+      const table = g.tableId ? (function(t){return t ? t.name : ''})(state.tables.find(t => t.id === g.tableId)) : '';
       rows.push([g.name, cat, table, g.seatIndex !== null ? g.seatIndex + 1 : '', g.status, g.notes || '']);
     });
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     downloadFile('raspored-sjedenja.csv', 'text/csv', csv);
   });
 
-  document.getElementById('btn-export-json')?.addEventListener('click', () => {
+  document.getElementById('btn-export-json').addEventListener('click', () => {
     const data = JSON.stringify({ settings: state.settings, tables: state.tables, categories: state.categories, guests: state.guests, rules: state.rules }, null, 2);
     downloadFile('raspored-sjedenja.json', 'application/json', data);
   });
 
-  document.getElementById('btn-import-json')?.addEventListener('click', () => {
+  document.getElementById('btn-import-json').addEventListener('click', () => {
     document.getElementById('json-import-input').click();
   });
 
-  document.getElementById('json-import-input')?.addEventListener('change', async (e) => {
+  document.getElementById('json-import-input').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     try {
@@ -977,7 +984,7 @@ function setupPregledEvents() {
         renderAll();
         navigateTo('sala');
       }
-    } catch {
+    } catch (e) {
       alert('Neispravna JSON datoteka.');
     }
     e.target.value = '';
@@ -1005,7 +1012,7 @@ function getViolatedTableIds() {
       if (rule.type === 'apart' || rule.type === 'together') {
         rule.guestIds.forEach(id => {
           const g = state.guests.find(x => x.id === id);
-          if (g?.tableId) ids.add(g.tableId);
+          if ((g ? g.tableId : undefined)) ids.add(g.tableId);
         });
       } else if (rule.type === 'fixed') {
         if (rule.tableId) ids.add(rule.tableId);
@@ -1042,7 +1049,7 @@ function setupSalaTabs() {
 
 // ── Entry point ────────────────────────────────────────────────────────────────
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function _appMain() {
   setupModalClose();
   setupTableModal();
   setupGostiEvents();
@@ -1059,4 +1066,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupPregledEvents();
   setupSalaTabs();
   await init();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _appMain);
+} else {
+  _appMain();
+}

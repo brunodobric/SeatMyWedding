@@ -18,7 +18,7 @@ const TABLE_DIMS = {
 class FloorPlan {
   constructor(svgEl, options = {}) {
     this.svg = svgEl;
-    this.snapToGrid = options.snapToGrid ?? false;
+    this.snapToGrid = options.snapToGrid || false;
     this.onTableMove = options.onTableMove || (() => {});
     this.onTableClick = options.onTableClick || (() => {});
     this.onSeatClick = options.onSeatClick || (() => {});
@@ -142,7 +142,7 @@ class FloorPlan {
     label.setAttribute('font-weight', '600');
     label.setAttribute('fill', '#6B5836');
     label.setAttribute('pointer-events', 'none');
-    label.setAttribute('y', table.shape === 'round' ? -18 : -((TABLE_DIMS[table.shape]?.h || 70) / 2) - 8);
+    label.setAttribute('y', table.shape === 'round' ? -18 : -(((TABLE_DIMS[table.shape] ? TABLE_DIMS[table.shape].h : 70) || 70) / 2) - 8);
     label.textContent = table.name;
     g.appendChild(label);
 
@@ -163,8 +163,8 @@ class FloorPlan {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', pos.x); circle.setAttribute('cy', pos.y);
       circle.setAttribute('r', '10');
-      circle.setAttribute('fill', guest ? (cat?.color || '#C9A24B') : '#F5EBDD');
-      circle.setAttribute('stroke', guest ? (cat?.color || '#C9A24B') : '#E8DCC8');
+      circle.setAttribute('fill', guest ? ((cat ? cat.color : undefined) || '#C9A24B') : '#F5EBDD');
+      circle.setAttribute('stroke', guest ? ((cat ? cat.color : undefined) || '#C9A24B') : '#E8DCC8');
       circle.setAttribute('stroke-width', '1.5');
       seatG.appendChild(circle);
 
@@ -277,9 +277,11 @@ class FloorPlan {
   }
 
   _svgPoint(clientX, clientY) {
+    const ctm = this.svg.getScreenCTM();
+    if (!ctm) return { x: clientX, y: clientY };
     const pt = this.svg.createSVGPoint();
     pt.x = clientX; pt.y = clientY;
-    const svgP = pt.matrixTransform(this.svg.getScreenCTM().inverse());
+    const svgP = pt.matrixTransform(ctm.inverse());
     return { x: svgP.x, y: svgP.y };
   }
 

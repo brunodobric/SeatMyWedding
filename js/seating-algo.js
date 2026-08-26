@@ -35,7 +35,7 @@ function suggestSeating(tables, guests, rules, categories) {
     if (!g) continue;
     const t = tables.find(t => t.id === rule.tableId);
     if (!t) continue;
-    const seatIdx = rule.seatIndex !== null ? rule.seatIndex : seatMap[t.id]?.[0];
+    const seatIdx = rule.seatIndex !== null ? rule.seatIndex : (seatMap[t.id] ? seatMap[t.id][0] : undefined);
     if (seatIdx !== undefined && seatMap[t.id]) {
       const freeIdx = seatMap[t.id].indexOf(seatIdx);
       if (freeIdx >= 0) {
@@ -64,15 +64,15 @@ function suggestSeating(tables, guests, rules, categories) {
 
   // Sort tables by remaining seats descending for greedy fill
   const tablesBySpace = () => tables
-    .filter(t => seatMap[t.id]?.length > 0)
-    .sort((a, b) => (seatMap[b.id]?.length || 0) - (seatMap[a.id]?.length || 0));
+    .filter(t => (seatMap[t.id] ? seatMap[t.id].length : 0) > 0)
+    .sort((a, b) => ((seatMap[b.id] ? seatMap[b.id].length : 0) || 0) - ((seatMap[a.id] ? seatMap[a.id].length : 0) || 0));
 
   // Place category-together groups on single tables when possible
   for (const catId of Object.keys(byCategory)) {
     const group = byCategory[catId].filter(g => !assignments[g.id]);
     if (group.length === 0) continue;
     if (catTogetherIds.has(catId)) {
-      const t = tablesBySpace().find(t => (seatMap[t.id]?.length || 0) >= group.length);
+      const t = tablesBySpace().find(t => ((seatMap[t.id] ? seatMap[t.id].length : 0) || 0) >= group.length);
       if (t) {
         for (const g of group) {
           const seat = seatMap[t.id].shift();
@@ -169,7 +169,7 @@ function suggestSeating(tables, guests, rules, categories) {
         const tids = placed.map(a => a.tableId);
         const unique = new Set(tids);
         if (unique.size < tids.length) {
-          const names = rule.guestIds.map(id => guests.find(g => g.id === id)?.name || id);
+          const names = rule.guestIds.map(id => (function(g){return g ? g.name : id})(guests.find(g => g.id === id)));
           violations.push({ ruleId: rule.id, reason: `Gosti moraju biti odvojeni: ${names.join(', ')}` });
         }
       }
@@ -178,7 +178,7 @@ function suggestSeating(tables, guests, rules, categories) {
       if (placed.length >= 2) {
         const tbls = new Set(placed.map(a => a.tableId));
         if (tbls.size > 1) {
-          const names = rule.guestIds.map(id => guests.find(g => g.id === id)?.name || id);
+          const names = rule.guestIds.map(id => (function(g){return g ? g.name : id})(guests.find(g => g.id === id)));
           violations.push({ ruleId: rule.id, reason: `Gosti moraju biti zajedno: ${names.join(', ')}` });
         }
       }
@@ -188,7 +188,7 @@ function suggestSeating(tables, guests, rules, categories) {
       if (placed.length >= 2) {
         const tbls = new Set(placed.map(a => a.tableId));
         if (tbls.size > 1) {
-          const catName = categories.find(c => c.id === rule.categoryId)?.name || rule.categoryId;
+          const catName = (function(c){return c ? c.name : rule.categoryId})(categories.find(c => c.id === rule.categoryId));
           violations.push({ ruleId: rule.id, reason: `Kategorija "${catName}" nije na istom stolu` });
         }
       }

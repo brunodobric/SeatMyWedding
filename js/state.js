@@ -225,10 +225,10 @@ async function importData(data) {
   await dbClear('guests');
   await dbClear('rules');
   if (data.settings) await dbPut('settings', data.settings);
-  if (data.tables?.length) await dbPutAll('tables', data.tables);
-  if (data.categories?.length) await dbPutAll('categories', data.categories);
-  if (data.guests?.length) await dbPutAll('guests', data.guests);
-  if (data.rules?.length) await dbPutAll('rules', data.rules);
+  if (data.tables && data.tables.length) await dbPutAll('tables', data.tables);
+  if (data.categories && data.categories.length) await dbPutAll('categories', data.categories);
+  if (data.guests && data.guests.length) await dbPutAll('guests', data.guests);
+  if (data.rules && data.rules.length) await dbPutAll('rules', data.rules);
   await loadAll();
   emit('settings');
   emit('tables');
