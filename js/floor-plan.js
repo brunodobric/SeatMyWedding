@@ -196,8 +196,8 @@ class FloorPlan {
 
     // Drag (edit mode only)
     if (this.mode === 'edit') {
-      g.addEventListener('mousedown', (e) => this._startDrag(e, table));
-      g.addEventListener('touchstart', (e) => this._startDragTouch(e, table), { passive: false });
+      g.addEventListener('mousedown', (e) => this._startDrag(e, table, g));
+      g.addEventListener('touchstart', (e) => this._startDragTouch(e, table, g), { passive: false });
       g.addEventListener('click', (e) => {
         if (!this._didDrag) {
           e.stopPropagation();
@@ -289,53 +289,65 @@ class FloorPlan {
     return this.snapToGrid ? Math.round(val / GRID_SIZE) * GRID_SIZE : val;
   }
 
-  _startDrag(e, table) {
+  _applyDragTransform(table, g) {
+    // Live-update only the dragged group's transform — no full re-render.
+    // This keeps the touch target element alive so touch events keep flowing.
+    g.setAttribute('transform', `translate(${table.x},${table.y}) rotate(${table.rotation || 0})`);
+  }
+
+  _startDrag(e, table, g) {
     if (e.button !== 0) return;
     e.preventDefault();
     this._didDrag = false;
     const pt = this._svgPoint(e.clientX, e.clientY);
-    this._dragging = { table, startX: pt.x - table.x, startY: pt.y - table.y };
+    this._dragging = { table, g, startX: pt.x - table.x, startY: pt.y - table.y };
     const onMove = (ev) => {
       const p = this._svgPoint(ev.clientX, ev.clientY);
       const newX = this._snap(Math.max(0, Math.min(CANVAS_W, p.x - this._dragging.startX)));
       const newY = this._snap(Math.max(0, Math.min(CANVAS_H, p.y - this._dragging.startY)));
       if (Math.abs(newX - table.x) > 2 || Math.abs(newY - table.y) > 2) this._didDrag = true;
       table.x = newX; table.y = newY;
-      this._renderTables();
+      this._applyDragTransform(table, g);
     };
     const onUp = () => {
-      if (this._dragging && this._didDrag) this.onTableMove(this._dragging.table);
+      const dragged = this._dragging && this._didDrag;
+      const t = this._dragging ? this._dragging.table : null;
       this._dragging = null;
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      if (dragged) this.onTableMove(t);
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
   }
 
-  _startDragTouch(e, table) {
+  _startDragTouch(e, table, g) {
     if (e.touches.length !== 1) return;
     e.preventDefault();
+    e.stopPropagation();
     this._didDrag = false;
     const touch = e.touches[0];
     const pt = this._svgPoint(touch.clientX, touch.clientY);
-    this._dragging = { table, startX: pt.x - table.x, startY: pt.y - table.y };
+    this._dragging = { table, g, startX: pt.x - table.x, startY: pt.y - table.y };
     const onMove = (ev) => {
-      if (ev.touches.length !== 1) return;
+      if (!this._dragging || ev.touches.length !== 1) return;
+      ev.preventDefault();
       const t = ev.touches[0];
       const p = this._svgPoint(t.clientX, t.clientY);
       const newX = this._snap(Math.max(0, Math.min(CANVAS_W, p.x - this._dragging.startX)));
       const newY = this._snap(Math.max(0, Math.min(CANVAS_H, p.y - this._dragging.startY)));
       if (Math.abs(newX - table.x) > 2 || Math.abs(newY - table.y) > 2) this._didDrag = true;
       table.x = newX; table.y = newY;
-      this._renderTables();
+      this._applyDragTransform(table, g);
     };
     const onEnd = () => {
-      if (this._dragging && this._didDrag) this.onTableMove(this._dragging.table);
+      const dragged = this._dragging && this._didDrag;
+      const tbl = this._dragging ? this._dragging.table : null;
       this._dragging = null;
       window.removeEventListener('touchmove', onMove);
       window.removeEventListener('touchend', onEnd);
       window.removeEventListener('touchcancel', onEnd);
+      if (dragged) this.onTableMove(tbl);
     };
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onEnd);
