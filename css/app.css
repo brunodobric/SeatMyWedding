@@ -490,6 +490,7 @@ select.form-control { cursor: pointer; }
 }
 .sala-tab.active { color: var(--color-gold-deep); border-bottom-color: var(--color-gold); }
 .sala-tab-panel { display: flex; flex: 1; overflow: hidden; flex-direction: column; }
+.sala-layout > .sala-tab-panel:first-child { flex: 0 0 auto; }
 
 /* ── Gosti section ──────────────────────────────────────────────────────────── */
 .gosti-layout { display: flex; flex: 1; overflow: hidden; }
