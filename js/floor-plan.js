@@ -142,7 +142,7 @@ class FloorPlan {
     label.setAttribute('font-weight', '600');
     label.setAttribute('fill', '#6B5836');
     label.setAttribute('pointer-events', 'none');
-    label.setAttribute('y', table.shape === 'round' ? -18 : -(((TABLE_DIMS[table.shape] ? TABLE_DIMS[table.shape].h : 70) || 70) / 2) - 8);
+    label.setAttribute('y', table.shape === 'round' ? -18 : 0);
     label.textContent = table.name;
     g.appendChild(label);
 
