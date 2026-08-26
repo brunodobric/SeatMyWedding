@@ -24,10 +24,6 @@
     </div>
     <span id="wedding-title-display" title="Klikni za uređivanje naslova">Raspored Sjedenja</span>
     <input id="wedding-title-input" type="text" class="form-control" placeholder="Ana & Marko" autocomplete="off">
-    <div class="header-stats">
-      <span id="stat-assigned" class="stat-badge">Raspoređeno 0/0</span>
-      <span id="stat-violated" class="stat-badge">Prekršena pravila: 0</span>
-    </div>
   </header>
 
   <!-- Auth + cloud sync bar (below title row) -->
@@ -154,11 +150,14 @@
 
       <!-- ═══ RASPORED ════════════════════════════════════════════════════ -->
       <section id="section-raspored" class="section">
-        <div class="section-header" style="display:flex;align-items:center;justify-content:space-between">
+        <div class="section-header">
           <h2 class="section-title">Raspored sjedenja</h2>
+        </div>
+        <div class="raspored-stats-bar">
+          <span id="stat-assigned" class="stat-badge">Raspoređeno 0/0</span>
+          <span id="stat-violated" class="stat-badge">Prekršena pravila: 0</span>
           <button class="btn-primary" id="btn-suggest-seating">⚡ Predloži raspored</button>
         </div>
-        <div class="assign-hint">Odaberi gosta s lijeve liste → klikni slobodno mjesto na tlocrtu. Ili klikni direktno na mjesto za dodjelu.</div>
         <div class="raspored-layout">
           <!-- Unassigned panel -->
           <div class="unassigned-panel" id="unassigned-panel">
