@@ -1,10 +1,19 @@
 /**
  * Firebase konfiguracija
- * 1. Idi na https://console.firebase.google.com
- * 2. Kreiraj projekt (ili otvori postojeći)
- * 3. Authentication → Sign-in method → uključi Google i Email/Password
- * 4. Project settings → Your apps → Web app → kopiraj firebaseConfig
- * 5. Zamijeni vrijednosti ispod
+ *
+ * Potrebno u Firebase konzoli:
+ * 1. Authentication → Sign-in method → Google + Email/Password
+ * 2. Firestore Database → Create database
+ * 3. Firestore → Rules → zalijepi:
+ *
+ *   rules_version = '2';
+ *   service cloud.firestore {
+ *     match /databases/{database}/documents {
+ *       match /users/{userId}/{document=**} {
+ *         allow read, write: if request.auth != null && request.auth.uid == userId;
+ *       }
+ *     }
+ *   }
  */
 const firebaseConfig = {
   apiKey: "AIzaSyBEDsXIAjTXi-VZJ9d_C1EKIiPzz1w5Fqo",
@@ -15,7 +24,6 @@ const firebaseConfig = {
   appId: "1:328765575333:web:1352dbafffdd8f87963d4c",
   measurementId: "G-JGTDGC3SJ8"
 };
-
 
 // Inicijalizacija (compat SDK)
 firebase.initializeApp(firebaseConfig);

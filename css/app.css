@@ -977,7 +977,7 @@ select[multiple] {
 
 /* ── Print styles ────────────────────────────────────────────────────────────── */
 @media print {
-  #sidebar, #bottom-nav, #app-header, .pregled-toolbar, #pregled-validation { display: none !important; }
+  #sidebar, #bottom-nav, #app-header, #auth-bar, .pregled-toolbar, #pregled-validation { display: none !important; }
   body { background: white; overflow: visible; }
   #app { height: auto; overflow: visible; }
   #app-body { overflow: visible; padding: 0; }
@@ -990,6 +990,20 @@ select[multiple] {
   @page { margin: 20mm; }
 }
 
+/* ── Auth bar (below header) ──────────────────────────────────────────────── */
+.auth-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-height: 40px;
+  padding: 6px 20px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  z-index: 9;
+}
+
 /* ── Firebase Auth UI ─────────────────────────────────────────────────────── */
 .btn-login {
   display: flex;
@@ -998,7 +1012,7 @@ select[multiple] {
   padding: 6px 12px;
   font-size: 0.85rem;
   flex-shrink: 0;
-  margin-left: 4px;
+  margin-left: 0;
 }
 .btn-login .nav-icon { font-size: 1rem; }
 
@@ -1006,7 +1020,7 @@ select[multiple] {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: 8px;
+  margin-left: 0;
   flex-shrink: 0;
 }
 .user-avatar {
@@ -1151,8 +1165,35 @@ select[multiple] {
   background: #b33a2e;
 }
 
+@media (max-width: 767px) {
+  .auth-bar {
+    padding: 4px 12px;
+    min-height: 36px;
+    gap: 8px;
+  }
+}
+
 @media (max-width: 640px) {
   .user-display-name { display: none; }
   .btn-login span:not(.nav-icon) { display: none; }
   .btn-login { padding: 6px 10px; }
 }
+
+/* ── Cloud sync status ────────────────────────────────────────────────────── */
+.sync-status {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-muted);
+  white-space: nowrap;
+  margin-right: auto; /* left side of auth-bar */
+  flex-shrink: 1;
+  opacity: 0.85;
+  transition: color 0.2s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sync-status.synced { color: #5a8a6a; }
+.sync-status.syncing { color: var(--color-gold-bronze); }
+.sync-status.offline { color: var(--color-muted); }
+.sync-status.error { color: var(--color-error); }
+.sync-status.off { display: none; }

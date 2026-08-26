@@ -22,6 +22,7 @@ async function init() {
   setupNav();
   setupHeader();
   if (typeof setupAuth === 'function') setupAuth();
+  if (typeof setupSync === 'function') setupSync();
   window.addEventListener('stateChange', onStateChange);
   if (!state.settings.weddingTitle) {
     showOnboarding();

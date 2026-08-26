@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wedding-seating-v6';
+const CACHE_NAME = 'wedding-seating-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const ASSETS = [
   './js/app.js',
   './js/firebase-config.js',
   './js/auth.js',
+  './js/sync.js',
   './icons/icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -37,6 +38,13 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  const url = e.request.url;
+  // Ne cache-aj Firebase / Google API pozive
+  if (url.includes('googleapis.com') || url.includes('firebaseio.com') ||
+      url.includes('firestore.googleapis.com') || url.includes('identitytoolkit') ||
+      url.includes('securetoken.googleapis.com')) {
+    return;
+  }
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
