@@ -23,7 +23,6 @@ class FloorPlan {
     this.onTableClick = options.onTableClick || (() => {});
     this.onSeatClick = options.onSeatClick || (() => {});
     this.mode = options.mode || 'edit'; // 'edit' | 'assign'
-    this.tapMoveMode = false;
 
     this.viewBox = { x: 0, y: 0, w: CANVAS_W, h: CANVAS_H };
     this.tables = [];
@@ -297,12 +296,7 @@ class FloorPlan {
   }
 
   _handleTableTap(table) {
-    if (this.tapMoveMode) {
-      // In tap-move mode a tap just selects the table; next canvas tap moves it.
-      this.selectTable(table.id);
-    } else {
-      this.onTableClick(table.id);
-    }
+    this.onTableClick(table.id);
   }
 
   _startDrag(e, table, g) {
@@ -367,17 +361,6 @@ class FloorPlan {
   }
 
   _bindEvents() {
-    // Tap-move: after selecting a table, a tap on empty canvas moves it there.
-    this.svg.addEventListener('click', (e) => {
-      if (this.mode !== 'edit' || !this.tapMoveMode || !this.selectedTableId) return;
-      const table = this.tables.find(t => t.id === this.selectedTableId);
-      if (!table) return;
-      const p = this._svgPoint(e.clientX, e.clientY);
-      table.x = this._snap(Math.max(0, Math.min(CANVAS_W, p.x)));
-      table.y = this._snap(Math.max(0, Math.min(CANVAS_H, p.y)));
-      this.onTableMove(table);
-    });
-
     // Pan by middle-mouse or two-finger touch
     this.svg.addEventListener('wheel', (e) => {
       e.preventDefault();
@@ -435,12 +418,6 @@ class FloorPlan {
 
   setMode(mode) {
     this.mode = mode;
-    this._renderTables();
-  }
-
-  setTapMoveMode(val) {
-    this.tapMoveMode = val;
-    if (!val) this.selectedTableId = null;
     this._renderTables();
   }
 }

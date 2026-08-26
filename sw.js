@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wedding-seating-v2';
+const CACHE_NAME = 'wedding-seating-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,10 @@ const ASSETS = [
   './js/seating-algo.js',
   './js/app.js',
   './icons/icon.svg',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon-192-maskable.png',
+  './icons/icon-512-maskable.png',
   'https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap'
 ];
 

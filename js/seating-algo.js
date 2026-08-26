@@ -101,66 +101,68 @@ function suggestSeating(tables, guests, rules, categories) {
   }
 
   // Local improvement: swap pairs to reduce rule violations
-  const assignArr = Object.entries(assignments).map(([guestId, a]) => ({ guestId, ...a }));
   const lockedIds = new Set(guests.filter(g => g.locked).map(g => g.id));
 
-  function countViolations(asgn) {
-    const asgnMap = {};
-    for (const a of asgn) asgnMap[a.guestId] = a;
+  function countViolations(map) {
     let v = 0;
     for (const rule of rules) {
       if (rule.type === 'apart') {
-        const placed = rule.guestIds.map(id => asgnMap[id]).filter(Boolean);
+        const placed = rule.guestIds.map(id => map[id]).filter(Boolean);
         if (placed.length >= 2) {
           const tables = placed.map(a => a.tableId);
-          const unique = new Set(tables);
-          if (unique.size < tables.length) v++;
+          if (new Set(tables).size < tables.length) v++;
         }
       } else if (rule.type === 'together') {
-        const placed = rule.guestIds.map(id => asgnMap[id]).filter(Boolean);
-        if (placed.length >= 2) {
-          const tbls = new Set(placed.map(a => a.tableId));
-          if (tbls.size > 1) v++;
-        }
+        const placed = rule.guestIds.map(id => map[id]).filter(Boolean);
+        if (placed.length >= 2 && new Set(placed.map(a => a.tableId)).size > 1) v++;
       } else if (rule.type === 'category-together') {
         const catGuests = guests.filter(g => g.categoryId === rule.categoryId);
-        const placed = catGuests.map(g => asgnMap[g.id]).filter(Boolean);
-        if (placed.length >= 2) {
-          const tbls = new Set(placed.map(a => a.tableId));
-          if (tbls.size > 1) v++;
-        }
+        const placed = catGuests.map(g => map[g.id]).filter(Boolean);
+        if (placed.length >= 2 && new Set(placed.map(a => a.tableId)).size > 1) v++;
       }
     }
     return v;
   }
 
-  let best = [...assignArr];
-  let bestScore = countViolations(best);
-  const movable = assignArr.filter(a => !lockedIds.has(a.guestId));
+  // Work on a guestId -> {tableId, seatIndex} map for cheap in-place swaps.
+  const asgnMap = {};
+  for (const [guestId, a] of Object.entries(assignments)) {
+    asgnMap[guestId] = { tableId: a.tableId, seatIndex: a.seatIndex };
+  }
+  const movableIds = Object.keys(asgnMap).filter(id => !lockedIds.has(id));
 
-  for (let iter = 0; iter < 500 && bestScore > 0; iter++) {
-    if (movable.length < 2) break;
-    const i = Math.floor(movable.length * (iter / 500) % movable.length);
-    const j = (i + 1 + Math.floor(iter / movable.length)) % movable.length;
-    if (i === j) continue;
-    const candidate = best.map(a => ({ ...a }));
-    const ai = candidate.find(a => a.guestId === movable[i].guestId);
-    const aj = candidate.find(a => a.guestId === movable[j].guestId);
-    if (!ai || !aj) continue;
-    [ai.tableId, aj.tableId] = [aj.tableId, ai.tableId];
-    [ai.seatIndex, aj.seatIndex] = [aj.seatIndex, ai.seatIndex];
-    const score = countViolations(candidate);
-    if (score < bestScore) {
-      best = candidate;
-      bestScore = score;
-      movable[i] = { ...ai };
-      movable[j] = { ...aj };
+  // Hill-climb: repeatedly sweep all movable pairs, keeping any swap that
+  // lowers the violation count, until a full pass yields no improvement.
+  let bestScore = countViolations(asgnMap);
+  let improved = true;
+  let passes = 0;
+  while (improved && bestScore > 0 && passes < 12) {
+    improved = false;
+    passes++;
+    for (let i = 0; i < movableIds.length && bestScore > 0; i++) {
+      for (let j = i + 1; j < movableIds.length; j++) {
+        const a = asgnMap[movableIds[i]];
+        const b = asgnMap[movableIds[j]];
+        if (a.tableId === b.tableId) continue; // same table: no table-level change
+        const at = a.tableId, as = a.seatIndex, bt = b.tableId, bs = b.seatIndex;
+        a.tableId = bt; a.seatIndex = bs;
+        b.tableId = at; b.seatIndex = as;
+        const score = countViolations(asgnMap);
+        if (score < bestScore) {
+          bestScore = score;
+          improved = true;
+          if (bestScore === 0) break;
+        } else {
+          a.tableId = at; a.seatIndex = as;
+          b.tableId = bt; b.seatIndex = bs;
+        }
+      }
     }
   }
 
+  const best = Object.entries(asgnMap).map(([guestId, a]) => ({ guestId, tableId: a.tableId, seatIndex: a.seatIndex }));
+
   // Check violations for report
-  const asgnMap = {};
-  for (const a of best) asgnMap[a.guestId] = a;
   const violations = [];
   for (const rule of rules) {
     if (rule.type === 'apart') {
@@ -169,7 +171,7 @@ function suggestSeating(tables, guests, rules, categories) {
         const tids = placed.map(a => a.tableId);
         const unique = new Set(tids);
         if (unique.size < tids.length) {
-          const names = rule.guestIds.map(id => (function(g){return g ? g.name : id})(guests.find(g => g.id === id)));
+          const names = rule.guestIds.map(id => { const g = guests.find(x => x.id === id); return g ? g.name : id; });
           violations.push({ ruleId: rule.id, reason: `Gosti moraju biti odvojeni: ${names.join(', ')}` });
         }
       }
@@ -178,7 +180,7 @@ function suggestSeating(tables, guests, rules, categories) {
       if (placed.length >= 2) {
         const tbls = new Set(placed.map(a => a.tableId));
         if (tbls.size > 1) {
-          const names = rule.guestIds.map(id => (function(g){return g ? g.name : id})(guests.find(g => g.id === id)));
+          const names = rule.guestIds.map(id => { const g = guests.find(x => x.id === id); return g ? g.name : id; });
           violations.push({ ruleId: rule.id, reason: `Gosti moraju biti zajedno: ${names.join(', ')}` });
         }
       }
@@ -188,7 +190,8 @@ function suggestSeating(tables, guests, rules, categories) {
       if (placed.length >= 2) {
         const tbls = new Set(placed.map(a => a.tableId));
         if (tbls.size > 1) {
-          const catName = (function(c){return c ? c.name : rule.categoryId})(categories.find(c => c.id === rule.categoryId));
+          const catObj = categories.find(c => c.id === rule.categoryId);
+          const catName = catObj ? catObj.name : rule.categoryId;
           violations.push({ ruleId: rule.id, reason: `Kategorija "${catName}" nije na istom stolu` });
         }
       }

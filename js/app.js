@@ -24,21 +24,25 @@ async function init() {
   }
 }
 
+const SECTIONS = ['sala', 'gosti', 'pravila', 'raspored', 'pregled'];
+
+function renderSection(section) {
+  if (section === 'sala') renderSala();
+  else if (section === 'gosti') renderGosti();
+  else if (section === 'pravila') renderPravila();
+  else if (section === 'raspored') renderRaspored();
+  else if (section === 'pregled') renderPregled();
+}
+
 function onStateChange(e) {
-  updateHeader();
   const type = (e.detail ? e.detail.type : null);
-  if (type === 'settings') { updateHeader(); updateMonogram(); }
-  if (type === 'tables' || type === 'guests' || type === 'categories') {
-    refreshCurrentSection();
-  }
-  if (type === 'rules') { refreshRules(); }
+  if (type === 'settings') updateMonogram();
+  if (type === 'rules') refreshRules();
+  else refreshCurrentSection();
 }
 
 function refreshCurrentSection() {
-  if (currentSection === 'sala') renderSala();
-  if (currentSection === 'gosti') renderGosti();
-  if (currentSection === 'raspored') renderRaspored();
-  if (currentSection === 'pregled') renderPregled();
+  renderSection(currentSection);
   updateHeader();
 }
 
@@ -48,11 +52,7 @@ function refreshRules() {
 }
 
 function renderAll() {
-  renderSala();
-  renderGosti();
-  renderPravila();
-  renderRaspored();
-  renderPregled();
+  SECTIONS.forEach(renderSection);
   updateHeader();
   updateMonogram();
 }
@@ -73,11 +73,7 @@ function navigateTo(section) {
   document.querySelectorAll('.section').forEach(el => {
     el.classList.toggle('active', el.id === `section-${section}`);
   });
-  if (section === 'sala') renderSala();
-  if (section === 'gosti') renderGosti();
-  if (section === 'pravila') renderPravila();
-  if (section === 'raspored') renderRaspored();
-  if (section === 'pregled') renderPregled();
+  renderSection(section);
 }
 
 // ── Header ─────────────────────────────────────────────────────────────────────
@@ -351,15 +347,6 @@ function setupTableModal() {
     document.getElementById('btn-snap-grid').classList.toggle('active', active);
   });
 
-  document.getElementById('btn-tap-move').addEventListener('click', () => {
-    if (!floorPlanEdit) return;
-    const active = !floorPlanEdit.tapMoveMode;
-    floorPlanEdit.setTapMoveMode(active);
-    document.getElementById('btn-tap-move').classList.toggle('active', active);
-    const hint = document.getElementById('tap-move-hint');
-    if (hint) hint.style.display = active ? 'block' : 'none';
-  });
-
   document.getElementById('btn-zoom-in').addEventListener('click', () => floorPlanEdit && floorPlanEdit.zoomIn());
   document.getElementById('btn-zoom-out').addEventListener('click', () => floorPlanEdit && floorPlanEdit.zoomOut());
   document.getElementById('btn-zoom-reset').addEventListener('click', () => floorPlanEdit && floorPlanEdit.resetView());
@@ -572,7 +559,7 @@ function setupGuestModal() {
     const modal = document.getElementById('modal-guest');
     const id = modal.dataset.editId;
     if (!id) return;
-    const rulesAffected = state.rules.filter(r => r.guestIds && guestIds.includes(id));
+    const rulesAffected = state.rules.filter(r => r.guestIds && r.guestIds.includes(id));
     let msg = 'Obrisati gosta?';
     if (rulesAffected.length > 0) msg += ` Gost je u ${rulesAffected.length} pravil(u/ima) — bit će uklonjen iz njih.`;
     if (confirm(msg)) {
@@ -600,7 +587,7 @@ function renderPravila() {
     const labels = { apart: 'Odvojeni', together: 'Zajedno', fixed: 'Fiksno', 'category-together': 'Kategorija zajedno' };
     let desc = '';
     if (r.type === 'apart' || r.type === 'together') {
-      desc = r.guestIds.map(id => (function(g){return g ? g.name : '?'})(state.guests.find(g => g.id === id))).join(', ');
+      desc = r.guestIds.map(nameOf).join(', ');
     } else if (r.type === 'fixed') {
       const g = state.guests.find(x => x.id === r.guestIds[0]);
       const t = state.tables.find(x => x.id === r.tableId);
@@ -893,6 +880,7 @@ function setupRasporedSearch() {
 // ── PREGLED ────────────────────────────────────────────────────────────────────
 
 let pregledView = 'tables';
+let floorPlanPreview = null;
 
 function renderPregled() {
   // Validation banner
@@ -944,10 +932,13 @@ function renderPregledContent() {
       }).join('')}</tbody>
     </table>`;
   } else if (pregledView === 'floor') {
-    container.innerHTML = '<div class="pregled-floor-wrap"><svg id="fp-print-svg" class="floor-plan-svg"></svg></div>';
-    const svg = document.getElementById('fp-print-svg');
-    const fp = new FloorPlan(svg, { mode: 'assign' });
-    fp.update(state.tables, state.guests, state.categories, new Set());
+    let svg = document.getElementById('fp-print-svg');
+    if (!svg) {
+      container.innerHTML = '<div class="pregled-floor-wrap"><svg id="fp-print-svg" class="floor-plan-svg"></svg></div>';
+      svg = document.getElementById('fp-print-svg');
+      floorPlanPreview = new FloorPlan(svg, { mode: 'assign' });
+    }
+    floorPlanPreview.update(state.tables, state.guests, state.categories, new Set());
   }
 }
 
@@ -965,8 +956,10 @@ function setupPregledEvents() {
   document.getElementById('btn-export-csv').addEventListener('click', () => {
     const rows = [['Ime', 'Kategorija', 'Stol', 'Mjesto', 'Status', 'Bilješka']];
     state.guests.sort((a, b) => a.name.localeCompare(b.name)).forEach(g => {
-      const cat = (function(c){return c ? c.name : ''})(state.categories.find(c => c.id === g.categoryId));
-      const table = g.tableId ? (function(t){return t ? t.name : ''})(state.tables.find(t => t.id === g.tableId)) : '';
+      const catObj = state.categories.find(c => c.id === g.categoryId);
+      const cat = catObj ? catObj.name : '';
+      const tableObj = g.tableId ? state.tables.find(t => t.id === g.tableId) : null;
+      const table = tableObj ? tableObj.name : '';
       rows.push([g.name, cat, table, g.seatIndex !== null ? g.seatIndex + 1 : '', g.status, g.notes || '']);
     });
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -1012,6 +1005,11 @@ function downloadFile(filename, mime, content) {
 
 function esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function nameOf(id) {
+  const g = state.guests.find(x => x.id === id);
+  return g ? g.name : '?';
 }
 
 function getViolatedTableIds() {

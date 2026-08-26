@@ -24,6 +24,7 @@ async function loadAll() {
   state.guests = guests || [];
   state.rules = rules || [];
   computeRuleStatus();
+  updateMonogramIcon();
 }
 
 async function saveSettings(data) {
@@ -238,7 +239,47 @@ async function importData(data) {
 }
 
 function updateMonogramIcon() {
-  const monogram = state.settings.monogram || '♡';
-  const textEl = document.getElementById('icon-monogram-text');
-  if (textEl) textEl.textContent = monogram;
+  // The favicon is an external SVG file, so it cannot be reached via the DOM.
+  // We build the same round-decorated-table artwork inline and set it as the
+  // favicon href through a data URI (kept in sync with icons/icon.svg).
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 192 192" width="192" height="192">'
+    + '<defs>'
+    + '<linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#E6C86E"/><stop offset="50%" stop-color="#C9A24B"/><stop offset="100%" stop-color="#A17C33"/></linearGradient>'
+    + '<linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FDFBF7"/><stop offset="100%" stop-color="#F5EBDD"/></linearGradient>'
+    + '<clipPath id="clip"><rect width="192" height="192" rx="32"/></clipPath>'
+    + '<g id="fl"><g fill="#FFFFFF" stroke="#E8DFC9" stroke-width="0.7">'
+    + '<ellipse cx="0" cy="-8" rx="4.4" ry="7"/>'
+    + '<ellipse cx="0" cy="-8" rx="4.4" ry="7" transform="rotate(72)"/>'
+    + '<ellipse cx="0" cy="-8" rx="4.4" ry="7" transform="rotate(144)"/>'
+    + '<ellipse cx="0" cy="-8" rx="4.4" ry="7" transform="rotate(216)"/>'
+    + '<ellipse cx="0" cy="-8" rx="4.4" ry="7" transform="rotate(288)"/>'
+    + '</g><circle r="2.8" fill="url(#gold)"/></g>'
+    + '<g id="ch"><rect x="-9" y="-13.5" width="18" height="6" rx="3" fill="url(#gold)"/><rect x="-8" y="-9" width="16" height="13" rx="3.5" fill="url(#gold)"/></g>'
+    + '<g id="pl"><circle r="7" fill="#FFFFFF" stroke="url(#gold)" stroke-width="1.4"/><circle r="3" fill="none" stroke="#E8DFC9" stroke-width="0.8"/></g>'
+    + '</defs>'
+    + '<g clip-path="url(#clip)">'
+    + '<rect width="192" height="192" fill="url(#bg)"/>'
+    + '<use xlink:href="#ch" transform="translate(158 96) rotate(90)"/>'
+    + '<use xlink:href="#ch" transform="translate(139.8 139.8) rotate(135)"/>'
+    + '<use xlink:href="#ch" transform="translate(96 158) rotate(180)"/>'
+    + '<use xlink:href="#ch" transform="translate(52.2 139.8) rotate(225)"/>'
+    + '<use xlink:href="#ch" transform="translate(34 96) rotate(270)"/>'
+    + '<use xlink:href="#ch" transform="translate(52.2 52.2) rotate(315)"/>'
+    + '<use xlink:href="#ch" transform="translate(96 34) rotate(0)"/>'
+    + '<use xlink:href="#ch" transform="translate(139.8 52.2) rotate(45)"/>'
+    + '<circle cx="96" cy="96" r="44" fill="#FFFFFF" stroke="url(#gold)" stroke-width="3"/>'
+    + '<circle cx="96" cy="96" r="39" fill="none" stroke="#E8DFC9" stroke-width="1"/>'
+    + '<use xlink:href="#pl" transform="translate(126 96)"/>'
+    + '<use xlink:href="#pl" transform="translate(117.2 117.2)"/>'
+    + '<use xlink:href="#pl" transform="translate(96 126)"/>'
+    + '<use xlink:href="#pl" transform="translate(74.8 117.2)"/>'
+    + '<use xlink:href="#pl" transform="translate(66 96)"/>'
+    + '<use xlink:href="#pl" transform="translate(74.8 74.8)"/>'
+    + '<use xlink:href="#pl" transform="translate(96 66)"/>'
+    + '<use xlink:href="#pl" transform="translate(117.2 74.8)"/>'
+    + '<use xlink:href="#fl" transform="translate(96 96) scale(1.2)"/>'
+    + '</g></svg>';
+  const href = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  const link = document.querySelector('link[rel="icon"]');
+  if (link) link.href = href;
 }

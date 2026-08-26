@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-title" content="Sjedenje">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
-  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="css/app.css">
   <title>Raspored Sjedenja</title>
 </head>
@@ -73,7 +73,7 @@
 
         <div class="sala-layout">
           <!-- Left panel wrapped in mobile tab panel -->
-          <div class="sala-tab-panel active" data-panel="lista" style="flex-direction:column">
+          <div class="sala-tab-panel active" data-panel="lista">
             <div class="sala-panel">
               <div class="sala-panel-header">
                 <span class="sala-panel-title">Stolovi</span>
@@ -84,18 +84,16 @@
           </div>
 
           <!-- Right: floor plan canvas wrapped in mobile tab panel -->
-          <div class="sala-tab-panel" data-panel="tlocrt" style="flex-direction:column">
+          <div class="sala-tab-panel" data-panel="tlocrt">
             <div class="sala-canvas">
               <div class="floor-plan-toolbar">
                 <button class="btn-secondary" id="btn-snap-grid">⊞ Mreža</button>
-                <button class="btn-secondary" id="btn-tap-move" title="Premjesti dodirom: dodirni stol pa dodirni novo mjesto">↔ Premjesti dodirom</button>
                 <div style="display:flex;gap:4px;margin-left:auto">
                   <button class="btn-icon" id="btn-zoom-in" title="Povećaj">＋</button>
                   <button class="btn-icon" id="btn-zoom-out" title="Smanji">－</button>
                   <button class="btn-icon" id="btn-zoom-reset" title="Resetiraj pogled">⌂</button>
                 </div>
               </div>
-              <div id="tap-move-hint" class="tap-move-hint" style="display:none">Dodirni stol koji želiš premjestiti, zatim dodirni novo mjesto.</div>
               <div class="floor-plan-svg-wrap">
                 <svg id="fp-edit-svg" class="floor-plan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
               </div>
