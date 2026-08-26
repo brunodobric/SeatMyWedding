@@ -11,10 +11,11 @@ const TABLE_DIMS = {
   round:       { rx: 45, ry: 45 },
   square:      { w: 80, h: 80 },
   rectangular: { w: 110, h: 70 },
-  royal:       { w: 200, h: 50 }
+  royal:       { w: 200, h: 50 },
+  head:        { w: 260, h: 55 }
 };
 
-export class FloorPlan {
+class FloorPlan {
   constructor(svgEl, options = {}) {
     this.svg = svgEl;
     this.snapToGrid = options.snapToGrid ?? false;
@@ -210,21 +211,24 @@ export class FloorPlan {
 
   _getSeatPositions(table) {
     const seats = [];
-    const n = table.seats;
     if (table.shape === 'round') {
+      const n = table.seats;
       const r = TABLE_DIMS.round.rx + 14;
       for (let i = 0; i < n; i++) {
         const angle = (2 * Math.PI * i / n) - Math.PI / 2;
         seats.push({ x: Math.cos(angle) * r, y: Math.sin(angle) * r });
       }
-    } else {
+      return seats;
+    }
+
+    // For sided tables: use seatsLong/seatsEnd if available, else fall back to even distribution
+    if (table.seatsLong === undefined) {
       const dims = TABLE_DIMS[table.shape] || TABLE_DIMS.rectangular;
       const hw = dims.w / 2 + 14;
       const hh = dims.h / 2 + 14;
-      // Distribute seats around perimeter
       const perimeter = 2 * (dims.w + dims.h);
-      for (let i = 0; i < n; i++) {
-        const t = (i / n) * perimeter;
+      for (let i = 0; i < table.seats; i++) {
+        const t = (i / table.seats) * perimeter;
         let x, y;
         if (t < dims.w) { x = -dims.w / 2 + t; y = -hh; }
         else if (t < dims.w + dims.h) { x = hw; y = -dims.h / 2 + (t - dims.w); }
@@ -232,7 +236,43 @@ export class FloorPlan {
         else { x = -hw; y = dims.h / 2 - (t - 2 * dims.w - dims.h); }
         seats.push({ x, y });
       }
+      return seats;
     }
+
+    const dims = TABLE_DIMS[table.shape] || TABLE_DIMS.rectangular;
+    const hw = dims.w / 2;
+    const hh = dims.h / 2;
+    const off = 14;
+    const margin = 10;
+    const nL = table.seatsLong || 0;
+    const nE = table.shape === 'square' ? nL : (table.seatsEnd || 0);
+
+    const hLine = (n, y, x1, x2) => {
+      for (let i = 0; i < n; i++) {
+        const x = n === 1 ? (x1 + x2) / 2 : x1 + (x2 - x1) * i / (n - 1);
+        seats.push({ x, y });
+      }
+    };
+    const vLine = (n, x, y1, y2) => {
+      for (let i = 0; i < n; i++) {
+        const y = n === 1 ? (y1 + y2) / 2 : y1 + (y2 - y1) * i / (n - 1);
+        seats.push({ x, y });
+      }
+    };
+
+    if (table.shape === 'head') {
+      // Head table: seats only on front (top) side + optional ends
+      hLine(nL, -(hh + off), -hw + margin, hw - margin);
+      vLine(nE, hw + off, -hh + margin, hh - margin);
+      vLine(nE, -(hw + off), hh - margin, -hh + margin);
+    } else {
+      // Top (left → right), Right end (top → bottom), Bottom (right → left), Left end (bottom → top)
+      hLine(nL, -(hh + off), -hw + margin, hw - margin);
+      vLine(nE, hw + off, -hh + margin, hh - margin);
+      hLine(nL, hh + off, hw - margin, -hw + margin);
+      vLine(nE, -(hw + off), hh - margin, -hh + margin);
+    }
+
     return seats;
   }
 

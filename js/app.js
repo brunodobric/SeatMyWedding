@@ -1,6 +1,3 @@
-import { loadAll, state, saveSettings, saveTable, deleteTable, saveCategory, deleteCategory, saveGuest, deleteGuest, assignGuest, unassignGuest, saveRule, deleteRule, getStats, applySeatingResult, importData } from './state.js';
-import { FloorPlan } from './floor-plan.js';
-import { suggestSeating } from './seating-algo.js';
 
 const CATEGORY_COLORS = ['#7B9E87','#7A8FA6','#B07B72','#9B8EA8','#8A9A6A','#C4956A','#6B8FAA','#A88FA8'];
 
@@ -188,7 +185,7 @@ function renderTableList() {
   }
   list.innerHTML = state.tables.map(t => {
     const assigned = state.guests.filter(g => g.tableId === t.id).length;
-    const shapeIcon = { round: '⭕', square: '⬜', rectangular: '▭', royal: '▬' }[t.shape] || '⬜';
+    const shapeIcon = { round: '⭕', square: '⬜', rectangular: '▭', royal: '▬', head: '🥂' }[t.shape] || '⬜';
     return `<div class="table-row" data-id="${t.id}">
       <span class="table-shape-icon">${shapeIcon}</span>
       <div class="table-row-info">
@@ -206,6 +203,30 @@ function renderTableList() {
   });
 }
 
+function updateSeatsUI(shape) {
+  const isSided = shape === 'square' || shape === 'rectangular' || shape === 'royal' || shape === 'head';
+  document.getElementById('seats-total-group').style.display = isSided ? 'none' : '';
+  document.getElementById('seats-per-side-group').style.display = isSided ? 'flex' : 'none';
+  document.getElementById('seats-end-group').style.display = shape === 'square' ? 'none' : '';
+  const longLabel = document.getElementById('label-seats-long');
+  if (shape === 'square') longLabel.textContent = 'Mjesta po strani';
+  else if (shape === 'head') longLabel.textContent = 'Mjesta (prednja strana)';
+  else longLabel.textContent = 'Mjesta po dužoj strani';
+  const endLabel = document.querySelector('label[for="table-seats-end"]');
+  if (endLabel) endLabel.textContent = 'Mjesta po čelu (kraća strana)';
+  updateSeatsTotalDisplay(shape);
+}
+
+function updateSeatsTotalDisplay(shape) {
+  const nLong = parseInt(document.getElementById('table-seats-long').value) || 0;
+  const nEnd = parseInt(document.getElementById('table-seats-end').value) || 0;
+  let total = 0;
+  if (shape === 'square') total = nLong * 4;
+  else if (shape === 'head') total = nLong + nEnd * 2;
+  else total = nLong * 2 + nEnd * 2;
+  document.getElementById('seats-total-computed').textContent = `Ukupno: ${total} mjesta`;
+}
+
 function openTableModal(id) {
   const table = id ? state.tables.find(t => t.id === id) : null;
   const modal = document.getElementById('modal-table');
@@ -213,10 +234,26 @@ function openTableModal(id) {
   title.textContent = table ? 'Uredi stol' : 'Dodaj stol';
 
   document.getElementById('table-name').value = table?.name || `Stol ${state.tables.length + 1}`;
-  document.getElementById('table-seats').value = table?.seats || 8;
+  const shape = table?.shape || 'round';
   document.querySelectorAll('.shape-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.shape === (table?.shape || 'round'));
+    btn.classList.toggle('active', btn.dataset.shape === shape);
   });
+
+  if (shape === 'round') {
+    document.getElementById('table-seats').value = table?.seats || 8;
+  } else if (shape === 'square') {
+    const perSide = table?.seatsLong ?? Math.round((table?.seats || 8) / 4) || 2;
+    document.getElementById('table-seats-long').value = perSide;
+  } else if (shape === 'head') {
+    document.getElementById('table-seats-long').value = table?.seatsLong ?? 8;
+    document.getElementById('table-seats-end').value = table?.seatsEnd ?? 1;
+  } else {
+    document.getElementById('table-seats-long').value = table?.seatsLong ?? 4;
+    document.getElementById('table-seats-end').value = table?.seatsEnd ?? 1;
+  }
+
+  updateSeatsUI(shape);
+
   document.getElementById('btn-delete-table').style.display = table ? '' : 'none';
   document.getElementById('btn-duplicate-table').style.display = table ? '' : 'none';
 
@@ -229,6 +266,14 @@ function setupTableModal() {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+      updateSeatsUI(btn.dataset.shape);
+    });
+  });
+
+  ['table-seats-long', 'table-seats-end'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', () => {
+      const shape = document.querySelector('.shape-btn.active')?.dataset.shape || 'round';
+      updateSeatsTotalDisplay(shape);
     });
   });
 
@@ -237,11 +282,31 @@ function setupTableModal() {
     const id = modal.dataset.editId || crypto.randomUUID();
     const existing = state.tables.find(t => t.id === id);
     const shape = document.querySelector('.shape-btn.active')?.dataset.shape || 'round';
+
+    let seats, seatsLong, seatsEnd;
+    if (shape === 'round') {
+      seats = parseInt(document.getElementById('table-seats').value) || 8;
+    } else if (shape === 'square') {
+      seatsLong = parseInt(document.getElementById('table-seats-long').value) || 2;
+      seatsEnd = seatsLong;
+      seats = seatsLong * 4;
+    } else if (shape === 'head') {
+      seatsLong = parseInt(document.getElementById('table-seats-long').value) || 8;
+      seatsEnd = parseInt(document.getElementById('table-seats-end').value) || 0;
+      seats = seatsLong + seatsEnd * 2;
+    } else {
+      seatsLong = parseInt(document.getElementById('table-seats-long').value) || 4;
+      seatsEnd = parseInt(document.getElementById('table-seats-end').value) || 0;
+      seats = seatsLong * 2 + seatsEnd * 2;
+    }
+
     const table = {
       id,
       name: document.getElementById('table-name').value.trim() || 'Stol',
       shape,
-      seats: parseInt(document.getElementById('table-seats').value) || 8,
+      seats,
+      seatsLong,
+      seatsEnd,
       x: existing?.x ?? 200, y: existing?.y ?? 200, rotation: existing?.rotation ?? 0
     };
     await saveTable(table);

@@ -2,7 +2,7 @@
  * Auto-seating algorithm.
  * Returns { assignments: [{guestId, tableId, seatIndex}], violations: [{ruleId, reason}] }
  */
-export function suggestSeating(tables, guests, rules, categories) {
+function suggestSeating(tables, guests, rules, categories) {
   // Build seat availability map: tableId -> Set of free seatIndexes
   const seatMap = {};
   for (const t of tables) {

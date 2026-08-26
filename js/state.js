@@ -1,6 +1,4 @@
-import { dbGetAll, dbGet, dbPut, dbDelete, dbClear, dbPutAll } from './db.js';
-
-export const state = {
+const state = {
   settings: { id: 'main', weddingTitle: '', monogram: '' },
   tables: [],
   categories: [],
@@ -12,7 +10,7 @@ function emit(type) {
   window.dispatchEvent(new CustomEvent('stateChange', { detail: { type } }));
 }
 
-export async function loadAll() {
+async function loadAll() {
   const [settings, tables, categories, guests, rules] = await Promise.all([
     dbGet('settings', 'main'),
     dbGetAll('tables'),
@@ -28,7 +26,7 @@ export async function loadAll() {
   computeRuleStatus();
 }
 
-export async function saveSettings(data) {
+async function saveSettings(data) {
   Object.assign(state.settings, data);
   await dbPut('settings', state.settings);
   updateMonogramIcon();
@@ -36,14 +34,14 @@ export async function saveSettings(data) {
 }
 
 // Tables
-export async function saveTable(table) {
+async function saveTable(table) {
   await dbPut('tables', table);
   const idx = state.tables.findIndex(t => t.id === table.id);
   if (idx >= 0) state.tables[idx] = table; else state.tables.push(table);
   emit('tables');
 }
 
-export async function deleteTable(id) {
+async function deleteTable(id) {
   await dbDelete('tables', id);
   state.tables = state.tables.filter(t => t.id !== id);
   // Unassign guests at this table
@@ -67,14 +65,14 @@ export async function deleteTable(id) {
 }
 
 // Categories
-export async function saveCategory(cat) {
+async function saveCategory(cat) {
   await dbPut('categories', cat);
   const idx = state.categories.findIndex(c => c.id === cat.id);
   if (idx >= 0) state.categories[idx] = cat; else state.categories.push(cat);
   emit('categories');
 }
 
-export async function deleteCategory(id) {
+async function deleteCategory(id) {
   await dbDelete('categories', id);
   state.categories = state.categories.filter(c => c.id !== id);
   // Remove category from guests
@@ -93,7 +91,7 @@ export async function deleteCategory(id) {
 }
 
 // Guests
-export async function saveGuest(guest) {
+async function saveGuest(guest) {
   await dbPut('guests', guest);
   const idx = state.guests.findIndex(g => g.id === guest.id);
   if (idx >= 0) state.guests[idx] = guest; else state.guests.push(guest);
@@ -101,7 +99,7 @@ export async function saveGuest(guest) {
   emit('guests');
 }
 
-export async function deleteGuest(id) {
+async function deleteGuest(id) {
   await dbDelete('guests', id);
   // Free the seat
   const guest = state.guests.find(g => g.id === id);
@@ -126,7 +124,7 @@ export async function deleteGuest(id) {
   emit('rules');
 }
 
-export async function assignGuest(guestId, tableId, seatIndex) {
+async function assignGuest(guestId, tableId, seatIndex) {
   const guest = state.guests.find(g => g.id === guestId);
   if (!guest) return;
   // Free previous seat if moving
@@ -138,7 +136,7 @@ export async function assignGuest(guestId, tableId, seatIndex) {
   emit('guests');
 }
 
-export async function unassignGuest(guestId) {
+async function unassignGuest(guestId) {
   const guest = state.guests.find(g => g.id === guestId);
   if (!guest) return;
   guest.tableId = null;
@@ -149,7 +147,7 @@ export async function unassignGuest(guestId) {
   emit('guests');
 }
 
-export async function applySeatingResult(assignments) {
+async function applySeatingResult(assignments) {
   // assignments: [{guestId, tableId, seatIndex}]
   for (const a of assignments) {
     const guest = state.guests.find(g => g.id === a.guestId);
@@ -164,7 +162,7 @@ export async function applySeatingResult(assignments) {
 }
 
 // Rules
-export async function saveRule(rule) {
+async function saveRule(rule) {
   await dbPut('rules', rule);
   const idx = state.rules.findIndex(r => r.id === rule.id);
   if (idx >= 0) state.rules[idx] = rule; else state.rules.push(rule);
@@ -172,13 +170,13 @@ export async function saveRule(rule) {
   emit('rules');
 }
 
-export async function deleteRule(id) {
+async function deleteRule(id) {
   await dbDelete('rules', id);
   state.rules = state.rules.filter(r => r.id !== id);
   emit('rules');
 }
 
-export function computeRuleStatus() {
+function computeRuleStatus() {
   for (const rule of state.rules) {
     rule.satisfied = evaluateRule(rule);
   }
@@ -213,14 +211,14 @@ function evaluateRule(rule) {
   return null;
 }
 
-export function getStats() {
+function getStats() {
   const total = state.guests.filter(g => g.status !== 'maybe').length;
   const assigned = state.guests.filter(g => g.status === 'assigned').length;
   const violated = state.rules.filter(r => r.satisfied === false).length;
   return { total, assigned, violated };
 }
 
-export async function importData(data) {
+async function importData(data) {
   await dbClear('settings');
   await dbClear('tables');
   await dbClear('categories');

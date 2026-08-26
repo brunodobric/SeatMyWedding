@@ -296,11 +296,23 @@
           <button class="shape-btn" data-shape="square">⬜ Kvadratni</button>
           <button class="shape-btn" data-shape="rectangular">▭ Pravokutni</button>
           <button class="shape-btn" data-shape="royal">▬ Kraljevski</button>
+          <button class="shape-btn" data-shape="head">🥂 Mladenci</button>
         </div>
       </div>
-      <div class="form-group">
+      <div class="form-group" id="seats-total-group">
         <label for="table-seats">Broj mjesta</label>
         <input id="table-seats" class="form-control" type="number" value="8" min="1" max="50">
+      </div>
+      <div id="seats-per-side-group" style="display:none;flex-direction:column;gap:12px">
+        <div class="form-group" id="seats-long-group">
+          <label for="table-seats-long" id="label-seats-long">Mjesta po dužoj strani</label>
+          <input id="table-seats-long" class="form-control" type="number" value="4" min="0" max="20">
+        </div>
+        <div class="form-group" id="seats-end-group">
+          <label for="table-seats-end">Mjesta po čelu (kraća strana)</label>
+          <input id="table-seats-end" class="form-control" type="number" value="1" min="0" max="10">
+        </div>
+        <div class="muted" id="seats-total-computed" style="font-size:13px;padding:2px 0">Ukupno: 10 mjesta</div>
       </div>
     </div>
     <div class="modal-footer">
@@ -504,6 +516,10 @@
   </div>
 </div>
 
-<script type="module" src="js/app.js"></script>
+<script src="js/db.js"></script>
+<script src="js/state.js"></script>
+<script src="js/floor-plan.js"></script>
+<script src="js/seating-algo.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
