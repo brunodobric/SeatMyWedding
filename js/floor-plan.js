@@ -361,28 +361,131 @@ class FloorPlan {
   }
 
   _bindEvents() {
-    // Pan by middle-mouse or two-finger touch
+    // Scroll wheel → zoom toward cursor
     this.svg.addEventListener('wheel', (e) => {
       e.preventDefault();
       const scale = e.deltaY > 0 ? 1.1 : 0.9;
-      this._zoom(scale);
+      const pt = this._svgPoint(e.clientX, e.clientY);
+      this._zoomAt(scale, pt.x, pt.y);
     }, { passive: false });
 
+    // Mouse pan: left-drag on empty canvas, or middle-button anywhere
+    this.svg.addEventListener('mousedown', (e) => {
+      if (this._dragging) return;
+      const onTable = e.target.closest && e.target.closest('.table-group');
+      const middle = e.button === 1;
+      const leftEmpty = e.button === 0 && !onTable;
+      if (!middle && !leftEmpty) return;
+      e.preventDefault();
+      this._startPan(e.clientX, e.clientY);
+      const onMove = (ev) => {
+        if (!this._panning) return;
+        this._movePan(ev.clientX, ev.clientY);
+      };
+      const onUp = () => {
+        this._endPan();
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+
+    // Touch: 1 finger on empty → pan; 2 fingers → pinch zoom + pan
     this.svg.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 2) this._pinchDist = this._getTouchDist(e);
+      if (this._dragging) return;
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        const el = document.elementFromPoint(t.clientX, t.clientY);
+        const onTable = el && el.closest && el.closest('.table-group');
+        const onSeat = el && el.closest && el.closest('.seat-group');
+        if (!onTable && !onSeat) {
+          this._startPan(t.clientX, t.clientY);
+        }
+      } else if (e.touches.length === 2) {
+        this._endPan();
+        this._pinchDist = this._getTouchDist(e);
+        this._pinchMid = this._getTouchMid(e);
+      }
     }, { passive: true });
 
     this.svg.addEventListener('touchmove', (e) => {
-      if (e.touches.length === 2 && this._pinchDist !== null) {
+      if (this._dragging) return;
+      if (e.touches.length === 1 && this._panning) {
+        e.preventDefault();
+        this._movePan(e.touches[0].clientX, e.touches[0].clientY);
+      } else if (e.touches.length === 2 && this._pinchDist !== null) {
         e.preventDefault();
         const newDist = this._getTouchDist(e);
+        const mid = this._getTouchMid(e);
         const scale = this._pinchDist / newDist;
-        this._zoom(scale);
+        // Zoom around previous midpoint (in SVG coords), then pan by midpoint shift
+        const svgMid = this._svgPoint(this._pinchMid.x, this._pinchMid.y);
+        this._zoomAt(scale, svgMid.x, svgMid.y);
+        // Screen-space delta of midpoint → viewBox shift
+        const rect = this.svg.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          const dxScreen = mid.x - this._pinchMid.x;
+          const dyScreen = mid.y - this._pinchMid.y;
+          const dxSvg = -(dxScreen / rect.width) * this.viewBox.w;
+          const dySvg = -(dyScreen / rect.height) * this.viewBox.h;
+          this.viewBox.x += dxSvg;
+          this.viewBox.y += dySvg;
+          this._applyViewBox();
+        }
         this._pinchDist = newDist;
+        this._pinchMid = mid;
       }
     }, { passive: false });
 
-    this.svg.addEventListener('touchend', () => { this._pinchDist = null; });
+    this.svg.addEventListener('touchend', (e) => {
+      if (e.touches.length === 0) {
+        this._endPan();
+        this._pinchDist = null;
+        this._pinchMid = null;
+      } else if (e.touches.length === 1) {
+        this._pinchDist = null;
+        this._pinchMid = null;
+        // Continue as single-finger pan from remaining touch
+        this._startPan(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    });
+    this.svg.addEventListener('touchcancel', () => {
+      this._endPan();
+      this._pinchDist = null;
+      this._pinchMid = null;
+    });
+  }
+
+  _startPan(clientX, clientY) {
+    this._panning = true;
+    this._panStart = {
+      x: clientX,
+      y: clientY,
+      vbX: this.viewBox.x,
+      vbY: this.viewBox.y
+    };
+    this.svg.style.cursor = 'grabbing';
+  }
+
+  _movePan(clientX, clientY) {
+    if (!this._panning || !this._panStart) return;
+    const rect = this.svg.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const dxScreen = clientX - this._panStart.x;
+    const dyScreen = clientY - this._panStart.y;
+    // Convert screen pixels to viewBox units
+    const dxSvg = -(dxScreen / rect.width) * this.viewBox.w;
+    const dySvg = -(dyScreen / rect.height) * this.viewBox.h;
+    this.viewBox.x = this._panStart.vbX + dxSvg;
+    this.viewBox.y = this._panStart.vbY + dySvg;
+    this._applyViewBox();
+  }
+
+  _endPan() {
+    this._panning = false;
+    this._panStart = null;
+    this.svg.style.cursor = '';
   }
 
   _getTouchDist(e) {
@@ -391,19 +494,41 @@ class FloorPlan {
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  zoomIn() { this._zoom(0.8); }
-  zoomOut() { this._zoom(1.25); }
+  _getTouchMid(e) {
+    return {
+      x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+      y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+    };
+  }
+
+  zoomIn() {
+    const cx = this.viewBox.x + this.viewBox.w / 2;
+    const cy = this.viewBox.y + this.viewBox.h / 2;
+    this._zoomAt(0.8, cx, cy);
+  }
+  zoomOut() {
+    const cx = this.viewBox.x + this.viewBox.w / 2;
+    const cy = this.viewBox.y + this.viewBox.h / 2;
+    this._zoomAt(1.25, cx, cy);
+  }
   resetView() {
     this.viewBox = { x: 0, y: 0, w: CANVAS_W, h: CANVAS_H };
     this._applyViewBox();
   }
 
-  _zoom(scale) {
-    const cx = this.viewBox.x + this.viewBox.w / 2;
-    const cy = this.viewBox.y + this.viewBox.h / 2;
+  /** Zoom keeping (cx, cy) in SVG coords fixed on screen */
+  _zoomAt(scale, cx, cy) {
     const newW = Math.max(200, Math.min(CANVAS_W * 3, this.viewBox.w * scale));
     const newH = Math.max(140, Math.min(CANVAS_H * 3, this.viewBox.h * scale));
-    this.viewBox = { x: cx - newW / 2, y: cy - newH / 2, w: newW, h: newH };
+    // Fraction of point within current viewBox
+    const fx = (cx - this.viewBox.x) / this.viewBox.w;
+    const fy = (cy - this.viewBox.y) / this.viewBox.h;
+    this.viewBox = {
+      x: cx - newW * fx,
+      y: cy - newH * fy,
+      w: newW,
+      h: newH
+    };
     this._applyViewBox();
   }
 
