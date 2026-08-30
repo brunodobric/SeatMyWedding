@@ -746,6 +746,15 @@ select[multiple] {
   border-bottom: 1px solid var(--color-border);
   flex-wrap: wrap;
 }
+.raspored-toolbar .btn-secondary {
+  font-size: 0.82rem;
+  padding: 5px 10px;
+}
+.raspored-toolbar .btn-secondary.active {
+  background: var(--color-champagne);
+  border-color: var(--color-gold);
+  color: var(--color-gold-deep);
+}
 .raspored-stats-bar {
   display: flex;
   align-items: center;
