@@ -33,21 +33,50 @@ function getUserDocRef(uid) {
     .doc(CLOUD_DOC);
 }
 
+/**
+ * Firestore ne dozvoljava undefined / NaN / Infinity u dokumentima.
+ * JSON round-trip uklanja undefined ključeve i pretvara rupe u arrayima u null.
+ */
+function sanitizeForFirestore(value) {
+  try {
+    return JSON.parse(JSON.stringify(value, function (_key, val) {
+      if (val === undefined) return undefined; // omit from objects
+      if (typeof val === 'number' && !Number.isFinite(val)) return null;
+      if (typeof val === 'function') return undefined;
+      return val;
+    }));
+  } catch (e) {
+    console.error('[Sync] sanitize failed', e);
+    return { updatedAt: Date.now(), settings: {}, tables: [], categories: [], guests: [], rules: [] };
+  }
+}
+
 /** Snapshot trenutnog stanja spreman za Firestore */
 function buildSnapshot() {
-  return {
-    settings: { ...state.settings },
-    tables: state.tables.map(t => ({ ...t })),
-    categories: state.categories.map(c => ({ ...c })),
-    guests: state.guests.map(g => ({ ...g })),
-    rules: state.rules.map(r => {
-      const copy = { ...r };
-      // satisfied se računa lokalno – ne spremamo ga
+  function plain(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    var out = {};
+    for (var k in obj) {
+      if (!Object.prototype.hasOwnProperty.call(obj, k)) continue;
+      var v = obj[k];
+      if (v === undefined) continue;
+      out[k] = v;
+    }
+    return out;
+  }
+  var raw = {
+    settings: plain(state.settings),
+    tables: (state.tables || []).map(plain),
+    categories: (state.categories || []).map(plain),
+    guests: (state.guests || []).map(plain),
+    rules: (state.rules || []).map(function (r) {
+      var copy = plain(r);
       delete copy.satisfied;
       return copy;
     }),
     updatedAt: Date.now()
   };
+  return sanitizeForFirestore(raw);
 }
 
 /** Primijeni snapshot iz clouda na lokalno stanje + IndexedDB */
@@ -89,16 +118,25 @@ async function pushToCloud() {
   _syncing = true;
   setSyncStatus('syncing');
   try {
-    const snap = buildSnapshot();
+    var snap = buildSnapshot();
+    // drugi prolaz – jamstvo da nema undefined
+    snap = sanitizeForFirestore(snap);
+    if (!snap || typeof snap !== 'object') {
+      throw new Error('Prazan snapshot');
+    }
     await getUserDocRef(currentUser.uid).set(snap, { merge: false });
-    _lastPushedAt = snap.updatedAt;
-    _cloudUpdatedAt = snap.updatedAt;
+    _lastPushedAt = snap.updatedAt || Date.now();
+    _cloudUpdatedAt = _lastPushedAt;
     setSyncStatus('synced');
   } catch (err) {
     console.error('[Sync] push failed', err);
     setSyncStatus('error');
     if (typeof showToast === 'function') {
-      showToast('Sinkronizacija nije uspjela: ' + (err.message || 'mrežna greška'), true);
+      var msg = err && err.message ? String(err.message) : 'mrežna greška';
+      if (msg.indexOf('undefined') !== -1 || msg.indexOf('invalid data') !== -1) {
+        msg = 'Podaci sadrže nepotpuna polja. Pokušaj ponovo nakon osvježavanja.';
+      }
+      showToast('Sinkronizacija nije uspjela: ' + msg, true);
     }
   } finally {
     _syncing = false;
