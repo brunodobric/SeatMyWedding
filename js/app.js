@@ -109,10 +109,6 @@ function setupHeader() {
 function updateHeader() {
   const titleEl = document.getElementById('wedding-title-display');
   titleEl.textContent = state.settings.weddingTitle || 'Moje Vjenčanje';
-  const stats = getStats();
-  document.getElementById('stat-assigned').textContent = `Raspoređeno ${stats.assigned}/${stats.total}`;
-  document.getElementById('stat-violated').textContent = `Prekršena pravila: ${stats.violated}`;
-  document.getElementById('stat-violated').className = stats.violated > 0 ? 'stat-badge violated' : 'stat-badge';
 }
 
 function updateMonogram() {
@@ -182,12 +178,16 @@ function renderSala() {
     const svg = document.getElementById('fp-edit-svg');
     floorPlanEdit = new FloorPlan(svg, {
       mode: 'edit',
+      showFullNames: !!state.settings.showFullNames,
       onTableMove: async (table) => { await saveTable(table); },
       onTableClick: (id) => { openTableModal(id); floorPlanEdit.selectTable(id); }
     });
   }
+  floorPlanEdit.setShowFullNames(!!state.settings.showFullNames);
   const violated = getViolatedTableIds();
   floorPlanEdit.update(state.tables, state.guests, state.categories, violated);
+  const btnNamesSala = document.getElementById('btn-full-names-sala');
+  if (btnNamesSala) btnNamesSala.classList.toggle('active', !!state.settings.showFullNames);
 }
 
 function renderTableList() {
@@ -358,9 +358,20 @@ function setupTableModal() {
     document.getElementById('btn-snap-grid').classList.toggle('active', active);
   });
 
+  document.getElementById('btn-full-names-sala')?.addEventListener('click', () => toggleFullNames());
+
   document.getElementById('btn-zoom-in').addEventListener('click', () => floorPlanEdit && floorPlanEdit.zoomIn());
   document.getElementById('btn-zoom-out').addEventListener('click', () => floorPlanEdit && floorPlanEdit.zoomOut());
   document.getElementById('btn-zoom-reset').addEventListener('click', () => floorPlanEdit && floorPlanEdit.resetView());
+}
+
+async function toggleFullNames() {
+  const next = !state.settings.showFullNames;
+  await saveSettings({ showFullNames: next });
+  if (floorPlanEdit) floorPlanEdit.setShowFullNames(next);
+  if (floorPlanAssign) floorPlanAssign.setShowFullNames(next);
+  document.getElementById('btn-full-names-sala')?.classList.toggle('active', next);
+  document.getElementById('btn-full-names-raspored')?.classList.toggle('active', next);
 }
 
 // ── GOSTI ──────────────────────────────────────────────────────────────────────
@@ -731,11 +742,15 @@ function renderRaspored() {
     const svg = document.getElementById('fp-assign-svg');
     floorPlanAssign = new FloorPlan(svg, {
       mode: 'assign',
+      showFullNames: !!state.settings.showFullNames,
       onSeatClick: (tableId, seatIndex, guest) => handleSeatClick(tableId, seatIndex, guest)
     });
   }
+  floorPlanAssign.setShowFullNames(!!state.settings.showFullNames);
   const violated = getViolatedTableIds();
   floorPlanAssign.update(state.tables, state.guests, state.categories, violated);
+  const btnNamesR = document.getElementById('btn-full-names-raspored');
+  if (btnNamesR) btnNamesR.classList.toggle('active', !!state.settings.showFullNames);
 }
 
 function renderUnassignedPanel() {
@@ -891,6 +906,7 @@ function setupRasporedSearch() {
     rasporedSearch = e.target.value;
     renderUnassignedPanel();
   });
+  document.getElementById('btn-full-names-raspored')?.addEventListener('click', () => toggleFullNames());
   document.getElementById('btn-zoom-in-assign').addEventListener('click', () => floorPlanAssign && floorPlanAssign.zoomIn());
   document.getElementById('btn-zoom-out-assign').addEventListener('click', () => floorPlanAssign && floorPlanAssign.zoomOut());
   document.getElementById('btn-zoom-reset-assign').addEventListener('click', () => floorPlanAssign && floorPlanAssign.resetView());
