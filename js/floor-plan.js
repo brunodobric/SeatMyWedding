@@ -2,6 +2,9 @@
  * Floor plan SVG renderer and interaction handler.
  * Manages dragging, zooming, panning of tables on the canvas.
  */
+(function () {
+  'use strict';
+  if (typeof window.FloorPlan === 'function') return;
 
 const CANVAS_W = 1000;
 const CANVAS_H = 700;
@@ -588,4 +591,6 @@ class FloorPlan {
   }
 }
 
-window.FloorPlan = FloorPlan;
+
+  window.FloorPlan = FloorPlan;
+})();
