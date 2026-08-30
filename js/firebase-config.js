@@ -4,18 +4,9 @@
  * Potrebno u Firebase konzoli:
  * 1. Authentication → Sign-in method → Google + Email/Password
  * 2. Firestore Database → Create database
- * 3. Firestore → Rules → zalijepi:
- *
- *   rules_version = '2';
- *   service cloud.firestore {
- *     match /databases/{database}/documents {
- *       match /users/{userId}/{document=**} {
- *         allow read, write: if request.auth != null && request.auth.uid == userId;
- *       }
- *     }
- *   }
+ * 3. Firestore → Rules → allow read/write only for request.auth.uid == userId
  */
-const firebaseConfig = {
+var firebaseConfig = {
   apiKey: "AIzaSyBEDsXIAjTXi-VZJ9d_C1EKIiPzz1w5Fqo",
   authDomain: "seatmywedding-9139e.firebaseapp.com",
   projectId: "seatmywedding-9139e",
@@ -25,6 +16,8 @@ const firebaseConfig = {
   measurementId: "G-JGTDGC3SJ8"
 };
 
-// Inicijalizacija (compat SDK)
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
+// Init only once (avoid crash if script loads twice)
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+var auth = firebase.auth();
