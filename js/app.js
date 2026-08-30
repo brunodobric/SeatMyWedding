@@ -176,16 +176,20 @@ function renderSala() {
   renderTableList();
   if (!floorPlanEdit) {
     const svg = document.getElementById('fp-edit-svg');
-    floorPlanEdit = new FloorPlan(svg, {
-      mode: 'edit',
-      showFullNames: !!state.settings.showFullNames,
-      onTableMove: async (table) => { await saveTable(table); },
-      onTableClick: (id) => { openTableModal(id); floorPlanEdit.selectTable(id); }
-    });
+    if (svg) {
+      floorPlanEdit = new FloorPlan(svg, {
+        mode: 'edit',
+        showFullNames: !!state.settings.showFullNames,
+        onTableMove: async (table) => { await saveTable(table); },
+        onTableClick: (id) => { openTableModal(id); floorPlanEdit.selectTable(id); }
+      });
+    }
   }
-  floorPlanEdit.setShowFullNames(!!state.settings.showFullNames);
-  const violated = getViolatedTableIds();
-  floorPlanEdit.update(state.tables, state.guests, state.categories, violated);
+  if (floorPlanEdit) {
+    floorPlanEdit.setShowFullNames(!!state.settings.showFullNames);
+    const violated = getViolatedTableIds();
+    floorPlanEdit.update(state.tables, state.guests, state.categories, violated);
+  }
   const btnNamesSala = document.getElementById('btn-full-names-sala');
   if (btnNamesSala) btnNamesSala.classList.toggle('active', !!state.settings.showFullNames);
 }
