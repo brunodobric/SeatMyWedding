@@ -97,6 +97,7 @@
             <div class="sala-canvas">
               <div class="floor-plan-toolbar">
                 <button class="btn-secondary" id="btn-snap-grid">⊞ Mreža</button>
+                <button class="btn-secondary" id="btn-full-names-sala" title="Prikaži puna imena gostiju">Aa Imena</button>
                 <div style="display:flex;gap:4px;margin-left:auto">
                   <button class="btn-icon" id="btn-zoom-in" title="Povećaj">＋</button>
                   <button class="btn-icon" id="btn-zoom-out" title="Smanji">－</button>
@@ -169,9 +170,12 @@
           <!-- Floor plan -->
           <div class="raspored-canvas">
             <div class="raspored-toolbar">
-              <button class="btn-icon" id="btn-zoom-in-assign" title="Povećaj">＋</button>
-              <button class="btn-icon" id="btn-zoom-out-assign" title="Smanji">－</button>
-              <button class="btn-icon" id="btn-zoom-reset-assign" title="Resetiraj">⌂</button>
+              <button class="btn-secondary" id="btn-full-names-raspored" title="Prikaži puna imena gostiju">Aa Imena</button>
+              <div style="display:flex;gap:4px;margin-left:auto">
+                <button class="btn-icon" id="btn-zoom-in-assign" title="Povećaj">＋</button>
+                <button class="btn-icon" id="btn-zoom-out-assign" title="Smanji">－</button>
+                <button class="btn-icon" id="btn-zoom-reset-assign" title="Resetiraj">⌂</button>
+              </div>
             </div>
             <div class="floor-plan-svg-wrap">
               <svg id="fp-assign-svg" class="floor-plan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
