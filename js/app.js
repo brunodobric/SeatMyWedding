@@ -78,6 +78,13 @@ function navigateTo(section) {
   document.querySelectorAll('[data-nav]').forEach(el => {
     el.classList.toggle('active', el.dataset.nav === section);
   });
+  // Explicitly keep bottom nav + sidebar in sync (mobile highlight)
+  document.querySelectorAll('#bottom-nav .bottom-nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.nav === section);
+  });
+  document.querySelectorAll('#sidebar .nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.nav === section);
+  });
   document.querySelectorAll('.section').forEach(el => {
     el.classList.toggle('active', el.id === `section-${section}`);
   });
