@@ -992,12 +992,21 @@ select[multiple] {
   .sala-layout > .sala-canvas { display: none; }
 
   /* Only the active tab panel shows; it fills the remaining height. */
-  .sala-tab-panel { display: none; flex: 1; min-height: 0; overflow: hidden; }
-  .sala-tab-panel.active { display: flex; }
-  .sala-layout > .sala-tab-panel:first-child { flex: 1; min-height: 0; }
+  .sala-tab-panel { display: none; flex: 1; min-height: 0; overflow: hidden; width: 100%; }
+  .sala-tab-panel.active { display: flex; width: 100%; }
+  /* Override desktop 260px / max-width 40% so popis takes full screen width */
+  .sala-layout > .sala-tab-panel:first-child,
+  .sala-layout > .sala-tab-panel[data-panel="lista"],
+  .sala-layout > .sala-tab-panel[data-panel="tlocrt"] {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100% !important;
+    max-width: none !important;
+  }
 
   .sala-tab-panel .sala-panel {
-    width: 100%;
+    width: 100% !important;
+    max-width: none !important;
     height: 100%;
     max-height: none;
     min-height: 0;
