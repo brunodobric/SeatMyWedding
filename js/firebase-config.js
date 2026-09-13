@@ -1,10 +1,5 @@
 /**
  * Firebase konfiguracija
- *
- * Potrebno u Firebase konzoli:
- * 1. Authentication → Sign-in method → Google + Email/Password
- * 2. Firestore Database → Create database
- * 3. Firestore → Rules → allow read/write only for request.auth.uid == userId
  */
 var firebaseConfig = {
   apiKey: "AIzaSyBEDsXIAjTXi-VZJ9d_C1EKIiPzz1w5Fqo",
@@ -16,8 +11,17 @@ var firebaseConfig = {
   measurementId: "G-JGTDGC3SJ8"
 };
 
-// Init only once (avoid crash if script loads twice)
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
+try {
+  if (typeof firebase !== 'undefined') {
+    if (!firebase.apps || !firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    var auth = firebase.auth();
+  } else {
+    console.error('[Firebase] SDK nije učitan – provjeri mrežu / script tagove.');
+    var auth = null;
+  }
+} catch (e) {
+  console.error('[Firebase] init failed', e);
+  var auth = null;
 }
-var auth = firebase.auth();
