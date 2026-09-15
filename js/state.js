@@ -36,59 +36,10 @@ async function saveSettings(data) {
 
 // Tables
 async function saveTable(table) {
-  const existing = state.tables.find(t => t.id === table.id);
-  const oldSeats = existing && existing.seats != null ? existing.seats : null;
-  const newSeats = table.seats != null ? table.seats : oldSeats;
-
   await dbPut('tables', table);
   const idx = state.tables.findIndex(t => t.id === table.id);
   if (idx >= 0) state.tables[idx] = table; else state.tables.push(table);
-
-  // Pri smanjenju broja mjesta: zadrži goste (zbij na niža mjesta),
-  // prvo "ukloni" prazna mjesta; odjavi samo one koji više ne stanu.
-  if (oldSeats != null && newSeats != null && newSeats < oldSeats) {
-    await compactGuestsOnTable(table.id, newSeats);
-  }
-
   emit('tables');
-}
-
-/**
- * Gosti na stolu sortirani po trenutnom mjestu dobiju indekse 0..n-1.
- * Višak (ako ima više gostiju nego mjesta) postaje nedodijeljen.
- */
-async function compactGuestsOnTable(tableId, newSeats) {
-  const assigned = state.guests
-    .filter(g => g.tableId === tableId)
-    .sort((a, b) => {
-      const sa = a.seatIndex != null ? a.seatIndex : 9999;
-      const sb = b.seatIndex != null ? b.seatIndex : 9999;
-      if (sa !== sb) return sa - sb;
-      return String(a.name || '').localeCompare(String(b.name || ''), 'hr');
-    });
-
-  let guestsChanged = false;
-  for (let i = 0; i < assigned.length; i++) {
-    const g = assigned[i];
-    if (i < newSeats) {
-      if (g.seatIndex !== i || g.status !== 'assigned') {
-        g.seatIndex = i;
-        g.status = 'assigned';
-        await dbPut('guests', g);
-        guestsChanged = true;
-      }
-    } else {
-      g.tableId = null;
-      g.seatIndex = null;
-      g.status = 'unassigned';
-      await dbPut('guests', g);
-      guestsChanged = true;
-    }
-  }
-  if (guestsChanged) {
-    computeRuleStatus();
-    emit('guests');
-  }
 }
 
 async function deleteTable(id) {
