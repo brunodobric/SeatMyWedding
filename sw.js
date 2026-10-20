@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wedding-seating-v19';
+const CACHE_NAME = 'wedding-seating-v20';
 const ASSETS = [
   './',
   './index.html',
@@ -23,6 +23,8 @@ const ASSETS = [
   './js/auth.js',
   './js/sync.js',
   './icons/icon.svg',
+  './icons/favicon-32.png',
+  './icons/apple-touch-icon.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-192-maskable.png',
