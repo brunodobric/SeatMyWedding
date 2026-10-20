@@ -149,7 +149,12 @@ function updateHeader() {
 
 function updateMonogram() {
   const m = state.settings.monogram || '♡';
-  document.querySelectorAll('.monogram-text').forEach(el => el.textContent = m);
+  // The default heart is a drawn icon: the ♡ character comes from a different
+  // fallback font on each device and never sits in the middle of the circle.
+  document.querySelectorAll('.monogram-text').forEach(el => {
+    if (m === '♡') el.innerHTML = '<svg class="ic monogram-heart" aria-hidden="true"><use href="#i-heart"/></svg>';
+    else el.textContent = m;
+  });
 }
 
 // ── Opcije ─────────────────────────────────────────────────────────────────────
