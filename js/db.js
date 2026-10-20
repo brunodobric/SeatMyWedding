@@ -81,3 +81,15 @@ async function dbPutAll(store, items) {
     tx.onerror = () => reject(tx.error);
   });
 }
+
+async function dbDeleteAll(store, ids) {
+  if (!ids.length) return;
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    const os = tx.objectStore(store);
+    ids.forEach(id => os.delete(id));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}

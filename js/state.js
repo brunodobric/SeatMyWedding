@@ -23,8 +23,237 @@ async function loadAll() {
   state.categories = categories || [];
   state.guests = guests || [];
   state.rules = rules || [];
+  await migrateTables();
+  await migrateRules();
   computeRuleStatus();
   updateMonogramIcon();
+}
+
+// Older bridal tables were saved with twice as many seats as were drawn (the
+// extra seats had no place on the floor plan). Draw all of them instead.
+async function migrateTables() {
+  const fixed = state.tables.filter(t =>
+    t.shape === 'head' && Number.isInteger(t.seatsLong) && t.seatsLong + 2 * (t.seatsEnd || 0) !== t.seats);
+  for (const t of fixed) t.seatsLong = Math.max(0, t.seats - 2 * (t.seatsEnd || 0));
+  if (fixed.length) await dbPutAll('tables', fixed);
+}
+
+// Replace regular tables / add missing ones in one go (see planHall in hall.js).
+async function applyHallPlan(plan) {
+  const removed = new Set(plan.remove);
+  if (removed.size) {
+    await dbDeleteAll('tables', plan.remove);
+    state.tables = state.tables.filter(t => !removed.has(t.id));
+    const affected = state.guests.filter(g => removed.has(g.tableId));
+    for (const g of affected) { g.tableId = null; g.seatIndex = null; g.status = 'unassigned'; }
+    if (affected.length) await dbPutAll('guests', affected);
+  }
+  if (plan.create.length) {
+    await dbPutAll('tables', plan.create);
+    state.tables.push(...plan.create);
+  }
+  await replaceRules(normalizeRules(state.rules)); // drops "always at table" rules for removed tables
+  computeRuleStatus();
+  emit('tables');
+}
+
+// ── Rule model ────────────────────────────────────────────────────────────────
+// Rules are edited from the guest card and the category editor, so they are
+// kept in a normalized shape:
+//   together          – one rule per group (couple, family…), 2+ guests
+//   apart             – one rule per pair of guests
+//   fixed             – at most one per guest
+//   category-together – at most one per category
+// Older data (multi-guest "apart", overlapping "together", legacy "companion")
+// is converted on load; the meaning of every rule stays the same.
+
+function normalizeRules(rules) {
+  const guestIds = new Set(state.guests.map(g => g.id));
+  const tableIds = new Set(state.tables.map(t => t.id));
+  const catIds = new Set(state.categories.map(c => c.id));
+  const out = [];
+  const base = { categoryId: null, tableId: null, seatIndex: null };
+
+  // together: merge overlapping groups (togetherness is transitive)
+  const parent = new Map();
+  const find = id => { while (parent.get(id) !== id) id = parent.get(id); return id; };
+  const groupRuleId = new Map();
+  for (const r of rules) {
+    if (r.type !== 'together' && r.type !== 'companion') continue;
+    const ids = (r.guestIds || []).filter(id => guestIds.has(id));
+    ids.forEach(id => { if (!parent.has(id)) parent.set(id, id); });
+    for (let i = 1; i < ids.length; i++) parent.set(find(ids[i]), find(ids[0]));
+    if (ids.length) groupRuleId.set(ids[0], groupRuleId.get(ids[0]) || r.id);
+  }
+  const groups = new Map();
+  for (const id of parent.keys()) {
+    const root = find(id);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root).push(id);
+  }
+  for (const members of groups.values()) {
+    if (members.length < 2) continue;
+    const id = members.map(m => groupRuleId.get(m)).find(Boolean) || crypto.randomUUID();
+    out.push({ ...base, id, type: 'together', guestIds: members });
+  }
+
+  // apart: one rule per pair
+  const pairs = new Set();
+  for (const r of rules) {
+    if (r.type !== 'apart') continue;
+    const ids = [...new Set((r.guestIds || []).filter(id => guestIds.has(id)))];
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const key = [ids[i], ids[j]].sort().join('|');
+        if (pairs.has(key)) continue;
+        pairs.add(key);
+        out.push({ ...base, id: ids.length === 2 ? r.id : crypto.randomUUID(), type: 'apart', guestIds: [ids[i], ids[j]] });
+      }
+    }
+  }
+
+  // fixed: last one per guest wins
+  const fixed = new Map();
+  for (const r of rules) {
+    if (r.type !== 'fixed') continue;
+    const gid = (r.guestIds || [])[0];
+    if (!guestIds.has(gid) || !tableIds.has(r.tableId)) continue;
+    fixed.set(gid, { ...base, id: r.id, type: 'fixed', guestIds: [gid], tableId: r.tableId, seatIndex: Number.isInteger(r.seatIndex) ? r.seatIndex : null });
+  }
+  out.push(...fixed.values());
+
+  // category-together: one per category
+  const cats = new Set();
+  for (const r of rules) {
+    if (r.type !== 'category-together' || !catIds.has(r.categoryId) || cats.has(r.categoryId)) continue;
+    cats.add(r.categoryId);
+    out.push({ ...base, id: r.id, type: 'category-together', guestIds: [], categoryId: r.categoryId });
+  }
+  return out;
+}
+
+function ruleKey(r) {
+  return JSON.stringify([r.type, r.guestIds, r.categoryId, r.tableId, r.seatIndex]);
+}
+
+// Persist a new rule list, writing only what changed.
+async function replaceRules(next) {
+  const prev = new Map(state.rules.map(r => [r.id, r]));
+  const nextIds = new Set(next.map(r => r.id));
+  const removed = state.rules.filter(r => !nextIds.has(r.id)).map(r => r.id);
+  const changed = next.filter(r => !prev.has(r.id) || ruleKey(prev.get(r.id)) !== ruleKey(r));
+  const clean = changed.map(r => { const c = { ...r }; delete c.satisfied; return c; });
+  if (removed.length) await dbDeleteAll('rules', removed);
+  if (clean.length) await dbPutAll('rules', clean);
+  state.rules = next;
+  return removed.length + changed.length > 0;
+}
+
+async function migrateRules() {
+  await replaceRules(normalizeRules(state.rules));
+}
+
+function getGuestRelations(guestId) {
+  const together = new Set();
+  const apart = new Set();
+  let fixed = null;
+  for (const r of state.rules) {
+    if (!r.guestIds || !r.guestIds.includes(guestId)) continue;
+    if (r.type === 'together' || r.type === 'companion') r.guestIds.forEach(id => id !== guestId && together.add(id));
+    else if (r.type === 'apart') r.guestIds.forEach(id => id !== guestId && apart.add(id));
+    else if (r.type === 'fixed') fixed = r;
+  }
+  return { together: [...together], apart: [...apart], fixed };
+}
+
+// Rewrite every rule that concerns this guest from the guest card.
+// rel = { together: [ids], apart: [ids], fixedTableId, fixedSeat }
+async function setGuestRelations(guestId, rel) {
+  const together = new Set((rel.together || []).filter(id => id !== guestId));
+  const apart = new Set((rel.apart || []).filter(id => id !== guestId && !together.has(id)));
+  let rules = state.rules.map(r => ({ ...r, guestIds: [...(r.guestIds || [])] }));
+
+  // together: the guest leaves its old group; whoever is still wanted joins the
+  // new group, and groups of newly picked guests are merged in.
+  const merged = new Set([guestId, ...together]);
+  rules = rules.filter(r => {
+    if (r.type !== 'together') return true;
+    if (r.guestIds.includes(guestId)) {
+      r.guestIds = r.guestIds.filter(id => id !== guestId && !together.has(id));
+      return r.guestIds.length >= 2;
+    }
+    if (r.guestIds.some(id => together.has(id))) {
+      r.guestIds.forEach(id => merged.add(id));
+      return false;
+    }
+    return true;
+  });
+  if (merged.size >= 2) {
+    const old = state.rules.find(r => r.type === 'together' && r.guestIds.includes(guestId));
+    const reuse = old && !rules.some(r => r.id === old.id) ? old.id : crypto.randomUUID();
+    rules.push({ id: reuse, type: 'together', guestIds: [...merged], categoryId: null, tableId: null, seatIndex: null });
+  }
+
+  // apart: one pair rule per person, existing pairs keep their ids
+  const oldApart = new Map();
+  rules = rules.filter(r => {
+    if (r.type !== 'apart' || !r.guestIds.includes(guestId)) return true;
+    oldApart.set(r.guestIds.find(id => id !== guestId), r.id);
+    return false;
+  });
+  for (const other of apart) {
+    rules.push({ id: oldApart.get(other) || crypto.randomUUID(), type: 'apart', guestIds: [guestId, other], categoryId: null, tableId: null, seatIndex: null });
+  }
+
+  // fixed table
+  const oldFixed = rules.find(r => r.type === 'fixed' && r.guestIds[0] === guestId);
+  rules = rules.filter(r => !(r.type === 'fixed' && r.guestIds[0] === guestId));
+  if (rel.fixedTableId) {
+    rules.push({
+      id: oldFixed ? oldFixed.id : crypto.randomUUID(), type: 'fixed', guestIds: [guestId],
+      categoryId: null, tableId: rel.fixedTableId,
+      seatIndex: Number.isInteger(rel.fixedSeat) ? rel.fixedSeat : null
+    });
+  }
+
+  if (await replaceRules(normalizeRules(rules))) {
+    computeRuleStatus();
+    emit('rules');
+  }
+}
+
+// Add couples / families from a bulk import as "together" groups.
+async function addTogetherGroups(groups) {
+  const rules = [...state.rules];
+  for (const ids of groups) {
+    if (ids.length >= 2) rules.push({ id: crypto.randomUUID(), type: 'together', guestIds: ids, categoryId: null, tableId: null, seatIndex: null });
+  }
+  if (await replaceRules(normalizeRules(rules))) {
+    computeRuleStatus();
+    emit('rules');
+  }
+}
+
+function isCategoryTogether(categoryId) {
+  return state.rules.some(r => r.type === 'category-together' && r.categoryId === categoryId);
+}
+
+async function setCategoryTogether(categoryId, on) {
+  if (on === isCategoryTogether(categoryId)) return;
+  const rules = on
+    ? [...state.rules, { id: crypto.randomUUID(), type: 'category-together', guestIds: [], categoryId, tableId: null, seatIndex: null }]
+    : state.rules.filter(r => !(r.type === 'category-together' && r.categoryId === categoryId));
+  await replaceRules(rules);
+  computeRuleStatus();
+  emit('rules');
+}
+
+// Rules that involve a guest directly (pairs, groups, fixed seat) or via the
+// guest's category.
+function rulesForGuest(guest) {
+  return state.rules.filter(r =>
+    (r.guestIds && r.guestIds.includes(guest.id)) ||
+    (r.type === 'category-together' && guest.categoryId && r.categoryId === guest.categoryId));
 }
 
 async function saveSettings(data) {
@@ -140,20 +369,7 @@ async function deleteGuest(id) {
   await dbDelete('guests', id);
   state.guests = state.guests.filter(g => g.id !== id);
   // Remove from rules
-  const rulesAffected = state.rules.filter(r => r.guestIds && r.guestIds.includes(id));
-  const rulesToDelete = [];
-  for (const r of rulesAffected) {
-    r.guestIds = r.guestIds.filter(gid => gid !== id);
-    if (r.guestIds.length < (r.type === 'fixed' ? 1 : 2)) {
-      rulesToDelete.push(r.id);
-    } else {
-      await dbPut('rules', r);
-    }
-  }
-  for (const rid of rulesToDelete) {
-    await dbDelete('rules', rid);
-  }
-  state.rules = state.rules.filter(r => !rulesToDelete.includes(r.id));
+  await replaceRules(normalizeRules(state.rules));
   computeRuleStatus();
   emit('guests');
   emit('rules');
@@ -167,6 +383,23 @@ async function assignGuest(guestId, tableId, seatIndex) {
   guest.seatIndex = seatIndex;
   guest.status = tableId ? 'assigned' : 'unassigned';
   await dbPut('guests', guest);
+  computeRuleStatus();
+  emit('guests');
+}
+
+// Manual moves (drag & drop, swaps): [{ id, tableId, seatIndex }] in one write.
+async function placeGuests(changes) {
+  const byId = new Map(state.guests.map(g => [g.id, g]));
+  const changed = [];
+  for (const c of changes) {
+    const guest = byId.get(c.id);
+    if (!guest) continue;
+    guest.tableId = c.tableId || null;
+    guest.seatIndex = c.tableId ? c.seatIndex : null;
+    guest.status = c.tableId ? 'assigned' : 'unassigned';
+    changed.push(guest);
+  }
+  if (changed.length) await dbPutAll('guests', changed);
   computeRuleStatus();
   emit('guests');
 }
@@ -212,19 +445,57 @@ async function restoreGuests(snapshot) {
   emit('guests');
 }
 
-// Rules
-async function saveRule(rule) {
-  await dbPut('rules', rule);
-  const idx = state.rules.findIndex(r => r.id === rule.id);
-  if (idx >= 0) state.rules[idx] = rule; else state.rules.push(rule);
-  computeRuleStatus();
-  emit('rules');
+// ── Undo ──────────────────────────────────────────────────────────────────────
+// withUndo runs an action and remembers only the records it changed, so undoing
+// it never touches anything else (e.g. edits synced from another device since).
+
+const UNDO_STORES = ['tables', 'categories', 'guests', 'rules'];
+
+function undoCopy(record) {
+  const c = JSON.parse(JSON.stringify(record));
+  delete c.satisfied;
+  return c;
 }
 
-async function deleteRule(id) {
-  await dbDelete('rules', id);
-  state.rules = state.rules.filter(r => r.id !== id);
-  emit('rules');
+async function withUndo(message, action) {
+  const before = {};
+  for (const store of UNDO_STORES) before[store] = new Map(state[store].map(r => [r.id, undoCopy(r)]));
+  const result = await action();
+  const changes = {};
+  let changed = false;
+  for (const store of UNDO_STORES) {
+    const after = new Map(state[store].map(r => [r.id, JSON.stringify(undoCopy(r))]));
+    const restore = [...before[store].values()].filter(r => after.get(r.id) !== JSON.stringify(r));
+    const remove = [...after.keys()].filter(id => !before[store].has(id));
+    changes[store] = { restore, remove };
+    if (restore.length || remove.length) changed = true;
+  }
+  if (changed && message) {
+    showToast(message, false, { label: 'Poništi', onClick: () => applyUndo(changes) });
+  }
+  return result;
+}
+
+async function applyUndo(changes) {
+  for (const store of UNDO_STORES) {
+    const { restore, remove } = changes[store];
+    if (remove.length) {
+      await dbDeleteAll(store, remove);
+      const gone = new Set(remove);
+      state[store] = state[store].filter(r => !gone.has(r.id));
+    }
+    if (restore.length) {
+      await dbPutAll(store, restore);
+      const byId = new Map(state[store].map((r, i) => [r.id, i]));
+      for (const r of restore) {
+        const copy = { ...r };
+        if (byId.has(r.id)) state[store][byId.get(r.id)] = copy; else state[store].push(copy);
+      }
+    }
+  }
+  computeRuleStatus();
+  for (const type of UNDO_STORES) emit(type);
+  showToast('Poništeno');
 }
 
 function computeRuleStatus() {

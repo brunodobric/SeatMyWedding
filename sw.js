@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wedding-seating-v20';
+const CACHE_NAME = 'wedding-seating-v25';
 const ASSETS = [
   './',
   './index.html',
@@ -17,7 +17,11 @@ const ASSETS = [
   './js/db.js',
   './js/state.js',
   './js/floor-plan.js',
+  './js/hall.js',
+  './js/guest-import.js',
+  './js/guest-drag.js',
   './js/seating-algo.js',
+  './js/splash.js',
   './js/app.js',
   './js/firebase-config.js',
   './js/auth.js',
@@ -31,12 +35,21 @@ const ASSETS = [
   './icons/icon-512-maskable.png'
 ];
 
+// Every deploy must bump CACHE_NAME: the whole app is cached as one version,
+// so the HTML, JS and CSS a user sees always belong together.
+
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return Promise.allSettled(ASSETS.map(url => cache.add(url).catch(() => null)));
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache =>
+      Promise.allSettled(ASSETS.map(url => cache.add(new Request(url, { cache: 'reload' }))))
+    )
   );
+  // No skipWaiting here: an open page keeps its version until the user taps
+  // "Osvježi" (see SKIP_WAITING below). A first install has nothing to wait for.
+});
+
+self.addEventListener('message', e => {
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
@@ -56,70 +69,27 @@ function isFirebaseOrGoogle(url) {
     || url.includes('gstatic.com/firebasejs');
 }
 
-/** Navigacija / HTML – network first, cache kao offline fallback */
-function isHtmlRequest(request) {
-  if (request.mode === 'navigate') return true;
-  const accept = request.headers.get('accept') || '';
-  if (accept.includes('text/html')) return true;
-  const path = new URL(request.url).pathname;
-  return path === '/' || path.endsWith('/') || path.endsWith('.html');
-}
-
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-
-  const url = e.request.url;
-  if (isFirebaseOrGoogle(url)) return;
-
-  // HTML: network-first → brže vide deploy
-  if (isHtmlRequest(e.request)) {
-    e.respondWith(networkFirst(e.request));
-    return;
-  }
-
-  // JS / CSS / ostalo: stale-while-revalidate
-  // (odmah iz cachea, u pozadini osvježi za sljedeći put)
-  e.respondWith(staleWhileRevalidate(e.request));
+  const url = new URL(e.request.url);
+  if (isFirebaseOrGoogle(e.request.url)) return;
+  if (url.origin !== self.location.origin) return;
+  e.respondWith(fromVersion(e.request));
 });
 
-async function networkFirst(request) {
+// Cache-first from this version's cache; the network only fills gaps.
+async function fromVersion(request) {
   const cache = await caches.open(CACHE_NAME);
+  const isPage = request.mode === 'navigate';
+  const cached = isPage
+    ? await cache.match('./index.html')
+    : await cache.match(request, { ignoreSearch: true });
+  if (cached) return cached;
   try {
     const response = await fetch(request);
-    if (response && response.status === 200) {
-      cache.put(request, response.clone());
-      if (request.mode === 'navigate') {
-        try { cache.put('./index.html', response.clone()); } catch (_) {}
-      }
-    }
+    if (response && response.status === 200 && response.type === 'basic') cache.put(request, response.clone());
     return response;
   } catch (err) {
-    const cached = await cache.match(request)
-      || await cache.match('./index.html')
-      || await cache.match('./');
-    if (cached) return cached;
-    throw err;
+    return new Response('', { status: 504, statusText: 'Offline' });
   }
-}
-
-async function staleWhileRevalidate(request) {
-  const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request);
-
-  const networkPromise = fetch(request).then(response => {
-    if (response && response.status === 200 && response.type !== 'opaque') {
-      cache.put(request, response.clone());
-    }
-    return response;
-  }).catch(() => null);
-
-  if (cached) {
-    networkPromise.catch(() => {});
-    return cached;
-  }
-
-  const network = await networkPromise;
-  if (network) return network;
-
-  return new Response('', { status: 504, statusText: 'Offline' });
 }

@@ -8,7 +8,12 @@
 
 const CANVAS_W = 1000;
 const CANVAS_H = 700;
+// Tables may be placed beyond the initial 1000×700 view (big halls); the view
+// fits itself to the tables.
+const WORLD_W = 2400;
+const WORLD_H = 2400;
 const GRID_SIZE = 50;
+const SEAT_PITCH = 28;
 
 const TABLE_DIMS = {
   round:       { rx: 45, ry: 45 },
@@ -29,6 +34,7 @@ class FloorPlan {
     this.onTableMove = options.onTableMove || (() => {});
     this.onTableClick = options.onTableClick || (() => {});
     this.onSeatClick = options.onSeatClick || (() => {});
+    this.onSeatPress = options.onSeatPress || null; // (event, tableId, seatIndex, guest) – start of a press on an occupied seat
     this.mode = options.mode || 'edit'; // 'edit' | 'assign'
     this.showFullNames = options.showFullNames || false;
 
@@ -61,8 +67,15 @@ class FloorPlan {
     this.decoLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     this.decoLayer.setAttribute('class', 'deco-layer');
 
+    // Guest names (when shown) – drawn above all tables so they can be placed
+    // to avoid each other.
+    this.labelsLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    this.labelsLayer.setAttribute('class', 'labels-layer');
+    this.labelsLayer.setAttribute('pointer-events', 'none');
+
     this.svg.appendChild(this.gridLayer);
     this.svg.appendChild(this.tablesLayer);
+    this.svg.appendChild(this.labelsLayer);
     this.svg.appendChild(this.decoLayer);
 
     this._renderGrid();
@@ -71,17 +84,17 @@ class FloorPlan {
   _renderGrid() {
     this.gridLayer.innerHTML = '';
     if (!this.snapToGrid) return;
-    for (let x = 0; x <= CANVAS_W; x += GRID_SIZE) {
+    for (let x = 0; x <= WORLD_W; x += GRID_SIZE) {
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       line.setAttribute('x1', x); line.setAttribute('y1', 0);
-      line.setAttribute('x2', x); line.setAttribute('y2', CANVAS_H);
+      line.setAttribute('x2', x); line.setAttribute('y2', WORLD_H);
       line.setAttribute('stroke', '#E8DCC8'); line.setAttribute('stroke-width', '0.5');
       this.gridLayer.appendChild(line);
     }
-    for (let y = 0; y <= CANVAS_H; y += GRID_SIZE) {
+    for (let y = 0; y <= WORLD_H; y += GRID_SIZE) {
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       line.setAttribute('x1', 0); line.setAttribute('y1', y);
-      line.setAttribute('x2', CANVAS_W); line.setAttribute('y2', y);
+      line.setAttribute('x2', WORLD_W); line.setAttribute('y2', y);
       line.setAttribute('stroke', '#E8DCC8'); line.setAttribute('stroke-width', '0.5');
       this.gridLayer.appendChild(line);
     }
@@ -103,6 +116,54 @@ class FloorPlan {
     this.categories = categories;
     this.violatedTableIds = violatedTableIds;
     this._renderTables();
+    // First time there is something to show, frame it.
+    if (!this._fitted && tables.length && this.svg.getBoundingClientRect().width > 0) {
+      this._fitted = true;
+      this.fitToContent();
+    }
+  }
+
+  // Table size: long tables grow with the number of seats along their sides.
+  _dims(table) {
+    const base = TABLE_DIMS[table.shape] || TABLE_DIMS.rectangular;
+    if (table.shape === 'round' || table.shape === 'square' || table.seatsLong === undefined) return base;
+    const nE = table.seatsEnd || 0;
+    return {
+      w: Math.max(base.w, (table.seatsLong || 0) * SEAT_PITCH + 20),
+      h: table.shape === 'head' ? base.h : Math.max(base.h, nE * SEAT_PITCH + 20)
+    };
+  }
+
+  // Bounding box of all tables including their seats, in canvas units.
+  _contentBounds() {
+    if (!this.tables.length) return null;
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    for (const t of this.tables) {
+      const d = t.shape === 'round' ? { w: 90, h: 90 } : this._dims(t);
+      const rot = ((t.rotation || 0) % 180 + 180) % 180 === 90;
+      const hw = (rot ? d.h : d.w) / 2 + 30;
+      const hh = (rot ? d.w : d.h) / 2 + 30;
+      x1 = Math.min(x1, t.x - hw); x2 = Math.max(x2, t.x + hw);
+      y1 = Math.min(y1, t.y - hh); y2 = Math.max(y2, t.y + hh);
+    }
+    return { x1, y1, x2, y2 };
+  }
+
+  fitToContent(extraPad = this.showFullNames ? 70 : 0) {
+    const b = this._contentBounds();
+    if (!b) { this.viewBox = { x: 0, y: 0, w: CANVAS_W, h: CANVAS_H }; this._applyViewBox(); return; }
+    const pad = 30 + extraPad;
+    let w = Math.max(b.x2 - b.x1 + pad * 2, 420);
+    let h = Math.max(b.y2 - b.y1 + pad * 2, 300);
+    // Match the element's aspect ratio so the content is centred, not letterboxed to one side.
+    const rect = this.svg.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      const aspect = rect.width / rect.height;
+      if (w / h < aspect) w = h * aspect; else h = w / aspect;
+    }
+    const cx = (b.x1 + b.x2) / 2, cy = (b.y1 + b.y2) / 2;
+    this.viewBox = { x: cx - w / 2, y: cy - h / 2, w, h };
+    this._applyViewBox();
   }
 
   _renderTables() {
@@ -114,6 +175,128 @@ class FloorPlan {
         this.tablesLayer.appendChild(g);
       } catch (err) {
         console.error('[FloorPlan] table render failed', table && table.id, err);
+      }
+    }
+    this.labelsLayer.innerHTML = '';
+    if (this.showFullNames) {
+      try { this._renderNameLabels(); } catch (err) { console.error('[FloorPlan] name labels failed', err); }
+    }
+  }
+
+  /**
+   * Guest names around the tables. Each name points straight out from its
+   * seat (radially at round tables, perpendicular to the side at long tables)
+   * so names at the same table never cross. A name that would run into another
+   * name, table or seat is shortened ("Ana Horvat" → "Ana H." → "Ana"); if even
+   * that doesn't fit, only the initials inside the seat remain.
+   */
+  _renderNameLabels() {
+    const FONT = 9;
+    const CHAR_W = FONT * 0.56;
+    const GAP = 14;          // from seat centre to the start of the text
+    const LINE = 10.5;       // minimum distance between two names
+    const NS = 'http://www.w3.org/2000/svg';
+    const toWorld = (t, p) => {
+      const r = (t.rotation || 0) * Math.PI / 180;
+      return { x: t.x + p.x * Math.cos(r) - p.y * Math.sin(r), y: t.y + p.x * Math.sin(r) + p.y * Math.cos(r) };
+    };
+    const turn = (t, d) => {
+      const r = (t.rotation || 0) * Math.PI / 180;
+      return { x: d.x * Math.cos(r) - d.y * Math.sin(r), y: d.x * Math.sin(r) + d.y * Math.cos(r) };
+    };
+
+    // Obstacles: every table body and seat, tagged with its table.
+    const bodies = [];
+    const seatDots = [];
+    const items = [];
+    for (const t of this.tables) {
+      const dims = t.shape === 'round' ? null : this._dims(t);
+      bodies.push({ t, round: t.shape === 'round', hw: dims ? dims.w / 2 : 0, hh: dims ? dims.h / 2 : 0 });
+      const seats = this._getSeatPositions(t);
+      const byIdx = {};
+      for (const g of this.guests) if (g.tableId === t.id) byIdx[g.seatIndex] = g;
+      seats.forEach((pos, idx) => {
+        const w = toWorld(t, pos);
+        seatDots.push({ tableId: t.id, x: w.x, y: w.y });
+        const guest = byIdx[idx];
+        if (!guest) return;
+        let dir;
+        if (t.shape === 'round') {
+          const len = Math.hypot(pos.x, pos.y) || 1;
+          dir = { x: pos.x / len, y: pos.y / len };
+        } else if (Math.abs(pos.y) > dims.h / 2) {
+          dir = { x: 0, y: Math.sign(pos.y) };
+        } else {
+          dir = { x: Math.sign(pos.x) || 1, y: 0 };
+        }
+        dir = turn(t, dir);
+        const name = (guest.name != null && String(guest.name).trim()) ? String(guest.name).trim().replace(/\s+/g, ' ') : '';
+        if (name) items.push({ t, seat: w, dir, name });
+      });
+    }
+
+    const distToSeg = (p, a, b) => {
+      const vx = b.x - a.x, vy = b.y - a.y;
+      const l2 = vx * vx + vy * vy || 1;
+      const k = Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.y - a.y) * vy) / l2));
+      return Math.hypot(p.x - a.x - k * vx, p.y - a.y - k * vy);
+    };
+    const samples = (a, b) => {
+      const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 4));
+      const out = [];
+      for (let i = 0; i <= n; i++) out.push({ x: a.x + (b.x - a.x) * i / n, y: a.y + (b.y - a.y) * i / n });
+      return out;
+    };
+    const hitsBody = (p, body) => {
+      const t = body.t;
+      const dx = p.x - t.x, dy = p.y - t.y;
+      if (body.round) return Math.hypot(dx, dy) < TABLE_DIMS.round.rx + 3;
+      const r = -(t.rotation || 0) * Math.PI / 180;
+      const lx = dx * Math.cos(r) - dy * Math.sin(r);
+      const ly = dx * Math.sin(r) + dy * Math.cos(r);
+      return Math.abs(lx) < body.hw + 3 && Math.abs(ly) < body.hh + 3;
+    };
+    const placed = [];
+    const fits = (item, a, b) => {
+      for (const p of samples(a, b)) {
+        for (const body of bodies) if (body.t !== item.t && hitsBody(p, body)) return false;
+        for (const s of seatDots) if (s.tableId !== item.t.id && Math.hypot(p.x - s.x, p.y - s.y) < 12) return false;
+        for (const q of placed) if (distToSeg(p, q.a, q.b) < LINE) return false;
+      }
+      return true;
+    };
+
+    for (const item of items) {
+      const words = item.name.split(' ');
+      const options = [item.name];
+      if (words.length > 1) options.push(`${words[0]} ${words[words.length - 1][0]}.`, words[0]);
+      const a = { x: item.seat.x + item.dir.x * GAP, y: item.seat.y + item.dir.y * GAP };
+      for (const text of options) {
+        const len = text.length * CHAR_W;
+        const b = { x: a.x + item.dir.x * len, y: a.y + item.dir.y * len };
+        if (!fits(item, a, b)) continue;
+        placed.push({ a, b });
+        // Keep text readable: never upside down, vertical names read bottom-up.
+        let angle = Math.atan2(item.dir.y, item.dir.x) * 180 / Math.PI;
+        let anchor = 'start';
+        if (item.dir.x < -0.01 || (Math.abs(item.dir.x) <= 0.01 && item.dir.y > 0)) { angle += 180; anchor = 'end'; }
+        const txt = document.createElementNS(NS, 'text');
+        txt.setAttribute('x', a.x.toFixed(1));
+        txt.setAttribute('y', a.y.toFixed(1));
+        txt.setAttribute('transform', `rotate(${angle.toFixed(1)} ${a.x.toFixed(1)} ${a.y.toFixed(1)})`);
+        txt.setAttribute('text-anchor', anchor);
+        txt.setAttribute('dominant-baseline', 'central');
+        txt.setAttribute('font-family', 'Jost, system-ui, sans-serif');
+        txt.setAttribute('font-size', FONT);
+        txt.setAttribute('font-weight', '600');
+        txt.setAttribute('fill', '#2B2622');
+        txt.setAttribute('paint-order', 'stroke');
+        txt.setAttribute('stroke', '#FDFBF7');
+        txt.setAttribute('stroke-width', '3');
+        txt.setAttribute('stroke-linejoin', 'round');
+        txt.textContent = text;
+        this.labelsLayer.appendChild(txt);
+        break;
       }
     }
   }
@@ -139,7 +322,7 @@ class FloorPlan {
       circle.setAttribute('filter', 'drop-shadow(0 1px 3px rgba(43,38,34,0.12))');
       g.appendChild(circle);
     } else {
-      const dims = TABLE_DIMS[table.shape] || TABLE_DIMS.rectangular;
+      const dims = this._dims(table);
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', -dims.w / 2); rect.setAttribute('y', -dims.h / 2);
       rect.setAttribute('width', dims.w); rect.setAttribute('height', dims.h);
@@ -161,6 +344,9 @@ class FloorPlan {
     label.setAttribute('fill', '#6B5836');
     label.setAttribute('pointer-events', 'none');
     label.setAttribute('y', table.shape === 'round' ? -18 : 0);
+    const rot = table.rotation || 0;
+    // Text stays upright even when the table is turned.
+    if (rot) label.setAttribute('transform', `rotate(${-rot} 0 ${table.shape === 'round' ? -18 : 0})`);
     label.textContent = table.name;
     g.appendChild(label);
 
@@ -174,6 +360,7 @@ class FloorPlan {
       const guest = seatMap[idx];
       const cat = guest ? this.categories.find(c => c.id === guest.categoryId) : null;
       const seatG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      seatG.setAttribute('class', 'seat-group');
       seatG.setAttribute('data-seat', idx);
       seatG.setAttribute('data-table', table.id);
       seatG.style.cursor = 'pointer';
@@ -188,40 +375,16 @@ class FloorPlan {
 
       if (guest) {
         const guestName = (guest.name != null && String(guest.name).trim()) ? String(guest.name).trim() : '?';
-        if (this.showFullNames) {
-          // Puna imena izvan kruga, radijalno od središta stola
-          const len = Math.sqrt(pos.x * pos.x + pos.y * pos.y) || 1;
-          const outward = 18;
-          const lx = pos.x + (pos.x / len) * outward;
-          const ly = pos.y + (pos.y / len) * outward;
-          const anchor = pos.x >= 0 ? 'start' : 'end';
-          const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-          txt.setAttribute('x', lx);
-          txt.setAttribute('y', ly);
-          txt.setAttribute('text-anchor', anchor);
-          txt.setAttribute('dominant-baseline', 'central');
-          txt.setAttribute('font-family', "Jost, system-ui, sans-serif");
-          txt.setAttribute('font-size', '9');
-          txt.setAttribute('font-weight', '600');
-          txt.setAttribute('fill', '#2B2622');
-          txt.setAttribute('pointer-events', 'none');
-          txt.setAttribute('paint-order', 'stroke');
-          txt.setAttribute('stroke', '#FDFBF7');
-          txt.setAttribute('stroke-width', '3');
-          txt.setAttribute('stroke-linejoin', 'round');
-          txt.textContent = guestName;
-          seatG.appendChild(txt);
-        } else {
-          const initials = guestName.split(/\s+/).filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
-          const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-          txt.setAttribute('x', pos.x); txt.setAttribute('y', pos.y);
-          txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('dominant-baseline', 'central');
-          txt.setAttribute('font-family', "Jost, system-ui, sans-serif"); txt.setAttribute('font-size', '7');
-          txt.setAttribute('font-weight', '700'); txt.setAttribute('fill', '#FFFFFF');
-          txt.setAttribute('pointer-events', 'none');
-          txt.textContent = initials;
-          seatG.appendChild(txt);
-        }
+        const initials = guestName.split(/\s+/).filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
+        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        txt.setAttribute('x', pos.x); txt.setAttribute('y', pos.y);
+        if (rot) txt.setAttribute('transform', `rotate(${-rot} ${pos.x} ${pos.y})`);
+        txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('dominant-baseline', 'central');
+        txt.setAttribute('font-family', "Jost, system-ui, sans-serif"); txt.setAttribute('font-size', '7');
+        txt.setAttribute('font-weight', '700'); txt.setAttribute('fill', '#FFFFFF');
+        txt.setAttribute('pointer-events', 'none');
+        txt.textContent = initials;
+        seatG.appendChild(txt);
         if (guest.locked) {
           const lock = document.createElementNS('http://www.w3.org/2000/svg', 'use');
           lock.setAttribute('href', '#i-lock');
@@ -236,6 +399,10 @@ class FloorPlan {
         e.stopPropagation();
         this.onSeatClick(table.id, idx, guest || null);
       });
+      if (guest && this.onSeatPress) {
+        seatG.addEventListener('mousedown', (e) => this.onSeatPress(e, table.id, idx, guest));
+        seatG.addEventListener('touchstart', (e) => this.onSeatPress(e, table.id, idx, guest), { passive: true });
+      }
       g.appendChild(seatG);
     });
 
@@ -268,7 +435,7 @@ class FloorPlan {
 
     // For sided tables: use seatsLong/seatsEnd if available, else fall back to even distribution
     if (table.seatsLong === undefined) {
-      const dims = TABLE_DIMS[table.shape] || TABLE_DIMS.rectangular;
+      const dims = this._dims(table);
       const hw = dims.w / 2 + 14;
       const hh = dims.h / 2 + 14;
       const perimeter = 2 * (dims.w + dims.h);
@@ -284,7 +451,7 @@ class FloorPlan {
       return seats;
     }
 
-    const dims = TABLE_DIMS[table.shape] || TABLE_DIMS.rectangular;
+    const dims = this._dims(table);
     const hw = dims.w / 2;
     const hh = dims.h / 2;
     const off = 14;
@@ -352,13 +519,15 @@ class FloorPlan {
     this._dragging = { table, g, startX: pt.x - table.x, startY: pt.y - table.y };
     const onMove = (ev) => {
       const p = this._svgPoint(ev.clientX, ev.clientY);
-      const newX = this._snap(Math.max(0, Math.min(CANVAS_W, p.x - this._dragging.startX)));
-      const newY = this._snap(Math.max(0, Math.min(CANVAS_H, p.y - this._dragging.startY)));
+      const newX = this._snap(Math.max(0, Math.min(WORLD_W, p.x - this._dragging.startX)));
+      const newY = this._snap(Math.max(0, Math.min(WORLD_H, p.y - this._dragging.startY)));
       if (Math.abs(newX - table.x) > 2 || Math.abs(newY - table.y) > 2) this._didDrag = true;
       table.x = newX; table.y = newY;
+      if (this._didDrag) this.labelsLayer.style.display = 'none';
       this._applyDragTransform(table, g);
     };
     const onUp = () => {
+      this.labelsLayer.style.display = '';
       const dragged = this._dragging && this._didDrag;
       const t = this._dragging ? this._dragging.table : null;
       this._dragging = null;
@@ -383,13 +552,15 @@ class FloorPlan {
       ev.preventDefault();
       const t = ev.touches[0];
       const p = this._svgPoint(t.clientX, t.clientY);
-      const newX = this._snap(Math.max(0, Math.min(CANVAS_W, p.x - this._dragging.startX)));
-      const newY = this._snap(Math.max(0, Math.min(CANVAS_H, p.y - this._dragging.startY)));
+      const newX = this._snap(Math.max(0, Math.min(WORLD_W, p.x - this._dragging.startX)));
+      const newY = this._snap(Math.max(0, Math.min(WORLD_H, p.y - this._dragging.startY)));
       if (Math.abs(newX - table.x) > 2 || Math.abs(newY - table.y) > 2) this._didDrag = true;
       table.x = newX; table.y = newY;
+      if (this._didDrag) this.labelsLayer.style.display = 'none';
       this._applyDragTransform(table, g);
     };
     const onEnd = () => {
+      this.labelsLayer.style.display = '';
       const dragged = this._dragging && this._didDrag;
       const tapped = this._dragging && !this._didDrag;
       const tbl = this._dragging ? this._dragging.table : null;
@@ -557,14 +728,22 @@ class FloorPlan {
     this._zoomAt(1.25, cx, cy);
   }
   resetView() {
-    this.viewBox = { x: 0, y: 0, w: CANVAS_W, h: CANVAS_H };
-    this._applyViewBox();
+    this.fitToContent();
   }
 
   /** Zoom keeping (cx, cy) in SVG coords fixed on screen */
+  // Move the view by a number of screen pixels (auto-pan while dragging a guest).
+  panBy(dxScreen, dyScreen) {
+    const rect = this.svg.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    this.viewBox.x += (dxScreen / rect.width) * this.viewBox.w;
+    this.viewBox.y += (dyScreen / rect.height) * this.viewBox.h;
+    this._applyViewBox();
+  }
+
   _zoomAt(scale, cx, cy) {
-    const newW = Math.max(200, Math.min(CANVAS_W * 3, this.viewBox.w * scale));
-    const newH = Math.max(140, Math.min(CANVAS_H * 3, this.viewBox.h * scale));
+    const newW = Math.max(200, Math.min(WORLD_W * 1.5, this.viewBox.w * scale));
+    const newH = Math.max(140, Math.min(WORLD_H * 1.5, this.viewBox.h * scale));
     // Fraction of point within current viewBox
     const fx = (cx - this.viewBox.x) / this.viewBox.w;
     const fy = (cy - this.viewBox.y) / this.viewBox.h;

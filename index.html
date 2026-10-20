@@ -30,14 +30,80 @@
   <link rel="stylesheet" href="fonts/fonts.css">
   <link rel="stylesheet" href="css/app.css">
   <title>Raspored Sjedenja</title>
+  <script>
+    // The opening animation plays once per visit, not on every reload.
+    try { if (sessionStorage.getItem('splashSeen')) document.documentElement.classList.add('no-splash'); } catch (e) {}
+  </script>
 </head>
 <body>
-<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true">
+<!-- Opening screen: continues the iOS startup image (plain background) with an
+     animated emblem, then settles into the header monogram. See js/splash.js. -->
+<div id="splash" aria-hidden="true">
+  <div class="sp-bg"></div>
+  <div class="sp-inner">
+    <svg class="sp-emblem" viewBox="80 80 352 352" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="sp-gold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#FBEFC4"/>
+          <stop offset=".22" stop-color="#E2C273"/>
+          <stop offset=".45" stop-color="#A9802F"/>
+          <stop offset=".62" stop-color="#EBD08A"/>
+          <stop offset=".82" stop-color="#B98F3E"/>
+          <stop offset="1" stop-color="#7A5A22"/>
+        </linearGradient>
+        <linearGradient id="sp-shine-grad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#FFFDF3" stop-opacity="0"/>
+          <stop offset=".5" stop-color="#FFFDF3" stop-opacity=".85"/>
+          <stop offset="1" stop-color="#FFFDF3" stop-opacity="0"/>
+        </linearGradient>
+        <clipPath id="sp-weave"><circle cx="256" cy="218.8" r="30"/></clipPath>
+        <mask id="sp-rings-mask" maskUnits="userSpaceOnUse" x="80" y="80" width="352" height="352">
+          <circle cx="206" cy="296" r="92" fill="none" stroke="#fff" stroke-width="22"/>
+          <circle cx="306" cy="296" r="92" fill="none" stroke="#fff" stroke-width="22"/>
+        </mask>
+      </defs>
+      <g class="sp-ring sp-ring-a">
+        <circle cx="206" cy="296" r="92" fill="none" stroke="#FDFBF7" stroke-width="34"/>
+        <circle cx="206" cy="296" r="92" fill="none" stroke="url(#sp-gold)" stroke-width="22"/>
+        <circle cx="206" cy="296" r="83.5" fill="none" stroke="#FFF6D8" stroke-opacity=".45" stroke-width="1.6"/>
+        <circle cx="206" cy="296" r="100.5" fill="none" stroke="#5E4419" stroke-opacity=".5" stroke-width="1.2"/>
+      </g>
+      <g class="sp-ring sp-ring-b">
+        <circle cx="306" cy="296" r="92" fill="none" stroke="#FDFBF7" stroke-width="34"/>
+        <circle cx="306" cy="296" r="92" fill="none" stroke="url(#sp-gold)" stroke-width="22"/>
+        <circle cx="306" cy="296" r="83.5" fill="none" stroke="#FFF6D8" stroke-opacity=".45" stroke-width="1.6"/>
+        <circle cx="306" cy="296" r="100.5" fill="none" stroke="#5E4419" stroke-opacity=".5" stroke-width="1.2"/>
+      </g>
+      <g class="sp-ring sp-ring-a"><g clip-path="url(#sp-weave)">
+        <circle cx="206" cy="296" r="92" fill="none" stroke="#FDFBF7" stroke-width="34"/>
+        <circle cx="206" cy="296" r="92" fill="none" stroke="url(#sp-gold)" stroke-width="22"/>
+        <circle cx="206" cy="296" r="83.5" fill="none" stroke="#FFF6D8" stroke-opacity=".45" stroke-width="1.6"/>
+        <circle cx="206" cy="296" r="100.5" fill="none" stroke="#5E4419" stroke-opacity=".5" stroke-width="1.2"/>
+      </g></g>
+      <g mask="url(#sp-rings-mask)"><rect class="sp-shine" x="20" y="160" width="70" height="280" fill="url(#sp-shine-grad)"/></g>
+      <g class="sp-diamond" stroke="#7A5A22" stroke-width="1.2" stroke-linejoin="round">
+        <polygon points="218,138 238,118 274,118 294,138 256,190" fill="#F3E3B6"/>
+        <polygon points="238,118 274,118 266,138 246,138" fill="#FFFDF5"/>
+        <polygon points="218,138 238,118 246,138" fill="#E9D193"/>
+        <polygon points="294,138 274,118 266,138" fill="#FBF0CF"/>
+        <polygon points="218,138 246,138 256,190" fill="#D9B866"/>
+        <polygon points="246,138 266,138 256,190" fill="#FFF8E4"/>
+        <polygon points="266,138 294,138 256,190" fill="#C9A24B"/>
+      </g>
+      <g class="sp-star" style="--d:1.0s"><path transform="translate(276 116) scale(1.5)" fill="#FFF4D2" fill-opacity="1" d="M0-10C.9-2.6 2.6-.9 10 0 2.6.9.9 2.6 0 10-.9 2.6-2.6.9-10 0-2.6-.9-.9-2.6 0-10z"/></g>
+      <g class="sp-star" style="--d:1.12s"><path transform="translate(366 136) scale(1.1)" fill="#FFF4D2" fill-opacity="0.9" d="M0-10C.9-2.6 2.6-.9 10 0 2.6.9.9 2.6 0 10-.9 2.6-2.6.9-10 0-2.6-.9-.9-2.6 0-10z"/></g>
+      <g class="sp-star" style="--d:1.24s"><path transform="translate(140 176) scale(0.75)" fill="#FFF4D2" fill-opacity="0.75" d="M0-10C.9-2.6 2.6-.9 10 0 2.6.9.9 2.6 0 10-.9 2.6-2.6.9-10 0-2.6-.9-.9-2.6 0-10z"/></g>
+      <g class="sp-star" style="--d:1.34s"><path transform="translate(392 196) scale(0.5)" fill="#FFF4D2" fill-opacity="0.6" d="M0-10C.9-2.6 2.6-.9 10 0 2.6.9.9 2.6 0 10-.9 2.6-2.6.9-10 0-2.6-.9-.9-2.6 0-10z"/></g>
+    </svg>
+    <h1 class="sp-title">Raspored Sjedenja</h1>
+    <p class="sp-sub">Vjenčanje</p>
+  </div>
+</div>
+<svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
     <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="7.5" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M15.5 4.2a3.5 3.5 0 0 1 0 6.6"/><path d="M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></symbol>
     <symbol id="i-hall" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M2.5 9.5h19L12 3z"/><path d="M5.5 9.5V18M10 9.5V18M14 9.5V18M18.5 9.5V18"/><path d="M4 18h16"/></symbol>
-    <symbol id="i-rules" viewBox="0 0 24 24"><path d="M12 4v17"/><path d="M8 21h8"/><path d="M5 7h14"/><circle cx="12" cy="4" r="1"/><path d="M2.5 14 5 7.5 7.5 14a2.5 2.5 0 0 1-5 0z"/><path d="M16.5 14 19 7.5 21.5 14a2.5 2.5 0 0 1-5 0z"/></symbol>
     <symbol id="i-chair" viewBox="0 0 24 24"><path d="M7 11V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6"/><rect x="5" y="11" width="14" height="3.5" rx="1"/><path d="M6.5 14.5V21M17.5 14.5V21M9 7h6"/></symbol>
     <symbol id="i-overview" viewBox="0 0 24 24"><rect x="8" y="2.5" width="8" height="3.5" rx="1"/><path d="M16 4.5h2a2 2 0 0 1 2 2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2h2"/><path d="M11.5 11H16M11.5 16H16M8 11h.01M8 16h.01"/></symbol>
     <symbol id="i-list" viewBox="0 0 24 24"><path d="M8.5 6H21M8.5 12H21M8.5 18H21M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
@@ -71,6 +137,7 @@
     <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
     <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3M7.5 7.5 12 3l4.5 4.5"/><path d="M8 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-2"/></symbol>
     <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z"/></symbol>
   </defs>
 </svg>
@@ -83,20 +150,21 @@
     </div>
     <span id="wedding-title-display" title="Klikni za uređivanje naslova">Raspored Sjedenja</span>
     <input id="wedding-title-input" type="text" class="form-control" placeholder="Ana & Marko" autocomplete="off">
+    <!-- Auth + cloud sync (right side of the header) -->
+    <div id="auth-bar" class="auth-bar">
+      <span id="sync-status" class="sync-status off" style="display:none" title=""></span>
+      <button type="button" id="btn-login" class="btn-secondary btn-login" title="Prijava">
+        <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg></span> Prijava
+      </button>
+      <div id="user-menu" class="user-menu" style="display:none">
+        <div id="user-avatar" class="user-avatar" aria-hidden="true"></div>
+        <span id="user-display-name" class="user-display-name"></span>
+        <button type="button" id="btn-logout" class="btn-text" title="Odjava">Odjava</button>
+      </div>
+    </div>
   </header>
 
-  <!-- Auth + cloud sync bar (below title row) -->
-  <div id="auth-bar" class="auth-bar">
-    <span id="sync-status" class="sync-status off" style="display:none" title=""></span>
-    <button type="button" id="btn-login" class="btn-secondary btn-login" title="Prijava">
-      <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg></span> Prijava
-    </button>
-    <div id="user-menu" class="user-menu" style="display:none">
-      <div id="user-avatar" class="user-avatar" aria-hidden="true"></div>
-      <span id="user-display-name" class="user-display-name"></span>
-      <button type="button" id="btn-logout" class="btn-text" title="Odjava">Odjava</button>
-    </div>
-  </div>
+  <div id="guide-bar" class="guide-bar" hidden></div>
 
   <div id="app-body">
 
@@ -110,17 +178,9 @@
         <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg></span>
         <span>Gosti</span>
       </button>
-      <button class="nav-item" data-nav="pravila">
-        <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-rules"/></svg></span>
-        <span>Pravila</span>
-      </button>
       <button class="nav-item" data-nav="raspored">
         <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-chair"/></svg></span>
         <span>Raspored</span>
-      </button>
-      <button class="nav-item" data-nav="pregled">
-        <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-overview"/></svg></span>
-        <span>Pregled</span>
       </button>
     </nav>
 
@@ -132,6 +192,7 @@
         <div class="section-header">
           <h2 class="section-title">Postavljanje sale</h2>
         </div>
+        <div id="capacity-bar" class="capacity-bar"></div>
 
         <!-- Mobile tabs -->
         <div class="sala-tabs">
@@ -145,7 +206,7 @@
             <div class="sala-panel">
               <div class="sala-panel-header">
                 <span class="sala-panel-title">Stolovi</span>
-                <button class="btn-primary" id="btn-add-table">+ Dodaj stol</button>
+                <button class="btn-secondary btn-sm" id="btn-add-table">+ Dodaj stol</button>
               </div>
               <div id="table-list"></div>
             </div>
@@ -179,33 +240,27 @@
         <div class="gosti-layout">
           <div class="gosti-main">
             <div class="gosti-toolbar">
-              <input id="quick-add-guest" class="form-control" type="text" placeholder="Ime gosta + Enter za dodavanje" autocomplete="off" style="flex:1;min-width:160px">
-              <button class="btn-secondary" id="btn-import-guests"><svg class="ic" aria-hidden="true"><use href="#i-import"/></svg> Uvoz</button>
-              <button class="btn-secondary" id="btn-manage-categories"><svg class="ic" aria-hidden="true"><use href="#i-palette"/></svg> Kategorije</button>
-              <button class="btn-primary" id="btn-add-guest-btn">+ Gost</button>
+              <div class="quick-add">
+                <svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>
+                <input id="quick-add-guest" class="form-control" type="text" placeholder="Upiši ime ili par (Ana i Marko Horvat) + Enter" autocomplete="off" enterkeyhint="done">
+              </div>
+              <div class="gosti-actions">
+                <button class="btn-secondary" id="btn-import-guests"><svg class="ic" aria-hidden="true"><use href="#i-import"/></svg> Zalijepi popis</button>
+                <button class="btn-secondary" id="btn-manage-categories"><svg class="ic" aria-hidden="true"><use href="#i-palette"/></svg> Kategorije</button>
+                <button class="btn-secondary" id="btn-add-guest-btn" title="Dodaj gosta s detaljima"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> Novi gost</button>
+              </div>
             </div>
             <div class="gosti-filter-bar">
-              <span class="gosti-filter-label">Kategorija:</span>
+              <input id="guest-search" class="form-control" type="search" placeholder="Pretraži...">
               <div id="category-filter-chips"></div>
-              <input id="guest-search" class="form-control" type="search" placeholder="Pretraži..." style="width:140px;margin-left:auto">
             </div>
             <div class="guest-count-bar">
               <span id="guest-count">0 gostiju</span>
+              <button type="button" class="chip chip-alert" id="btn-filter-violated" style="display:none"></button>
             </div>
             <div id="guest-list"></div>
           </div>
         </div>
-      </section>
-
-      <!-- ═══ PRAVILA ═════════════════════════════════════════════════════ -->
-      <section id="section-pravila" class="section">
-        <div class="section-header">
-          <h2 class="section-title">Posebni zahtjevi i pravila</h2>
-        </div>
-        <div class="pravila-toolbar">
-          <button class="btn-primary" id="btn-add-rule">+ Dodaj pravilo</button>
-        </div>
-        <div class="pravila-layout" id="rules-list"></div>
       </section>
 
       <!-- ═══ RASPORED ════════════════════════════════════════════════════ -->
@@ -213,58 +268,53 @@
         <div class="section-header">
           <h2 class="section-title">Raspored sjedenja</h2>
         </div>
-        <div class="raspored-stats-bar">
-          <button class="btn-primary" id="btn-suggest-seating"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Predloži raspored</button>
+        <div class="raspored-topbar">
+          <div id="seating-progress" class="seating-progress"></div>
+          <button class="btn-primary" id="btn-suggest-seating"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Predloži<span class="hide-xs">raspored</span></button>
         </div>
-        <div class="raspored-layout">
-          <!-- Unassigned panel -->
-          <div class="unassigned-panel" id="unassigned-panel">
-            <div class="unassigned-header">
-              <h3>Nedodijeljeni gosti</h3>
-              <div id="unassigned-count"></div>
-              <input id="raspored-search" class="form-control" type="search" placeholder="Pretraži..." style="margin-top:6px">
-            </div>
-            <div id="unassigned-list"></div>
+        <div class="raspored-toolbar">
+          <div class="view-switch" role="tablist">
+            <button class="view-btn active" data-view="floor"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg> Tlocrt</button>
+            <button class="view-btn" data-view="tables"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Po stolovima</button>
+            <button class="view-btn" data-view="guests"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> Po gostima</button>
           </div>
-          <!-- Floor plan -->
-          <div class="raspored-canvas">
-            <div class="raspored-toolbar">
-              <button class="btn-secondary" id="btn-full-names-raspored" title="Prikaži puna imena gostiju">Aa Imena</button>
-              <div style="display:flex;gap:4px;margin-left:auto">
-                <button class="btn-icon" id="btn-zoom-in-assign" title="Povećaj"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
-                <button class="btn-icon" id="btn-zoom-out-assign" title="Smanji"><svg class="ic" aria-hidden="true"><use href="#i-minus"/></svg></button>
-                <button class="btn-icon" id="btn-zoom-reset-assign" title="Resetiraj"><svg class="ic" aria-hidden="true"><use href="#i-focus"/></svg></button>
+          <div class="toolbar-right">
+            <button class="btn-secondary floor-only" id="btn-full-names-raspored" title="Prikaži puna imena gostiju">Aa <span class="hide-sm">Imena</span></button>
+            <button class="btn-icon floor-only hide-touch" id="btn-zoom-in-assign" title="Povećaj"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
+            <button class="btn-icon floor-only hide-touch" id="btn-zoom-out-assign" title="Smanji"><svg class="ic" aria-hidden="true"><use href="#i-minus"/></svg></button>
+            <button class="btn-icon floor-only" id="btn-zoom-reset-assign" title="Resetiraj"><svg class="ic" aria-hidden="true"><use href="#i-focus"/></svg></button>
+            <div class="menu-wrap">
+              <button class="btn-secondary" id="btn-export-menu" aria-haspopup="true"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> <span class="hide-sm">Ispis i izvoz</span></button>
+              <div class="menu" id="export-menu" hidden>
+                <button class="menu-item" id="btn-print"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> Ispiši ili spremi PDF</button>
+                <button class="menu-item" id="btn-share"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> Podijeli popis „Gdje sjedim”</button>
+                <button class="menu-item" id="btn-export-csv"><svg class="ic" aria-hidden="true"><use href="#i-sheet"/></svg> Tablica za Excel (CSV)</button>
+                <div class="menu-sep"></div>
+                <button class="menu-item" id="btn-export-json"><svg class="ic" aria-hidden="true"><use href="#i-archive"/></svg> Spremi sigurnosnu kopiju</button>
+                <button class="menu-item" id="btn-import-json"><svg class="ic" aria-hidden="true"><use href="#i-import"/></svg> Vrati iz kopije</button>
               </div>
-            </div>
-            <div class="floor-plan-svg-wrap">
-              <svg id="fp-assign-svg" class="floor-plan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ═══ PREGLED ══════════════════════════════════════════════════════ -->
-      <section id="section-pregled" class="section">
-        <div class="section-header">
-          <h2 class="section-title">Pregled i izvoz</h2>
-        </div>
-        <div id="pregled-validation"></div>
-        <div class="pregled-layout">
-          <div class="pregled-toolbar">
-            <div class="pregled-view-btns">
-              <button class="pregled-view-btn active" data-view="tables"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Po stolovima</button>
-              <button class="pregled-view-btn" data-view="guests"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> Po gostima</button>
-              <button class="pregled-view-btn" data-view="floor"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg> Tlocrt</button>
-            </div>
-            <div class="pregled-export-btns">
-              <button class="btn-secondary" id="btn-print"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> Ispiši</button>
-              <button class="btn-secondary" id="btn-export-csv"><svg class="ic" aria-hidden="true"><use href="#i-sheet"/></svg> CSV</button>
-              <button class="btn-secondary" id="btn-export-json"><svg class="ic" aria-hidden="true"><use href="#i-archive"/></svg> Backup</button>
-              <button class="btn-secondary" id="btn-import-json"><svg class="ic" aria-hidden="true"><use href="#i-import"/></svg> Uvezi</button>
               <input type="file" id="json-import-input" accept=".json" style="display:none">
             </div>
           </div>
-          <div id="pregled-content"></div>
+        </div>
+        <div class="raspored-layout" data-view="floor">
+          <!-- Guests without a seat -->
+          <div class="unassigned-panel" id="unassigned-panel">
+            <div class="unassigned-header">
+              <h3>Bez mjesta <span id="unassigned-count"></span></h3>
+              <input id="raspored-search" class="form-control" type="search" placeholder="Pretraži...">
+              <p class="unassigned-hint" id="unassigned-hint"></p>
+            </div>
+            <div id="unassigned-list"></div>
+          </div>
+          <div class="raspored-main">
+            <div class="raspored-canvas floor-only">
+              <div class="floor-plan-svg-wrap">
+                <svg id="fp-assign-svg" class="floor-plan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+              </div>
+            </div>
+            <div id="raspored-list" class="raspored-list"></div>
+          </div>
         </div>
       </section>
 
@@ -282,17 +332,9 @@
         <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg></span>
         <span>Gosti</span>
       </button>
-      <button class="bottom-nav-item" data-nav="pravila">
-        <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-rules"/></svg></span>
-        <span>Pravila</span>
-      </button>
       <button class="bottom-nav-item" data-nav="raspored">
         <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-chair"/></svg></span>
         <span>Raspored</span>
-      </button>
-      <button class="bottom-nav-item" data-nav="pregled">
-        <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-overview"/></svg></span>
-        <span>Pregled</span>
       </button>
     </div>
   </nav>
@@ -308,10 +350,10 @@
   <div class="modal modal-onboarding">
     <div class="onboarding-icon"><svg class="ic" aria-hidden="true"><use href="#i-rings"/></svg></div>
     <div class="onboarding-title">Raspored Sjedenja</div>
-    <p class="onboarding-subtitle">Dobrodošli! Postavimo vaše vjenčanje.</p>
+    <div class="ob-dots" aria-hidden="true"><span data-dot="1"></span><span data-dot="2"></span><span data-dot="3"></span></div>
 
     <div class="ob-step" data-step="1">
-      <p>Kako se zovete? Unesite naslove koji će se prikazivati u aplikaciji.</p>
+      <p class="onboarding-subtitle">Dobrodošli! Za tri koraka imate salu, goste i prijedlog rasporeda.</p>
       <div class="ob-fields">
         <div class="form-group">
           <label for="ob-title">Naslov vjenčanja</label>
@@ -325,32 +367,61 @@
     </div>
 
     <div class="ob-step" data-step="2" style="display:none">
-      <p>Koliko stolova imate? (Možeš ih uvijek urediti kasnije.)</p>
-      <div class="ob-fields">
-        <div class="ob-grid">
-          <div class="form-group">
-            <label for="ob-tables">Broj stolova</label>
-            <input id="ob-tables" class="form-control" type="number" value="10" min="0" max="50">
-          </div>
-          <div class="form-group">
-            <label for="ob-seats">Mjesta po stolu</label>
-            <input id="ob-seats" class="form-control" type="number" value="8" min="1" max="30">
-          </div>
-          <div class="form-group">
-            <label for="ob-head-seats">Mjesta za mladence (stol mladenaca)</label>
-            <input id="ob-head-seats" class="form-control" type="number" value="5" min="2" max="20">
-          </div>
+      <p class="onboarding-subtitle">Kakvi su stolovi u sali? Broj stolova izračunat ćemo iz broja gostiju.</p>
+      <div class="template-grid" id="ob-templates"></div>
+      <div class="form-row ob-fields" style="margin-top:14px">
+        <div class="form-group">
+          <label for="ob-guests">Otprilike gostiju</label>
+          <input id="ob-guests" class="form-control" type="number" value="100" min="0" max="2000" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label for="ob-seats">Mjesta po stolu</label>
+          <input id="ob-seats" class="form-control" type="number" value="8" min="2" max="40" inputmode="numeric">
         </div>
       </div>
+      <div class="hall-summary" id="ob-summary"></div>
     </div>
 
     <div class="ob-step" data-step="3" style="display:none">
-      <p>Sve je postavljeno!</p>
-      <p>Možeš dodavati goste jednog po jednog ili uvesti popis (jednog po redku ili CSV). Gosti se mogu dodavati, micati i premještati u bilo kojem trenutku.</p>
-      <p style="margin-top:10px"><strong>Savjet:</strong> Kreni s postavljanjem stolova → dodaj goste → postavi pravila → rasporedi sjedenje.</p>
+      <p class="onboarding-subtitle">Zalijepi popis gostiju, jedan red po gostu ili obitelji. Može i kasnije.</p>
+      <textarea id="ob-guest-list" class="form-control" rows="6" placeholder="Ana i Marko Horvat&#10;Ivo, Mia, Lea Kovač&#10;Petar Marić +1"></textarea>
+      <div class="import-preview" id="ob-guest-preview"></div>
     </div>
 
-    <button id="onboarding-next" class="btn-primary">Dalje →</button>
+    <div class="ob-buttons">
+      <button id="onboarding-skip" class="btn-text" style="display:none">Preskoči</button>
+      <button id="onboarding-next" class="btn-primary">Dalje →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hall layout modal -->
+<div id="modal-hall" class="modal-backdrop" style="display:none">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h3 class="modal-title">Složi salu</h3>
+      <button class="modal-close" aria-label="Zatvori"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <p class="modal-lead">Odaberi vrstu stolova, a aplikacija izračuna koliko ih treba i složi ih na tlocrt.</p>
+    <div class="template-grid" id="hall-templates"></div>
+    <div class="form-row" style="margin-top:14px">
+      <div class="form-group">
+        <label for="hall-guests">Broj gostiju</label>
+        <input id="hall-guests" class="form-control" type="number" min="0" max="2000" inputmode="numeric">
+      </div>
+      <div class="form-group">
+        <label for="hall-seats">Mjesta po stolu</label>
+        <input id="hall-seats" class="form-control" type="number" min="2" max="40" inputmode="numeric">
+      </div>
+    </div>
+    <div class="hall-mode" id="hall-mode">
+      <label class="radio-row"><input type="radio" name="hall-mode" value="add" checked> <span><strong>Dodaj samo stolove koji nedostaju</strong><br><small>Postojeći stolovi i gosti ostaju gdje jesu.</small></span></label>
+      <label class="radio-row"><input type="radio" name="hall-mode" value="rebuild"> <span><strong>Složi salu ispočetka</strong><br><small>Svi stolovi osim stola mladenaca se zamjenjuju, a gosti s njih ostaju bez mjesta.</small></span></label>
+    </div>
+    <div class="hall-summary" id="hall-summary"></div>
+    <div class="modal-footer">
+      <button class="btn-primary" id="btn-apply-hall"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Složi salu</button>
+    </div>
   </div>
 </div>
 
@@ -376,6 +447,10 @@
           <button class="shape-btn" data-shape="head"><svg class="ic" aria-hidden="true"><use href="#i-toast"/></svg> Mladenci</button>
         </div>
       </div>
+      <label class="checkbox-row" id="table-rotate-row">
+        <input id="table-rotated" type="checkbox">
+        <span>Postavi okomito (okreni za 90°)</span>
+      </label>
       <div class="form-group" id="seats-total-group">
         <label for="table-seats">Broj mjesta</label>
         <input id="table-seats" class="form-control" type="number" value="8" min="1" max="50">
@@ -416,18 +491,33 @@
         <label for="guest-edit-category">Kategorija</label>
         <select id="guest-edit-category" class="form-control"></select>
       </div>
-      <div class="form-group">
-        <label for="guest-edit-status">Status</label>
-        <select id="guest-edit-status" class="form-control">
-          <option value="unassigned">Nedodijeljen</option>
-          <option value="assigned">Dodijeljen</option>
-          <option value="maybe">Možda (na čekanju)</option>
-        </select>
+      <div class="modal-subsection">
+        <div class="modal-subsection-title"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Posebni zahtjevi</div>
+        <div class="form-group">
+          <label><svg class="ic" aria-hidden="true"><use href="#i-together"/></svg> Sjedi s</label>
+          <div class="people-picker" id="pp-together" data-placeholder="Dodaj partnera, obitelj…"></div>
+          <p class="pp-note" id="pp-together-note" hidden></p>
+        </div>
+        <div class="form-group">
+          <label><svg class="ic" aria-hidden="true"><use href="#i-apart"/></svg> Ne sjedi s</label>
+          <div class="people-picker" id="pp-apart" data-placeholder="Dodaj osobu…"></div>
+        </div>
+        <div class="form-group">
+          <label for="guest-edit-fixed-table"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg> Uvijek za stolom</label>
+          <div class="form-row">
+            <select id="guest-edit-fixed-table" class="form-control"></select>
+            <select id="guest-edit-fixed-seat" class="form-control"></select>
+          </div>
+        </div>
       </div>
       <div class="form-group">
         <label for="guest-edit-notes">Bilješka</label>
         <textarea id="guest-edit-notes" class="form-control" placeholder="Npr. vegetarijanac, blizu izlaza..."></textarea>
       </div>
+      <label class="checkbox-row">
+        <input id="guest-edit-maybe" type="checkbox">
+        <span>Dolazak još nije potvrđen (ne raspoređuj)</span>
+      </label>
       <label class="checkbox-row">
         <input id="guest-edit-locked" type="checkbox">
         <span><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Zaključano mjesto (automatika ne smije premjestiti)</span>
@@ -442,17 +532,35 @@
 
 <!-- Import guests modal -->
 <div id="modal-import" class="modal-backdrop" style="display:none">
-  <div class="modal">
+  <div class="modal modal-wide">
     <div class="modal-header">
-      <h3 class="modal-title">Uvoz gostiju</h3>
+      <h3 class="modal-title">Brzi unos gostiju</h3>
       <button class="modal-close" aria-label="Zatvori"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
     </div>
-    <p style="font-size:0.88rem;color:var(--color-muted);margin-bottom:12px">
-      Zalijepi popis — jedan gost po retku, ili CSV (prvi stupac = ime).
-    </p>
-    <textarea id="import-textarea" class="form-control" rows="8" placeholder="Ime Prezime (jedan gost po retku)"></textarea>
+    <p class="modal-lead">Zalijepi popis iz poruke, Worda ili Excela, jedan red po gostu ili obitelji.</p>
+    <div class="import-examples">
+      <span><b>Ana Horvat</b> jedan gost</span>
+      <span><b>Ana i Marko Horvat</b> par, sjede zajedno</span>
+      <span><b>Ivo, Mia, Lea Kovač</b> obitelj</span>
+      <span><b>Petar Marić +1</b> s pratnjom</span>
+      <span><b>Ana Horvat;Prijatelji</b> s kategorijom</span>
+    </div>
+    <textarea id="import-textarea" class="form-control" rows="8" placeholder="Ana i Marko Horvat&#10;Ivo, Mia, Lea Kovač&#10;Petar Marić +1"></textarea>
+    <div class="form-group" style="margin-top:12px">
+      <label for="import-category">Kategorija za sve (ako red nema svoju)</label>
+      <select id="import-category" class="form-control"></select>
+    </div>
+    <label class="checkbox-row">
+      <input id="import-surname-first" type="checkbox">
+      <span>Prezime je napisano prvo (Horvat Ana, Horvat, Ana)</span>
+    </label>
+    <div class="import-preview" id="import-preview"></div>
+    <label class="checkbox-row import-dup-row" id="import-dup-row" hidden>
+      <input id="import-include-existing" type="checkbox">
+      <span id="import-dup-label"></span>
+    </label>
     <div class="modal-footer">
-      <button class="btn-primary" id="btn-import-confirm">Uvezi</button>
+      <button class="btn-primary" id="btn-import-confirm">Dodaj goste</button>
     </div>
   </div>
 </div>
@@ -500,50 +608,13 @@
         <input id="cat-edit-head" type="checkbox">
         <span><svg class="ic" aria-hidden="true"><use href="#i-toast"/></svg> Sjedi za stolom mladenaca (kum/kuma)</span>
       </label>
+      <label class="checkbox-row">
+        <input id="cat-edit-together" type="checkbox">
+        <span><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg> Svi iz ove kategorije sjede za istim stolom</span>
+      </label>
     </div>
     <div class="modal-footer">
       <button class="btn-primary" id="btn-save-category">Spremi</button>
-    </div>
-  </div>
-</div>
-
-<!-- Rule add modal -->
-<div id="modal-rule" class="modal-backdrop" style="display:none">
-  <div class="modal">
-    <div class="modal-header">
-      <h3 class="modal-title">Dodaj pravilo</h3>
-      <button class="modal-close" aria-label="Zatvori"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:14px">
-      <div class="form-group">
-        <label>Vrsta pravila</label>
-        <div class="rule-type-btns">
-          <button class="rule-type-btn active" data-type="apart"><svg class="ic" aria-hidden="true"><use href="#i-apart"/></svg> Odvojeni</button>
-          <button class="rule-type-btn" data-type="together"><svg class="ic" aria-hidden="true"><use href="#i-together"/></svg> Zajedno</button>
-          <button class="rule-type-btn" data-type="fixed"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg> Fiksno mjesto</button>
-          <button class="rule-type-btn" data-type="category-together"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg> Kategorija zajedno</button>
-        </div>
-      </div>
-      <div id="rule-guest-picker-wrap" class="form-group">
-        <label for="rule-guest-select">Odaberi goste</label>
-        <select id="rule-guest-select" class="form-control" multiple size="5"></select>
-        <span style="font-size:0.78rem;color:var(--color-muted)">Drži Ctrl (Cmd na Mac) za višestruki odabir</span>
-      </div>
-      <div id="rule-cat-picker-wrap" class="form-group" style="display:none">
-        <label for="rule-cat-select">Kategorija</label>
-        <select id="rule-cat-select" class="form-control"></select>
-      </div>
-      <div id="rule-table-picker-wrap" class="form-group" style="display:none">
-        <label for="rule-table-select">Stol</label>
-        <select id="rule-table-select" class="form-control"></select>
-      </div>
-      <div id="rule-seat-picker-wrap" class="form-group" style="display:none">
-        <label for="rule-seat-select">Mjesto (opcionalno)</label>
-        <select id="rule-seat-select" class="form-control"></select>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-primary" id="btn-save-rule">Spremi pravilo</button>
     </div>
   </div>
 </div>
@@ -575,6 +646,7 @@
     </div>
     <p id="seat-options-label" style="font-size:0.95rem;font-weight:500;margin-bottom:16px"></p>
     <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn-secondary" id="btn-seat-move" style="justify-content:flex-start"><svg class="ic" aria-hidden="true"><use href="#i-chair"/></svg> Premjesti na drugo mjesto</button>
       <button class="btn-secondary" id="btn-seat-unassign" style="justify-content:flex-start"><svg class="ic" aria-hidden="true"><use href="#i-user-x"/></svg> Ukloni s mjesta</button>
       <button class="btn-secondary" id="btn-seat-lock" style="justify-content:flex-start"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Zaključaj</button>
       <button class="btn-secondary" id="btn-seat-edit-guest" style="justify-content:flex-start"><svg class="ic" aria-hidden="true"><use href="#i-edit"/></svg> Uredi gosta</button>
@@ -596,6 +668,27 @@
     </div>
   </div>
 </div>
+
+<!-- Print options modal -->
+<div id="modal-print" class="modal-backdrop" style="display:none">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h3 class="modal-title">Ispis i PDF</h3>
+      <button class="modal-close" aria-label="Zatvori"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <p class="modal-lead">Odaberi što ispisati. Za PDF u prozoru za ispis odaberi „Spremi kao PDF”.</p>
+    <div class="hall-mode">
+      <label class="radio-row"><input type="checkbox" id="print-tables" checked> <span><strong>Stolovi</strong><br><small>Kartica za svaki stol s imenima gostiju.</small></span></label>
+      <label class="radio-row"><input type="checkbox" id="print-alpha" checked> <span><strong>Gdje sjedim</strong><br><small>Abecedni popis gostiju sa stolom, za ulaz u salu.</small></span></label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary" id="btn-print-go"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> Ispiši</button>
+    </div>
+  </div>
+</div>
+
+<!-- Printed document (filled before printing, hidden on screen) -->
+<div id="print-area" aria-hidden="true"></div>
 
 <!-- Login modal (Firebase Auth) -->
 <div id="modal-login" class="modal-backdrop" style="display:none">
@@ -656,7 +749,11 @@
 <script src="js/state.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/floor-plan.js"></script>
+<script src="js/hall.js"></script>
+<script src="js/guest-import.js"></script>
+<script src="js/guest-drag.js"></script>
 <script src="js/seating-algo.js"></script>
+<script src="js/splash.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
