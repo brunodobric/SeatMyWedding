@@ -1430,13 +1430,12 @@ function setupRasporedEvents() {
   document.getElementById('btn-print-go').addEventListener('click', () => {
     const parts = {
       tables: document.getElementById('print-tables').checked,
-      alpha: document.getElementById('print-alpha').checked,
-      floor: document.getElementById('print-floor').checked
+      alpha: document.getElementById('print-alpha').checked
     };
-    if (!parts.tables && !parts.alpha && !parts.floor) return;
+    if (!parts.tables && !parts.alpha) return;
     document.getElementById('modal-print').style.display = 'none';
     buildPrintArea(parts);
-    // Let the print layout render (fonts, floor plan) before the dialog opens.
+    // Let the print layout render (fonts) before the dialog opens.
     setTimeout(() => window.print(), 150);
   });
   document.getElementById('btn-share').addEventListener('click', shareSeatingList);
@@ -1519,21 +1518,7 @@ function buildPrintArea(parts) {
       ).join('')}</div>
     </section>`);
   }
-  if (parts.floor) {
-    pages.push(`<section class="print-page print-floor-page"><div class="print-floor-wrap">${header('Tlocrt sale')}
-      <svg id="fp-print-svg" class="print-floor" xmlns="http://www.w3.org/2000/svg"></svg>
-    </div></section>`);
-  }
   area.innerHTML = pages.join('');
-  if (parts.floor) {
-    const fp = new FloorPlan(document.getElementById('fp-print-svg'), { mode: 'assign', showFullNames: true });
-    fp.update(state.tables, state.guests, state.categories, new Set());
-    // A hall wider than tall is turned sideways, so it fills the portrait page
-    // (a landscape page of its own is not reliably supported, e.g. in Safari).
-    const b = fp._contentBounds();
-    if (b && (b.x2 - b.x1) > (b.y2 - b.y1) * 1.15) area.querySelector('.print-floor-page').classList.add('landscape');
-    fp.fitToContent(70); // room for full names around the outer seats
-  }
 }
 
 async function shareSeatingList() {

@@ -1298,19 +1298,6 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
   .print-alpha-row { display: flex; align-items: baseline; gap: 2mm; break-inside: avoid; line-height: 1.7; }
   .print-alpha-row strong { font-family: var(--font-serif); font-size: 12pt; color: #A17C33; white-space: nowrap; }
   .print-dots { flex: 1; border-bottom: 0.3mm dotted #C9A24B; transform: translateY(-1mm); }
-  /* A4 portrait inside 15mm margins is 180 x 267mm. */
-  .print-floor-page { height: 265mm; overflow: hidden; position: relative; }
-  .print-floor-page .print-head { margin-bottom: 4mm; }
-  .print-floor { width: 100%; height: 215mm; display: block; }
-  .print-floor-page.landscape .print-floor-wrap {
-    position: absolute; top: 0; left: 0;
-    width: 265mm; height: 180mm;
-    transform-origin: top left;
-    transform: translateX(180mm) rotate(90deg);
-  }
-  .print-floor-page.landscape .print-monogram { display: none; }
-  .print-floor-page.landscape .print-title { font-size: 22pt; }
-  .print-floor-page.landscape .print-floor { height: 150mm; }
   @page { margin: 15mm; }
 }
 
