@@ -241,12 +241,12 @@ function setSyncStatus(status) {
   el.className = 'sync-status ' + status;
   const labels = {
     off: '',
-    synced: '☁ Sinkronizirano',
-    syncing: '☁ Sinkronizacija…',
-    offline: '☁ Izvan mreže',
-    error: '☁ Greška'
+    synced: 'Sinkronizirano',
+    syncing: 'Sinkronizacija…',
+    offline: 'Izvan mreže',
+    error: 'Greška'
   };
-  el.textContent = labels[status] || '';
+  el.innerHTML = labels[status] ? `${icon('cloud')} ${labels[status]}` : '';
   el.title = labels[status] || '';
   el.style.display = status === 'off' ? 'none' : '';
 }

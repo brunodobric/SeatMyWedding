@@ -1,9 +1,19 @@
-const CACHE_NAME = 'wedding-seating-v17';
+const CACHE_NAME = 'wedding-seating-v18';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './css/app.css',
+  './fonts/fonts.css',
+  './fonts/cormorant-normal-latin.woff2',
+  './fonts/cormorant-normal-latin-ext.woff2',
+  './fonts/cormorant-italic-latin.woff2',
+  './fonts/cormorant-italic-latin-ext.woff2',
+  './fonts/jost-normal-latin.woff2',
+  './fonts/jost-normal-latin-ext.woff2',
+  './fonts/pinyon-latin.woff2',
+  './fonts/pinyon-latin-ext.woff2',
+  './js/icons.js',
   './js/db.js',
   './js/state.js',
   './js/floor-plan.js',
@@ -16,8 +26,7 @@ const ASSETS = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-192-maskable.png',
-  './icons/icon-512-maskable.png',
-  'https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&display=swap'
+  './icons/icon-512-maskable.png'
 ];
 
 self.addEventListener('install', e => {
