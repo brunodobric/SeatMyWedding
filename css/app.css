@@ -1570,3 +1570,97 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
   /* Keep toasts above the bottom navigation */
   .auth-toast { bottom: calc(76px + env(safe-area-inset-bottom)); }
 }
+
+/* ── Opening screen (see js/splash.js) ─────────────────────────────────────────
+   Starts from the same plain background as the iOS startup image, builds the
+   emblem in about 1.8s, then js/splash.js sends it into the header monogram. */
+#splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  /* Failsafe: never cover the app for long, even if a script fails. */
+  animation: sp-failsafe 0.4s 7s forwards;
+}
+.no-splash #splash { display: none; }
+.sp-bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 40%, #FFFFFF 0, #FDFBF7 45%, #F5EBDD 100%);
+}
+.sp-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.sp-emblem { width: 46vw; max-width: 220px; height: auto; overflow: visible; }
+.sp-title {
+  margin: 4px 0 0;
+  padding: 0 14px 6px;
+  font: 400 46px/1.1 'Pinyon Script', cursive;
+  color: #A17C33;
+  white-space: nowrap;
+  -webkit-clip-path: inset(0 100% 0 0);
+  clip-path: inset(0 100% 0 0);
+  animation: sp-write 0.85s cubic-bezier(.45, .05, .35, 1) 0.7s forwards;
+}
+.sp-sub {
+  margin: 4px 0 0;
+  font: 500 11px/1 'Jost', sans-serif;
+  letter-spacing: 0.32em;
+  color: #8A7F70;
+  text-transform: uppercase;
+  opacity: 0;
+  animation: sp-sub 0.6s ease-out 1.25s forwards;
+}
+.sp-ring { opacity: 0; animation: 0.75s cubic-bezier(.2, .8, .2, 1) 0.05s forwards; }
+.sp-ring-a { animation-name: sp-ring-a; }
+.sp-ring-b { animation-name: sp-ring-b; }
+.sp-diamond {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: sp-diamond 0.55s cubic-bezier(.3, 1.5, .5, 1) 0.6s forwards;
+}
+.sp-star {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sp-twinkle 0.7s ease-out var(--d) forwards;
+}
+.sp-shine { transform: translateX(0); animation: sp-shine 0.8s ease-in-out 0.85s forwards; }
+
+@keyframes sp-ring-a { from { opacity: 0; transform: translateX(-70px); } to { opacity: 1; transform: none; } }
+@keyframes sp-ring-b { from { opacity: 0; transform: translateX(70px); } to { opacity: 1; transform: none; } }
+@keyframes sp-diamond {
+  from { opacity: 0; transform: translateY(-46px) scale(.85); }
+  60% { opacity: 1; }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sp-twinkle {
+  0% { opacity: 0; transform: scale(0) rotate(-45deg); }
+  55% { opacity: 1; transform: scale(1.35) rotate(0); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+@keyframes sp-shine { from { transform: translateX(0); } to { transform: translateX(400px); } }
+@keyframes sp-write {
+  from { -webkit-clip-path: inset(0 100% 0 0); clip-path: inset(0 100% 0 0); }
+  to { -webkit-clip-path: inset(0 0 0 0); clip-path: inset(0 0 0 0); }
+}
+@keyframes sp-sub {
+  from { opacity: 0; letter-spacing: 0.7em; }
+  to { opacity: 1; letter-spacing: 0.32em; }
+}
+@keyframes sp-failsafe { to { opacity: 0; visibility: hidden; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-ring, .sp-diamond, .sp-star, .sp-sub, .sp-title, .sp-shine { animation: none; opacity: 1; transform: none; }
+  .sp-title { -webkit-clip-path: none; clip-path: none; }
+  .sp-shine { display: none; }
+}

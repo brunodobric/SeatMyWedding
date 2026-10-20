@@ -96,22 +96,14 @@ const DEVICES = [
   [375, 667, 2],
 ];
 
+// Only the background: the app continues from it with the animated emblem
+// (#splash in index.html), so the hand-over from iOS is seamless.
 function splashHtml() {
-  const fonts = pathToFileURL(resolve(ROOT, 'fonts/fonts.css')).href;
   return `<!doctype html><html><head><meta charset="utf-8">
-<link rel="stylesheet" href="${fonts}">
 <style>
   html,body{margin:0;height:100%;background:${CREAM};}
-  body{display:flex;flex-direction:column;align-items:center;justify-content:center;
-    background:radial-gradient(circle at 50% 40%, #FFFFFF 0, ${CREAM} 45%, #F5EBDD 100%);}
-  svg{width:46vw;max-width:220px;height:auto}
-  h1{margin:4px 0 0;font:400 46px/1.1 'Pinyon Script',cursive;color:#A17C33}
-  p{margin:10px 0 0;font:500 11px/1 'Jost',sans-serif;letter-spacing:.32em;color:#8A7F70;text-transform:uppercase}
-</style></head><body>
-<svg viewBox="80 80 352 352"><defs>${defs}</defs>${emblem(CREAM).replace(/<circle cx="256" cy="262" r="190" fill="url\(#glow\)"\/>/, '')}</svg>
-<h1>Raspored Sjedenja</h1>
-<p>Vjenčanje</p>
-</body></html>`;
+  body{background:radial-gradient(circle at 50% 40%, #FFFFFF 0, ${CREAM} 45%, #F5EBDD 100%);}
+</style></head><body></body></html>`;
 }
 
 const browser = await chromium.launch();

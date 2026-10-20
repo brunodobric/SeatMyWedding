@@ -30,6 +30,7 @@ async function init() {
     renderAll();
     navigateTo('sala');
   }
+  if (typeof splash !== 'undefined') splash.ready();
 }
 
 const SECTIONS = ['sala', 'gosti', 'raspored'];
