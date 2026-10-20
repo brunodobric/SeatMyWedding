@@ -1305,7 +1305,22 @@ function setupRasporedEvents() {
   menuBtn.addEventListener('click', e => { e.stopPropagation(); menu.hidden = !menu.hidden; });
   document.addEventListener('click', () => { menu.hidden = true; });
 
-  document.getElementById('btn-print').addEventListener('click', () => window.print());
+  document.getElementById('btn-print').addEventListener('click', () => {
+    document.getElementById('modal-print').style.display = 'flex';
+  });
+  document.getElementById('btn-print-go').addEventListener('click', () => {
+    const parts = {
+      tables: document.getElementById('print-tables').checked,
+      alpha: document.getElementById('print-alpha').checked,
+      floor: document.getElementById('print-floor').checked
+    };
+    if (!parts.tables && !parts.alpha && !parts.floor) return;
+    document.getElementById('modal-print').style.display = 'none';
+    buildPrintArea(parts);
+    // Let the print layout render (fonts, floor plan) before the dialog opens.
+    setTimeout(() => window.print(), 150);
+  });
+  document.getElementById('btn-share').addEventListener('click', shareSeatingList);
 
   document.getElementById('btn-export-csv').addEventListener('click', () => {
     const rows = [['Ime', 'Kategorija', 'Stol', 'Mjesto', 'Status', 'Bilješka']];
@@ -1347,6 +1362,73 @@ function setupRasporedEvents() {
     }
     e.target.value = '';
   });
+}
+
+// ── Ispis i dijeljenje ────────────────────────────────────────────────────────
+
+function seatedGuestsSorted() {
+  return state.guests
+    .filter(g => g.tableId && state.tables.some(t => t.id === g.tableId))
+    .sort((a, b) => a.name.localeCompare(b.name, 'hr'));
+}
+
+function buildPrintArea(parts) {
+  const area = document.getElementById('print-area');
+  const title = esc(state.settings.weddingTitle || 'Moje Vjenčanje');
+  const header = (sub) => `<header class="print-head">
+      <div class="print-monogram">${esc(state.settings.monogram || '♡')}</div>
+      <div class="print-title">${title}</div>
+      <div class="print-sub">${sub}</div>
+    </header>`;
+  const pages = [];
+  if (parts.tables) {
+    pages.push(`<section class="print-page">${header('Raspored sjedenja')}
+      <div class="print-tables">${state.tables.map(t => {
+        const guests = state.guests.filter(g => g.tableId === t.id).sort((a, b) => (a.seatIndex || 0) - (b.seatIndex || 0));
+        return `<div class="print-table">
+          <h3>${esc(t.name)}</h3>
+          <ol>${guests.map(g => `<li>${esc(g.name)}</li>`).join('') || '<li class="muted">—</li>'}</ol>
+        </div>`;
+      }).join('')}</div>
+    </section>`);
+  }
+  if (parts.alpha) {
+    const tableName = id => (state.tables.find(t => t.id === id) || {}).name || '';
+    pages.push(`<section class="print-page">${header('Gdje sjedim')}
+      <div class="print-alpha">${seatedGuestsSorted().map(g =>
+        `<div class="print-alpha-row"><span>${esc(g.name)}</span><span class="print-dots"></span><strong>${esc(tableName(g.tableId))}</strong></div>`
+      ).join('')}</div>
+    </section>`);
+  }
+  if (parts.floor) {
+    pages.push(`<section class="print-page print-floor-page">${header('Tlocrt sale')}
+      <svg id="fp-print-svg" class="print-floor" xmlns="http://www.w3.org/2000/svg"></svg>
+    </section>`);
+  }
+  area.innerHTML = pages.join('');
+  if (parts.floor) {
+    const fp = new FloorPlan(document.getElementById('fp-print-svg'), { mode: 'assign', showFullNames: true });
+    fp.update(state.tables, state.guests, state.categories, new Set());
+    fp.fitToContent(70); // room for full names around the outer seats
+  }
+}
+
+async function shareSeatingList() {
+  const tableName = id => (state.tables.find(t => t.id === id) || {}).name || '';
+  const lines = seatedGuestsSorted().map(g => `${g.name} – ${tableName(g.tableId)}`);
+  if (!lines.length) { showToast('Još nitko nema mjesto'); return; }
+  const title = `${state.settings.weddingTitle || 'Vjenčanje'} – gdje sjedim`;
+  const text = `${title}\n\n${lines.join('\n')}`;
+  if (navigator.share) {
+    try { await navigator.share({ title, text }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('Popis je kopiran, zalijepi ga u poruku');
+  } catch (e) {
+    downloadFile('gdje-sjedim.txt', 'text/plain;charset=utf-8', text);
+  }
 }
 
 function downloadFile(filename, mime, content) {

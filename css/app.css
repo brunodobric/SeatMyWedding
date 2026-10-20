@@ -1261,17 +1261,33 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
 }
 
 /* ── Print styles ────────────────────────────────────────────────────────────── */
+#print-area { display: none; }
 @media print {
-  #sidebar, #bottom-nav, #app-header, #auth-bar, .raspored-topbar, .raspored-toolbar, .unassigned-panel, .guests-view-search, .table-card-add { display: none !important; }
-  body { background: white; overflow: visible; }
-  #app { height: auto; overflow: visible; }
-  #app-body { overflow: visible; padding: 0; }
-  #main-content { overflow: visible; }
-  .section { display: none !important; }
-  #section-raspored { display: block !important; overflow: visible; }
-  .raspored-layout, .raspored-main, .raspored-list { overflow: visible; display: block; }
-  .table-card { break-inside: avoid; box-shadow: none; border: 1px solid #ccc; }
-  @page { margin: 20mm; }
+  body { background: #fff; overflow: visible; min-height: 0; }
+  body > *:not(#print-area):not(.icon-sprite) { display: none !important; }
+  #print-area { display: block; color: #2B2622; }
+  .print-page { break-after: page; }
+  .print-page:last-child { break-after: auto; }
+  .print-head { text-align: center; margin-bottom: 10mm; }
+  .print-monogram {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14mm; height: 14mm; border-radius: 50%;
+    border: 0.4mm solid #A17C33; color: #A17C33;
+    font-family: var(--font-serif); font-style: italic; font-size: 13pt; font-weight: 600;
+  }
+  .print-title { font-family: var(--font-script); font-size: 30pt; color: #A17C33; line-height: 1.3; }
+  .print-sub { font-family: var(--font-serif); font-size: 13pt; letter-spacing: 0.25em; text-transform: uppercase; color: #6B5836; }
+  .print-sub::before, .print-sub::after { content: '❖'; color: #C9A24B; margin: 0 4mm; letter-spacing: 0; }
+  .print-tables { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6mm; }
+  .print-table { break-inside: avoid; border: 0.3mm solid #E8DCC8; border-top: 0.8mm solid #C9A24B; border-radius: 2mm; padding: 4mm 5mm; }
+  .print-table h3 { font-family: var(--font-serif); font-size: 15pt; font-weight: 600; color: #A17C33; margin-bottom: 2mm; text-align: center; }
+  .print-table ol { list-style: none; font-size: 10pt; line-height: 1.6; text-align: center; }
+  .print-alpha { column-count: 2; column-gap: 12mm; font-size: 11pt; }
+  .print-alpha-row { display: flex; align-items: baseline; gap: 2mm; break-inside: avoid; line-height: 1.7; }
+  .print-alpha-row strong { font-family: var(--font-serif); font-size: 12pt; color: #A17C33; white-space: nowrap; }
+  .print-dots { flex: 1; border-bottom: 0.3mm dotted #C9A24B; transform: translateY(-1mm); }
+  .print-floor { width: 100%; height: 200mm; display: block; }
+  @page { margin: 15mm; }
 }
 
 /* ── Auth bar (below header) ──────────────────────────────────────────────── */

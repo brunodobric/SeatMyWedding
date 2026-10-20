@@ -32,7 +32,7 @@
   <title>Raspored Sjedenja</title>
 </head>
 <body>
-<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true">
+<svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
     <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
     <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="7.5" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M15.5 4.2a3.5 3.5 0 0 1 0 6.6"/><path d="M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></symbol>
@@ -70,6 +70,7 @@
     <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
     <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3M7.5 7.5 12 3l4.5 4.5"/><path d="M8 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-2"/></symbol>
     <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z"/></symbol>
   </defs>
 </svg>
@@ -220,6 +221,7 @@
               <button class="btn-secondary" id="btn-export-menu" aria-haspopup="true"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> <span class="hide-sm">Ispis i izvoz</span></button>
               <div class="menu" id="export-menu" hidden>
                 <button class="menu-item" id="btn-print"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> Ispiši ili spremi PDF</button>
+                <button class="menu-item" id="btn-share"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> Podijeli popis „Gdje sjedim”</button>
                 <button class="menu-item" id="btn-export-csv"><svg class="ic" aria-hidden="true"><use href="#i-sheet"/></svg> Tablica za Excel (CSV)</button>
                 <div class="menu-sep"></div>
                 <button class="menu-item" id="btn-export-json"><svg class="ic" aria-hidden="true"><use href="#i-archive"/></svg> Spremi sigurnosnu kopiju</button>
@@ -590,6 +592,28 @@
     </div>
   </div>
 </div>
+
+<!-- Print options modal -->
+<div id="modal-print" class="modal-backdrop" style="display:none">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h3 class="modal-title">Ispis i PDF</h3>
+      <button class="modal-close" aria-label="Zatvori"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <p class="modal-lead">Odaberi što ispisati. Za PDF u prozoru za ispis odaberi „Spremi kao PDF”.</p>
+    <div class="hall-mode">
+      <label class="radio-row"><input type="checkbox" id="print-tables" checked> <span><strong>Stolovi</strong><br><small>Kartica za svaki stol s imenima gostiju.</small></span></label>
+      <label class="radio-row"><input type="checkbox" id="print-alpha" checked> <span><strong>Gdje sjedim</strong><br><small>Abecedni popis gostiju sa stolom, za ulaz u salu.</small></span></label>
+      <label class="radio-row"><input type="checkbox" id="print-floor"> <span><strong>Tlocrt sale</strong><br><small>Raspored stolova s imenima.</small></span></label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary" id="btn-print-go"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> Ispiši</button>
+    </div>
+  </div>
+</div>
+
+<!-- Printed document (filled before printing, hidden on screen) -->
+<div id="print-area" aria-hidden="true"></div>
 
 <!-- Login modal (Firebase Auth) -->
 <div id="modal-login" class="modal-backdrop" style="display:none">

@@ -142,10 +142,10 @@ class FloorPlan {
     return { x1, y1, x2, y2 };
   }
 
-  fitToContent() {
+  fitToContent(extraPad = 0) {
     const b = this._contentBounds();
     if (!b) { this.viewBox = { x: 0, y: 0, w: CANVAS_W, h: CANVAS_H }; this._applyViewBox(); return; }
-    const pad = 30;
+    const pad = 30 + extraPad;
     let w = Math.max(b.x2 - b.x1 + pad * 2, 420);
     let h = Math.max(b.y2 - b.y1 + pad * 2, 300);
     // Match the element's aspect ratio so the content is centred, not letterboxed to one side.
