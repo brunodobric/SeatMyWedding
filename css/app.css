@@ -22,6 +22,8 @@
   --shadow-card: 0 2px 12px rgba(43,38,34,0.07);
   --sidebar-w: 220px;
   --header-h: 62px;
+  /* How much shorter than the screen iOS reports the viewport (index.html) */
+  --vh-fix: 0px;
   /* Zaglavlje i donja traka: karamela iz ikone, tamnija uz rub ekrana,
      svjetlija prema sadržaju */
   --bar-edge: #7B5E3C;
@@ -41,7 +43,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: var(--color-bg);
   color: var(--color-ink);
-  min-height: 100dvh;
+  min-height: calc(100dvh + var(--vh-fix));
   overflow: hidden;
   /* Disable double-tap-to-zoom (the floor plan keeps its own zoom controls) */
   touch-action: manipulation;
@@ -75,7 +77,7 @@ a { color: var(--color-gold-deep); }
 #app {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: calc(100dvh + var(--vh-fix));
 }
 
 /* Header */
@@ -115,7 +117,8 @@ a { color: var(--color-gold-deep); }
   -webkit-text-stroke: 0.7px var(--bar-text);
   color: var(--bar-text);
   text-shadow: 0 1px 3px rgba(60,40,15,0.45);
-  line-height: 1;
+  /* Room for the script's descenders (j, g, y) inside overflow: hidden */
+  line-height: 1.45;
   /* The script's line box sits high: nudge the letters to the bar's middle */
   position: relative;
   top: 0.17em;
@@ -247,7 +250,7 @@ a { color: var(--color-gold-deep); }
 #bottom-nav {
   display: none;
   position: fixed;
-  bottom: 0; left: 0; right: 0;
+  bottom: calc(-1 * var(--vh-fix)); left: 0; right: 0;
   background:
     radial-gradient(ellipse 60% 140% at 50% 100%, rgba(230,200,110,0.2), transparent 70%),
     linear-gradient(0deg, var(--bar-edge) 0%, var(--bar-inner) 100%);
@@ -375,6 +378,7 @@ select.form-control { cursor: pointer; }
 .modal-backdrop {
   display: none;
   position: fixed; inset: 0;
+  bottom: calc(-1 * var(--vh-fix));
   background: rgba(43,38,34,0.45);
   z-index: 100;
   align-items: center;
@@ -1591,6 +1595,7 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
 #splash {
   position: fixed;
   inset: 0;
+  bottom: calc(-1 * var(--vh-fix));
   z-index: 100000;
   display: flex;
   align-items: center;
@@ -1709,6 +1714,7 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
 .options-panel {
   position: fixed;
   inset: 0;
+  bottom: calc(-1 * var(--vh-fix));
   z-index: 900;
   pointer-events: none;
 }
