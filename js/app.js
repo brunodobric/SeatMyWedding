@@ -187,6 +187,7 @@ function showOnboardingStep(step) {
 // ── SALA ───────────────────────────────────────────────────────────────────────
 
 function renderSala() {
+  renderCapacityBar();
   renderTableList();
   if (!floorPlanEdit) {
     const svg = document.getElementById('fp-edit-svg');
@@ -208,11 +209,126 @@ function renderSala() {
   if (btnNamesSala) btnNamesSala.classList.toggle('active', !!state.settings.showFullNames);
 }
 
+function renderCapacityBar() {
+  const el = document.getElementById('capacity-bar');
+  if (!el) return;
+  const c = capacityInfo();
+  let status;
+  if (state.tables.length === 0) status = '<span class="cap-status">Još nema stolova</span>';
+  else if (c.missing > 0) status = `<span class="cap-status bad">${icon('alert')} Fali ${c.missing} ${c.missing === 1 ? 'mjesto' : 'mjesta'}</span>`;
+  else if (c.guests > 0) status = `<span class="cap-status ok">${icon('check')} Dovoljno mjesta${c.regularSeats - c.regularGuests > 0 ? ` (${c.regularSeats - c.regularGuests} slobodno)` : ''}</span>`;
+  else status = '';
+  el.innerHTML = `
+    <div class="cap-numbers">
+      <span><strong>${c.guests}</strong> ${c.guests === 1 ? 'gost' : 'gostiju'}</span>
+      <span class="cap-dot">·</span>
+      <span><strong>${c.seats}</strong> mjesta</span>
+      ${status}
+    </div>
+    <button class="btn-primary btn-sm" id="btn-open-hall">${icon('sparkles')} ${c.missing > 0 ? 'Dodaj stolove' : state.tables.length > 1 ? 'Složi salu' : 'Složi salu automatski'}</button>`;
+  document.getElementById('btn-open-hall').addEventListener('click', () => openHallModal(c.missing > 0 ? 'add' : null));
+}
+
+function templateArt(key) {
+  const g = (inner) => `<svg class="tpl-art" viewBox="0 0 120 80" aria-hidden="true">${inner}</svg>`;
+  const head = '<rect x="38" y="6" width="44" height="9" rx="2"/>';
+  if (key === 'round') {
+    let c = '';
+    for (let r = 0; r < 2; r++) for (let i = 0; i < 4; i++) c += `<circle cx="${18 + i * 28}" cy="${34 + r * 28}" r="9"/>`;
+    return g(head + c);
+  }
+  if (key === 'long') {
+    let c = '';
+    for (let r = 0; r < 3; r++) for (let i = 0; i < 2; i++) c += `<rect x="${12 + i * 52}" y="${26 + r * 17}" width="44" height="8" rx="2"/>`;
+    return g(head + c);
+  }
+  return g(head + '<rect x="24" y="20" width="9" height="54" rx="2"/><rect x="87" y="20" width="9" height="54" rx="2"/>');
+}
+
+let hallTemplate = 'round';
+
+function renderHallTemplates(container, selected, onPick) {
+  container.innerHTML = Object.entries(HALL_TEMPLATES).map(([key, t]) =>
+    `<button type="button" class="template-card${key === selected ? ' active' : ''}" data-template="${key}">
+      ${templateArt(key)}
+      <strong>${t.name}</strong>
+      <span>${t.hint}</span>
+    </button>`).join('');
+  container.querySelectorAll('[data-template]').forEach(btn => btn.addEventListener('click', () => {
+    container.querySelectorAll('[data-template]').forEach(b => b.classList.toggle('active', b === btn));
+    onPick(btn.dataset.template);
+  }));
+}
+
+function openHallModal(mode) {
+  const modal = document.getElementById('modal-hall');
+  const regular = state.tables.filter(t => !isHeadTable(t));
+  hallTemplate = regular.length && regular.every(t => t.shape !== 'round') ? 'long' : 'round';
+  renderHallTemplates(document.getElementById('hall-templates'), hallTemplate, key => {
+    hallTemplate = key;
+    document.getElementById('hall-seats').value = HALL_TEMPLATES[key].defaultSeats;
+    updateHallSummary();
+  });
+  const c = capacityInfo();
+  document.getElementById('hall-guests').value = c.guests || 100;
+  document.getElementById('hall-seats').value = regular.length ? regular[0].seats : HALL_TEMPLATES[hallTemplate].defaultSeats;
+  const hasTables = regular.length > 0;
+  document.getElementById('hall-mode').style.display = hasTables ? '' : 'none';
+  document.querySelector(`input[name="hall-mode"][value="${hasTables ? (mode || 'add') : 'rebuild'}"]`).checked = true;
+  updateHallSummary();
+  modal.style.display = 'flex';
+}
+
+function readHallForm() {
+  return {
+    template: hallTemplate,
+    guestCount: parseInt(document.getElementById('hall-guests').value) || 0,
+    perTable: Math.max(2, parseInt(document.getElementById('hall-seats').value) || 8),
+    mode: document.querySelector('input[name="hall-mode"]:checked').value
+  };
+}
+
+function updateHallSummary() {
+  const form = readHallForm();
+  const plan = planHall(form);
+  const btn = document.getElementById('btn-apply-hall');
+  const el = document.getElementById('hall-summary');
+  const seats = plan.create.filter(t => !isHeadTable(t)).reduce((n, t) => n + t.seats, 0);
+  if (form.mode === 'add' && plan.count === 0) {
+    el.innerHTML = `${icon('check')} Već imate dovoljno mjesta za ${form.guestCount} gostiju.`;
+    el.className = 'hall-summary ok';
+    btn.disabled = true;
+    return;
+  }
+  const verb = form.mode === 'add' ? 'Dodat će se' : 'Trebate';
+  el.innerHTML = `${verb} <strong>${plan.count} ${plan.count === 1 ? 'stol' : plan.count < 5 ? 'stola' : 'stolova'}</strong> po ${plan.perTable} mjesta (${seats} mjesta)${plan.create.some(isHeadTable) ? ' i stol mladenaca' : ''}.`;
+  el.className = 'hall-summary';
+  btn.disabled = plan.count === 0 && !plan.create.length;
+}
+
+function setupHallModal() {
+  ['hall-guests', 'hall-seats'].forEach(id => document.getElementById(id).addEventListener('input', updateHallSummary));
+  document.querySelectorAll('input[name="hall-mode"]').forEach(r => r.addEventListener('change', updateHallSummary));
+  document.getElementById('btn-apply-hall').addEventListener('click', async () => {
+    const form = readHallForm();
+    if (form.mode === 'rebuild' && state.tables.some(t => !isHeadTable(t))) {
+      const seated = state.guests.filter(g => g.tableId && !isHeadTable(state.tables.find(t => t.id === g.tableId) || {})).length;
+      if (!confirm(`Složiti salu ispočetka?${seated ? ` ${seated} gostiju ostat će bez mjesta.` : ''}`)) return;
+    }
+    await applyHallPlan(planHall(form));
+    document.getElementById('modal-hall').style.display = 'none';
+    if (floorPlanEdit) floorPlanEdit.fitToContent();
+    if (floorPlanAssign) floorPlanAssign._fitted = false;
+    showToast('Sala je složena');
+  });
+}
+
 function renderTableList() {
   const list = document.getElementById('table-list');
   if (!list) return;
   if (state.tables.length === 0) {
-    list.innerHTML = '<div class="empty-state"><p>Nema stolova.<br>Dodaj prvi stol ↑</p></div>';
+    list.innerHTML = `<div class="empty-state"><p>Još nema stolova.</p><button class="btn-primary" id="btn-empty-hall">${icon('sparkles')} Složi salu automatski</button></div>`;
+    document.getElementById('btn-empty-hall').addEventListener('click', () => openHallModal(null));
     return;
   }
   list.innerHTML = state.tables.map(t => {
@@ -236,6 +352,7 @@ function renderTableList() {
 }
 
 function updateSeatsUI(shape) {
+  document.getElementById('table-rotate-row').style.display = shape === 'round' || shape === 'square' ? 'none' : '';
   const isSided = shape === 'square' || shape === 'rectangular' || shape === 'royal' || shape === 'head';
   document.getElementById('seats-total-group').style.display = isSided ? 'none' : '';
   document.getElementById('seats-per-side-group').style.display = isSided ? 'flex' : 'none';
@@ -285,6 +402,7 @@ function openTableModal(id) {
   }
 
   updateSeatsUI(shape);
+  document.getElementById('table-rotated').checked = !!(table && table.rotation);
 
   document.getElementById('btn-delete-table').style.display = table ? '' : 'none';
   document.getElementById('btn-duplicate-table').style.display = table ? '' : 'none';
@@ -339,7 +457,8 @@ function setupTableModal() {
       seats,
       seatsLong,
       seatsEnd,
-      x: (existing ? existing.x : undefined) || 200, y: (existing ? existing.y : undefined) || 200, rotation: (existing ? existing.rotation : undefined) || 0
+      x: existing ? existing.x : 500, y: existing ? existing.y : 350,
+      rotation: shape !== 'round' && shape !== 'square' && document.getElementById('table-rotated').checked ? 90 : 0
     };
     await saveTable(table);
     modal.style.display = 'none';
@@ -794,6 +913,8 @@ function renderSeatingProgress() {
   const notes = [];
   if (unseated > 0) notes.push(`<button class="progress-link" data-progress="unseated">${unseated} bez mjesta</button>`);
   if (stats.violated > 0) notes.push(`<button class="progress-link bad" data-progress="violated">${icon('alert')} ${stats.violated} ${stats.violated === 1 ? 'neispunjen zahtjev' : 'neispunjenih zahtjeva'}</button>`);
+  const cap = capacityInfo();
+  if (cap.missing > 0) notes.push(`<button class="progress-link bad" data-progress="capacity">${icon('alert')} fali ${cap.missing} mjesta</button>`);
   if (maybe > 0) notes.push(`<span class="progress-note">${maybe} možda</span>`);
   if (stats.total > 0 && unseated === 0 && stats.violated === 0) notes.push(`<span class="progress-note ok">${icon('check')} Svi su smješteni</span>`);
   el.innerHTML = `
@@ -804,6 +925,9 @@ function renderSeatingProgress() {
     if (btn.dataset.progress === 'violated') {
       guestViolationFilter = true;
       navigateTo('gosti');
+    } else if (btn.dataset.progress === 'capacity') {
+      navigateTo('sala');
+      openHallModal('add');
     } else {
       const panel = document.getElementById('unassigned-panel');
       if (rasporedView === 'guests') { rasporedView = 'floor'; renderRaspored(); }
@@ -1194,6 +1318,7 @@ function setupSalaTabs() {
       document.querySelectorAll('.sala-tab').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       document.querySelectorAll('.sala-tab-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === btn.dataset.tab));
+      renderSala();
     });
   });
 }
@@ -1203,6 +1328,7 @@ function setupSalaTabs() {
 async function _appMain() {
   setupModalClose();
   setupTableModal();
+  setupHallModal();
   setupGostiEvents();
   setupGuestModal();
   setupCategoryEditModal();

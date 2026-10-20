@@ -23,9 +23,38 @@ async function loadAll() {
   state.categories = categories || [];
   state.guests = guests || [];
   state.rules = rules || [];
+  await migrateTables();
   await migrateRules();
   computeRuleStatus();
   updateMonogramIcon();
+}
+
+// Older bridal tables were saved with twice as many seats as were drawn (the
+// extra seats had no place on the floor plan). Draw all of them instead.
+async function migrateTables() {
+  const fixed = state.tables.filter(t =>
+    t.shape === 'head' && Number.isInteger(t.seatsLong) && t.seatsLong + 2 * (t.seatsEnd || 0) !== t.seats);
+  for (const t of fixed) t.seatsLong = Math.max(0, t.seats - 2 * (t.seatsEnd || 0));
+  if (fixed.length) await dbPutAll('tables', fixed);
+}
+
+// Replace regular tables / add missing ones in one go (see planHall in hall.js).
+async function applyHallPlan(plan) {
+  const removed = new Set(plan.remove);
+  if (removed.size) {
+    await dbDeleteAll('tables', plan.remove);
+    state.tables = state.tables.filter(t => !removed.has(t.id));
+    const affected = state.guests.filter(g => removed.has(g.tableId));
+    for (const g of affected) { g.tableId = null; g.seatIndex = null; g.status = 'unassigned'; }
+    if (affected.length) await dbPutAll('guests', affected);
+  }
+  if (plan.create.length) {
+    await dbPutAll('tables', plan.create);
+    state.tables.push(...plan.create);
+  }
+  await replaceRules(normalizeRules(state.rules)); // drops "always at table" rules for removed tables
+  computeRuleStatus();
+  emit('tables');
 }
 
 // ── Rule model ────────────────────────────────────────────────────────────────

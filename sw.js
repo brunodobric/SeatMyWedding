@@ -17,6 +17,7 @@ const ASSETS = [
   './js/db.js',
   './js/state.js',
   './js/floor-plan.js',
+  './js/hall.js',
   './js/seating-algo.js',
   './js/app.js',
   './js/firebase-config.js',

@@ -406,6 +406,55 @@ select.form-control { cursor: pointer; }
   border-top: 1px solid var(--color-border);
 }
 
+/* ── Capacity bar & hall templates ─────────────────────────────────────────── */
+.btn-primary.btn-sm, .btn-secondary.btn-sm { font-size: 0.82rem; padding: 6px 12px; }
+.capacity-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px 10px 24px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+.cap-numbers { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 0.88rem; color: var(--color-muted); }
+.cap-numbers strong { font-family: var(--font-serif); font-size: 1.3rem; color: var(--color-gold-deep); font-weight: 600; }
+.cap-dot { color: var(--color-gold); }
+.cap-status { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding: 3px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; background: var(--color-champagne); }
+.cap-status.ok { background: #edf5ed; color: var(--color-success); }
+.cap-status.bad { background: #fdf0ee; color: var(--color-error); }
+
+.modal-wide { max-width: 560px; }
+.modal-lead { font-size: 0.9rem; color: var(--color-muted); margin: -8px 0 14px; }
+.template-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.template-card {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px 8px 10px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+}
+.template-card strong { font-size: 0.86rem; color: var(--color-ink); font-weight: 600; }
+.template-card span { font-size: 0.72rem; color: var(--color-muted); line-height: 1.3; }
+.template-card:hover { border-color: var(--color-gold); }
+.template-card.active { border-color: var(--color-gold-deep); background: var(--color-champagne); }
+.template-card.active strong { color: var(--color-gold-deep); }
+.tpl-art { width: 90px; height: 60px; fill: var(--color-surface); stroke: var(--color-gold-deep); stroke-width: 1.3; }
+.template-card.active .tpl-art { fill: #fff; }
+
+.hall-mode { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.radio-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 10px; cursor: pointer; font-size: 0.88rem; }
+.radio-row small { color: var(--color-muted); font-size: 0.78rem; }
+.radio-row input { margin-top: 3px; accent-color: var(--color-gold-deep); }
+.radio-row:has(input:checked) { border-color: var(--color-gold); background: rgba(245,235,221,0.5); }
+.hall-summary { margin-top: 14px; padding: 12px 14px; border-radius: 10px; background: var(--color-champagne); font-size: 0.92rem; color: var(--color-gold-bronze); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.hall-summary strong { color: var(--color-gold-deep); }
+.hall-summary.ok { background: #edf5ed; color: var(--color-success); }
+.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+.empty-state .btn-primary { margin-top: 12px; }
+
 /* ── Sala section ───────────────────────────────────────────────────────────── */
 .sala-layout {
   display: flex;
@@ -1094,6 +1143,15 @@ select.form-control { cursor: pointer; }
   .sala-tab-panel .sala-canvas { height: 100%; }
   #table-list { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
+  .capacity-bar { padding: 8px 12px; gap: 8px; }
+  .cap-numbers { font-size: 0.8rem; }
+  .cap-numbers strong { font-size: 1.1rem; }
+  .cap-status { margin-left: 0; }
+  .template-grid { gap: 6px; }
+  .template-card { padding: 8px 4px; }
+  .template-card span { display: none; }
+  .tpl-art { width: 72px; height: 48px; }
+
   /* Raspored: stack panels */
   .raspored-topbar { padding: 10px 12px; gap: 10px; }
   .raspored-topbar #btn-suggest-seating { height: 38px; padding: 0 12px; font-size: 0.82rem; }
@@ -1385,4 +1443,8 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
     padding-right: max(12px, env(safe-area-inset-right));
   }
   #app-body { padding-left: env(safe-area-inset-left); }
+}
+@media (max-width: 767px) {
+  /* Keep toasts above the bottom navigation */
+  .auth-toast { bottom: calc(76px + env(safe-area-inset-bottom)); }
 }

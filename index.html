@@ -123,6 +123,7 @@
         <div class="section-header">
           <h2 class="section-title">Postavljanje sale</h2>
         </div>
+        <div id="capacity-bar" class="capacity-bar"></div>
 
         <!-- Mobile tabs -->
         <div class="sala-tabs">
@@ -136,7 +137,7 @@
             <div class="sala-panel">
               <div class="sala-panel-header">
                 <span class="sala-panel-title">Stolovi</span>
-                <button class="btn-primary" id="btn-add-table">+ Dodaj stol</button>
+                <button class="btn-secondary btn-sm" id="btn-add-table">+ Dodaj stol</button>
               </div>
               <div id="table-list"></div>
             </div>
@@ -321,6 +322,36 @@
   </div>
 </div>
 
+<!-- Hall layout modal -->
+<div id="modal-hall" class="modal-backdrop" style="display:none">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h3 class="modal-title">Složi salu</h3>
+      <button class="modal-close" aria-label="Zatvori"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <p class="modal-lead">Odaberi vrstu stolova, a aplikacija izračuna koliko ih treba i složi ih na tlocrt.</p>
+    <div class="template-grid" id="hall-templates"></div>
+    <div class="form-row" style="margin-top:14px">
+      <div class="form-group">
+        <label for="hall-guests">Broj gostiju</label>
+        <input id="hall-guests" class="form-control" type="number" min="0" max="2000" inputmode="numeric">
+      </div>
+      <div class="form-group">
+        <label for="hall-seats">Mjesta po stolu</label>
+        <input id="hall-seats" class="form-control" type="number" min="2" max="40" inputmode="numeric">
+      </div>
+    </div>
+    <div class="hall-mode" id="hall-mode">
+      <label class="radio-row"><input type="radio" name="hall-mode" value="add" checked> <span><strong>Dodaj samo stolove koji nedostaju</strong><br><small>Postojeći stolovi i gosti ostaju gdje jesu.</small></span></label>
+      <label class="radio-row"><input type="radio" name="hall-mode" value="rebuild"> <span><strong>Složi salu ispočetka</strong><br><small>Svi stolovi osim stola mladenaca se zamjenjuju, a gosti s njih ostaju bez mjesta.</small></span></label>
+    </div>
+    <div class="hall-summary" id="hall-summary"></div>
+    <div class="modal-footer">
+      <button class="btn-primary" id="btn-apply-hall"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Složi salu</button>
+    </div>
+  </div>
+</div>
+
 <!-- Table edit modal -->
 <div id="modal-table" class="modal-backdrop" style="display:none">
   <div class="modal">
@@ -343,6 +374,10 @@
           <button class="shape-btn" data-shape="head"><svg class="ic" aria-hidden="true"><use href="#i-toast"/></svg> Mladenci</button>
         </div>
       </div>
+      <label class="checkbox-row" id="table-rotate-row">
+        <input id="table-rotated" type="checkbox">
+        <span>Postavi okomito (okreni za 90°)</span>
+      </label>
       <div class="form-group" id="seats-total-group">
         <label for="table-seats">Broj mjesta</label>
         <input id="table-seats" class="form-control" type="number" value="8" min="1" max="50">
@@ -600,6 +635,7 @@
 <script src="js/state.js"></script>
 <script src="js/sync.js"></script>
 <script src="js/floor-plan.js"></script>
+<script src="js/hall.js"></script>
 <script src="js/seating-algo.js"></script>
 <script src="js/app.js"></script>
 </body>

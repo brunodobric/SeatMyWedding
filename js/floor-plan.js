@@ -8,7 +8,12 @@
 
 const CANVAS_W = 1000;
 const CANVAS_H = 700;
+// Tables may be placed beyond the initial 1000×700 view (big halls); the view
+// fits itself to the tables.
+const WORLD_W = 2400;
+const WORLD_H = 2400;
 const GRID_SIZE = 50;
+const SEAT_PITCH = 28;
 
 const TABLE_DIMS = {
   round:       { rx: 45, ry: 45 },
@@ -71,17 +76,17 @@ class FloorPlan {
   _renderGrid() {
     this.gridLayer.innerHTML = '';
     if (!this.snapToGrid) return;
-    for (let x = 0; x <= CANVAS_W; x += GRID_SIZE) {
+    for (let x = 0; x <= WORLD_W; x += GRID_SIZE) {
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       line.setAttribute('x1', x); line.setAttribute('y1', 0);
-      line.setAttribute('x2', x); line.setAttribute('y2', CANVAS_H);
+      line.setAttribute('x2', x); line.setAttribute('y2', WORLD_H);
       line.setAttribute('stroke', '#E8DCC8'); line.setAttribute('stroke-width', '0.5');
       this.gridLayer.appendChild(line);
     }
-    for (let y = 0; y <= CANVAS_H; y += GRID_SIZE) {
+    for (let y = 0; y <= WORLD_H; y += GRID_SIZE) {
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       line.setAttribute('x1', 0); line.setAttribute('y1', y);
-      line.setAttribute('x2', CANVAS_W); line.setAttribute('y2', y);
+      line.setAttribute('x2', WORLD_W); line.setAttribute('y2', y);
       line.setAttribute('stroke', '#E8DCC8'); line.setAttribute('stroke-width', '0.5');
       this.gridLayer.appendChild(line);
     }
@@ -103,6 +108,54 @@ class FloorPlan {
     this.categories = categories;
     this.violatedTableIds = violatedTableIds;
     this._renderTables();
+    // First time there is something to show, frame it.
+    if (!this._fitted && tables.length && this.svg.getBoundingClientRect().width > 0) {
+      this._fitted = true;
+      this.fitToContent();
+    }
+  }
+
+  // Table size: long tables grow with the number of seats along their sides.
+  _dims(table) {
+    const base = TABLE_DIMS[table.shape] || TABLE_DIMS.rectangular;
+    if (table.shape === 'round' || table.shape === 'square' || table.seatsLong === undefined) return base;
+    const nE = table.seatsEnd || 0;
+    return {
+      w: Math.max(base.w, (table.seatsLong || 0) * SEAT_PITCH + 20),
+      h: table.shape === 'head' ? base.h : Math.max(base.h, nE * SEAT_PITCH + 20)
+    };
+  }
+
+  // Bounding box of all tables including their seats, in canvas units.
+  _contentBounds() {
+    if (!this.tables.length) return null;
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    for (const t of this.tables) {
+      const d = t.shape === 'round' ? { w: 90, h: 90 } : this._dims(t);
+      const rot = ((t.rotation || 0) % 180 + 180) % 180 === 90;
+      const hw = (rot ? d.h : d.w) / 2 + 30;
+      const hh = (rot ? d.w : d.h) / 2 + 30;
+      x1 = Math.min(x1, t.x - hw); x2 = Math.max(x2, t.x + hw);
+      y1 = Math.min(y1, t.y - hh); y2 = Math.max(y2, t.y + hh);
+    }
+    return { x1, y1, x2, y2 };
+  }
+
+  fitToContent() {
+    const b = this._contentBounds();
+    if (!b) { this.viewBox = { x: 0, y: 0, w: CANVAS_W, h: CANVAS_H }; this._applyViewBox(); return; }
+    const pad = 30;
+    let w = Math.max(b.x2 - b.x1 + pad * 2, 420);
+    let h = Math.max(b.y2 - b.y1 + pad * 2, 300);
+    // Match the element's aspect ratio so the content is centred, not letterboxed to one side.
+    const rect = this.svg.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      const aspect = rect.width / rect.height;
+      if (w / h < aspect) w = h * aspect; else h = w / aspect;
+    }
+    const cx = (b.x1 + b.x2) / 2, cy = (b.y1 + b.y2) / 2;
+    this.viewBox = { x: cx - w / 2, y: cy - h / 2, w, h };
+    this._applyViewBox();
   }
 
   _renderTables() {
@@ -139,7 +192,7 @@ class FloorPlan {
       circle.setAttribute('filter', 'drop-shadow(0 1px 3px rgba(43,38,34,0.12))');
       g.appendChild(circle);
     } else {
-      const dims = TABLE_DIMS[table.shape] || TABLE_DIMS.rectangular;
+      const dims = this._dims(table);
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', -dims.w / 2); rect.setAttribute('y', -dims.h / 2);
       rect.setAttribute('width', dims.w); rect.setAttribute('height', dims.h);
@@ -161,6 +214,9 @@ class FloorPlan {
     label.setAttribute('fill', '#6B5836');
     label.setAttribute('pointer-events', 'none');
     label.setAttribute('y', table.shape === 'round' ? -18 : 0);
+    const rot = table.rotation || 0;
+    // Text stays upright even when the table is turned.
+    if (rot) label.setAttribute('transform', `rotate(${-rot} 0 ${table.shape === 'round' ? -18 : 0})`);
     label.textContent = table.name;
     g.appendChild(label);
 
@@ -174,6 +230,7 @@ class FloorPlan {
       const guest = seatMap[idx];
       const cat = guest ? this.categories.find(c => c.id === guest.categoryId) : null;
       const seatG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      seatG.setAttribute('class', 'seat-group');
       seatG.setAttribute('data-seat', idx);
       seatG.setAttribute('data-table', table.id);
       seatG.style.cursor = 'pointer';
@@ -194,10 +251,13 @@ class FloorPlan {
           const outward = 18;
           const lx = pos.x + (pos.x / len) * outward;
           const ly = pos.y + (pos.y / len) * outward;
-          const anchor = pos.x >= 0 ? 'start' : 'end';
+          const rad = rot * Math.PI / 180;
+          const worldX = pos.x * Math.cos(rad) - pos.y * Math.sin(rad);
+          const anchor = worldX >= 0 ? 'start' : 'end';
           const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
           txt.setAttribute('x', lx);
           txt.setAttribute('y', ly);
+          if (rot) txt.setAttribute('transform', `rotate(${-rot} ${lx} ${ly})`);
           txt.setAttribute('text-anchor', anchor);
           txt.setAttribute('dominant-baseline', 'central');
           txt.setAttribute('font-family', "Jost, system-ui, sans-serif");
@@ -215,6 +275,7 @@ class FloorPlan {
           const initials = guestName.split(/\s+/).filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';
           const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
           txt.setAttribute('x', pos.x); txt.setAttribute('y', pos.y);
+          if (rot) txt.setAttribute('transform', `rotate(${-rot} ${pos.x} ${pos.y})`);
           txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('dominant-baseline', 'central');
           txt.setAttribute('font-family', "Jost, system-ui, sans-serif"); txt.setAttribute('font-size', '7');
           txt.setAttribute('font-weight', '700'); txt.setAttribute('fill', '#FFFFFF');
@@ -268,7 +329,7 @@ class FloorPlan {
 
     // For sided tables: use seatsLong/seatsEnd if available, else fall back to even distribution
     if (table.seatsLong === undefined) {
-      const dims = TABLE_DIMS[table.shape] || TABLE_DIMS.rectangular;
+      const dims = this._dims(table);
       const hw = dims.w / 2 + 14;
       const hh = dims.h / 2 + 14;
       const perimeter = 2 * (dims.w + dims.h);
@@ -284,7 +345,7 @@ class FloorPlan {
       return seats;
     }
 
-    const dims = TABLE_DIMS[table.shape] || TABLE_DIMS.rectangular;
+    const dims = this._dims(table);
     const hw = dims.w / 2;
     const hh = dims.h / 2;
     const off = 14;
@@ -352,8 +413,8 @@ class FloorPlan {
     this._dragging = { table, g, startX: pt.x - table.x, startY: pt.y - table.y };
     const onMove = (ev) => {
       const p = this._svgPoint(ev.clientX, ev.clientY);
-      const newX = this._snap(Math.max(0, Math.min(CANVAS_W, p.x - this._dragging.startX)));
-      const newY = this._snap(Math.max(0, Math.min(CANVAS_H, p.y - this._dragging.startY)));
+      const newX = this._snap(Math.max(0, Math.min(WORLD_W, p.x - this._dragging.startX)));
+      const newY = this._snap(Math.max(0, Math.min(WORLD_H, p.y - this._dragging.startY)));
       if (Math.abs(newX - table.x) > 2 || Math.abs(newY - table.y) > 2) this._didDrag = true;
       table.x = newX; table.y = newY;
       this._applyDragTransform(table, g);
@@ -383,8 +444,8 @@ class FloorPlan {
       ev.preventDefault();
       const t = ev.touches[0];
       const p = this._svgPoint(t.clientX, t.clientY);
-      const newX = this._snap(Math.max(0, Math.min(CANVAS_W, p.x - this._dragging.startX)));
-      const newY = this._snap(Math.max(0, Math.min(CANVAS_H, p.y - this._dragging.startY)));
+      const newX = this._snap(Math.max(0, Math.min(WORLD_W, p.x - this._dragging.startX)));
+      const newY = this._snap(Math.max(0, Math.min(WORLD_H, p.y - this._dragging.startY)));
       if (Math.abs(newX - table.x) > 2 || Math.abs(newY - table.y) > 2) this._didDrag = true;
       table.x = newX; table.y = newY;
       this._applyDragTransform(table, g);
@@ -557,14 +618,13 @@ class FloorPlan {
     this._zoomAt(1.25, cx, cy);
   }
   resetView() {
-    this.viewBox = { x: 0, y: 0, w: CANVAS_W, h: CANVAS_H };
-    this._applyViewBox();
+    this.fitToContent();
   }
 
   /** Zoom keeping (cx, cy) in SVG coords fixed on screen */
   _zoomAt(scale, cx, cy) {
-    const newW = Math.max(200, Math.min(CANVAS_W * 3, this.viewBox.w * scale));
-    const newH = Math.max(140, Math.min(CANVAS_H * 3, this.viewBox.h * scale));
+    const newW = Math.max(200, Math.min(WORLD_W * 1.5, this.viewBox.w * scale));
+    const newH = Math.max(140, Math.min(WORLD_H * 1.5, this.viewBox.h * scale));
     // Fraction of point within current viewBox
     const fx = (cx - this.viewBox.x) / this.viewBox.w;
     const fy = (cy - this.viewBox.y) / this.viewBox.h;
