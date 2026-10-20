@@ -49,6 +49,7 @@ function onStateChange(e) {
 function refreshCurrentSection() {
   renderSection(currentSection);
   updateHeader();
+  renderGuide();
 }
 
 function renderAll() {
@@ -81,6 +82,7 @@ function navigateTo(section) {
     el.classList.toggle('active', el.id === `section-${section}`);
   });
   renderSection(section);
+  renderGuide();
 }
 
 // ── Header ─────────────────────────────────────────────────────────────────────
@@ -121,24 +123,50 @@ function showOnboarding() {
   const modal = document.getElementById('modal-onboarding');
   modal.style.display = 'flex';
   let step = 1;
+  let template = 'round';
   showOnboardingStep(step);
+
+  const summary = () => {
+    const guests = parseInt(document.getElementById('ob-guests').value) || 0;
+    const perTable = Math.max(2, parseInt(document.getElementById('ob-seats').value) || 8);
+    const n = tablesNeeded(guests, perTable);
+    document.getElementById('ob-summary').innerHTML =
+      `Složit ćemo <strong>${n} ${n === 1 ? 'stol' : n > 1 && n < 5 ? 'stola' : 'stolova'}</strong> po ${perTable} mjesta i stol mladenaca.`;
+  };
+  renderHallTemplates(document.getElementById('ob-templates'), template, key => {
+    template = key;
+    document.getElementById('ob-seats').value = HALL_TEMPLATES[key].defaultSeats;
+    summary();
+  });
+  ['ob-guests', 'ob-seats'].forEach(id => document.getElementById(id).addEventListener('input', summary));
+  summary();
+
+  const listEl = document.getElementById('ob-guest-list');
+  listEl.addEventListener('input', () => {
+    const p = previewGuestImport(parseGuestText(listEl.value));
+    document.getElementById('ob-guest-preview').innerHTML = p.guests
+      ? `<p><strong>${p.guests}</strong> ${p.guests === 1 ? 'gost' : 'gostiju'}${p.groups ? ` · ${p.groups} ${p.groups === 1 ? 'par ili obitelj' : 'parova i obitelji'} sjedi zajedno` : ''}</p>`
+      : '';
+  });
 
   const nextBtn = document.getElementById('onboarding-next');
   let busy = false;
-  nextBtn.addEventListener('click', async () => {
+  const run = async (skip) => {
     // Ignore repeated clicks while a step is saving (would create duplicate tables).
     if (busy) return;
     busy = true;
     nextBtn.disabled = true;
     try {
-      await onboardingStep();
+      await onboardingStep(skip);
     } finally {
       busy = false;
       nextBtn.disabled = false;
     }
-  });
+  };
+  nextBtn.addEventListener('click', () => run(false));
+  document.getElementById('onboarding-skip').addEventListener('click', () => run(true));
 
-  async function onboardingStep() {
+  async function onboardingStep(skip) {
     if (step === 1) {
       const title = document.getElementById('ob-title').value.trim() || 'Moje Vjenčanje';
       const monogram = document.getElementById('ob-monogram').value.trim() || '♡';
@@ -146,32 +174,23 @@ function showOnboarding() {
       step = 2;
       showOnboardingStep(step);
     } else if (step === 2) {
-      const numTables = parseInt(document.getElementById('ob-tables').value) || 0;
-      const numSeats = parseInt(document.getElementById('ob-seats').value) || 8;
-      const headSeats = parseInt(document.getElementById('ob-head-seats').value) || 5;
-      await saveTable({
-        id: crypto.randomUUID(), name: 'Stol mladenaca',
-        shape: 'head', seats: headSeats * 2,
-        seatsLong: headSeats, seatsEnd: 0,
-        x: 500, y: 55, rotation: 0
-      });
-      for (let i = 1; i <= numTables; i++) {
-        await saveTable({
-          id: crypto.randomUUID(), name: 'Stol ' + i,
-          shape: 'round', seats: numSeats,
-          x: 100 + ((i - 1) % 5) * 170, y: 160 + Math.floor((i - 1) / 5) * 170,
-          rotation: 0
-        });
-      }
       // Default bridal-party categories — auto-seated at the bridal table.
       await saveCategory({ id: crypto.randomUUID(), name: 'Mladenci', color: '#7A8FA6', atHeadTable: true });
       await saveCategory({ id: crypto.randomUUID(), name: 'Kumovi', color: '#B07B72', atHeadTable: true });
+      await applyHallPlan(planHall({
+        template,
+        guestCount: parseInt(document.getElementById('ob-guests').value) || 0,
+        perTable: Math.max(2, parseInt(document.getElementById('ob-seats').value) || 8),
+        mode: 'rebuild'
+      }));
       step = 3;
       showOnboardingStep(step);
     } else {
+      const rows = skip ? [] : parseGuestText(listEl.value);
+      if (rows.length) await importGuestRows(rows, null);
       modal.style.display = 'none';
       renderAll();
-      navigateTo('sala');
+      navigateTo(rows.length ? 'raspored' : 'gosti');
     }
   }
 }
@@ -180,8 +199,40 @@ function showOnboardingStep(step) {
   document.querySelectorAll('.ob-step').forEach(el => {
     el.style.display = parseInt(el.dataset.step) === step ? 'block' : 'none';
   });
-  const btn = document.getElementById('onboarding-next');
-  btn.textContent = step === 3 ? 'Počni' : 'Dalje →';
+  document.querySelectorAll('.ob-dots [data-dot]').forEach(d => d.classList.toggle('active', parseInt(d.dataset.dot) <= step));
+  document.querySelector('.modal-onboarding').classList.toggle('wide', step > 1);
+  document.getElementById('onboarding-next').textContent = step === 3 ? 'Počni' : 'Dalje →';
+  document.getElementById('onboarding-skip').style.display = step === 3 ? '' : 'none';
+}
+
+// ── First steps guide ──────────────────────────────────────────────────────────
+
+function guideSteps() {
+  return [
+    { nav: 'sala', label: 'Složi salu', done: state.tables.some(t => !isHeadTable(t)) },
+    { nav: 'gosti', label: 'Dodaj goste', done: state.guests.length > 0 },
+    { nav: 'raspored', label: 'Predloži raspored', done: state.guests.some(g => g.status === 'assigned') }
+  ];
+}
+
+function renderGuide() {
+  const el = document.getElementById('guide-bar');
+  if (!el) return;
+  const steps = guideSteps();
+  if (state.settings.guideDismissed || !state.settings.weddingTitle || steps.every(s => s.done)) {
+    el.hidden = true;
+    return;
+  }
+  const current = steps.findIndex(s => !s.done);
+  el.hidden = false;
+  el.innerHTML = `<span class="guide-title">Prvi koraci</span>
+    <div class="guide-steps">${steps.map((s, i) => `
+      <button class="guide-step${s.done ? ' done' : ''}${i === current ? ' current' : ''}" data-guide="${s.nav}">
+        <span class="guide-num">${s.done ? icon('check') : i + 1}</span><span class="guide-label">${s.label}</span>
+      </button>`).join('<span class="guide-sep"></span>')}</div>
+    <button class="btn-icon guide-close" id="guide-close" title="Sakrij">${icon('x')}</button>`;
+  el.querySelectorAll('[data-guide]').forEach(btn => btn.addEventListener('click', () => navigateTo(btn.dataset.guide)));
+  document.getElementById('guide-close').addEventListener('click', () => saveSettings({ guideDismissed: true }));
 }
 
 // ── SALA ───────────────────────────────────────────────────────────────────────
@@ -573,8 +624,16 @@ function renderGuestList() {
     guests = guests.filter(guestHasViolation);
   }
   guests.sort((a, b) => a.name.localeCompare(b.name));
+  if (state.guests.length === 0) {
+    list.innerHTML = `<div class="empty-state">
+      <p><strong>Još nema gostiju.</strong><br>Upiši ime gore ili zalijepi cijeli popis odjednom.<br>Parovi i obitelji u istom redu sjedit će zajedno.</p>
+      <button class="btn-primary" id="btn-empty-import">${icon('import')} Zalijepi popis gostiju</button>
+    </div>`;
+    document.getElementById('btn-empty-import').addEventListener('click', () => openImportModal(''));
+    return;
+  }
   if (guests.length === 0) {
-    list.innerHTML = '<div class="empty-state"><p>Nema gostiju.</p></div>';
+    list.innerHTML = '<div class="empty-state"><p>Nema gostiju koji odgovaraju filtru.</p></div>';
     return;
   }
   list.innerHTML = guests.map(g => {
@@ -604,34 +663,34 @@ function renderGuestList() {
 
 function setupGostiEvents() {
   const input = document.getElementById('quick-add-guest');
-  input && input.addEventListener('keydown', async (e) => {
-    if (e.key === 'Enter') {
-      const name = input.value.trim();
-      if (!name) return;
-      await saveGuest({ id: crypto.randomUUID(), name, categoryId: null, status: 'unassigned', tableId: null, seatIndex: null, locked: false, notes: '' });
-      input.value = '';
-      renderGosti();
+  input.addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter') return;
+    const rows = parseGuestText(input.value);
+    if (!rows.length) return;
+    const result = await importGuestRows(rows, guestCategoryFilter || null);
+    input.value = '';
+    if (result.skipped && !result.guests) showToast('Taj gost već postoji');
+    else if (result.guests > 1) showToast(`Dodano ${result.guests} gostiju, sjede zajedno`);
+  });
+  // Pasting several lines into the quick-add field opens the full import.
+  input.addEventListener('paste', (e) => {
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    if (text && /\n/.test(text.trim())) {
+      e.preventDefault();
+      openImportModal(text);
     }
   });
 
-  document.getElementById('btn-import-guests').addEventListener('click', () => {
-    document.getElementById('modal-import').style.display = 'flex';
-  });
+  document.getElementById('btn-import-guests').addEventListener('click', () => openImportModal(''));
+  document.getElementById('import-textarea').addEventListener('input', updateImportPreview);
 
   document.getElementById('btn-import-confirm').addEventListener('click', async () => {
-    const raw = document.getElementById('import-textarea').value;
-    const names = raw.split('\n').map(n => n.trim().split(',')[0].trim()).filter(Boolean);
-    const seen = new Set(state.guests.map(g => g.name));
-    const toAdd = [];
-    for (const name of names) {
-      if (seen.has(name)) continue;
-      seen.add(name);
-      toAdd.push({ id: crypto.randomUUID(), name, categoryId: null, status: 'unassigned', tableId: null, seatIndex: null, locked: false, notes: '' });
-    }
-    await addGuests(toAdd);
+    const rows = parseGuestText(document.getElementById('import-textarea').value);
+    if (!rows.length) return;
+    const result = await importGuestRows(rows, document.getElementById('import-category').value || null);
     document.getElementById('modal-import').style.display = 'none';
     document.getElementById('import-textarea').value = '';
-    renderGosti();
+    showToast(`Dodano ${result.guests} gostiju`);
   });
 
   document.getElementById('guest-search').addEventListener('input', (e) => {
@@ -650,6 +709,29 @@ function setupGostiEvents() {
     guestViolationFilter = !guestViolationFilter;
     renderGosti();
   });
+}
+
+function openImportModal(text) {
+  document.getElementById('import-textarea').value = text || '';
+  document.getElementById('import-category').innerHTML = '<option value="">— bez kategorije —</option>' +
+    state.categories.map(c => `<option value="${c.id}"${c.id === guestCategoryFilter ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
+  updateImportPreview();
+  document.getElementById('modal-import').style.display = 'flex';
+  document.getElementById('import-textarea').focus();
+}
+
+function updateImportPreview() {
+  const el = document.getElementById('import-preview');
+  const p = previewGuestImport(parseGuestText(document.getElementById('import-textarea').value));
+  document.getElementById('btn-import-confirm').disabled = p.guests === 0;
+  if (!p.guests && !p.skipped) { el.innerHTML = ''; return; }
+  const summary = [`<strong>${p.guests}</strong> ${p.guests === 1 ? 'gost' : 'gostiju'}`];
+  if (p.groups) summary.push(`${p.groups} ${p.groups === 1 ? 'par ili obitelj' : 'parova i obitelji'} sjedi zajedno`);
+  if (p.skipped) summary.push(`${p.skipped} već na popisu`);
+  const sample = p.rows.slice(0, 6).map(r =>
+    `<li>${r.names.map(n => `<span class="pp-chip">${esc(n)}</span>`).join(r.names.length > 1 ? `<span class="import-link">${icon('together')}</span>` : '')}${r.category ? ` <span class="muted">· ${esc(r.category)}</span>` : ''}</li>`
+  ).join('');
+  el.innerHTML = `<p>${summary.join(' · ')}</p>${sample ? `<ul>${sample}</ul>` : ''}${p.rows.length > 6 ? `<p class="muted">… i još ${p.rows.length - 6} redaka</p>` : ''}`;
 }
 
 function renderCategoryManager() {

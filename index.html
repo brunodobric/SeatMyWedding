@@ -97,6 +97,8 @@
     </div>
   </div>
 
+  <div id="guide-bar" class="guide-bar" hidden></div>
+
   <div id="app-body">
 
     <!-- ── Sidebar (desktop/tablet) ──────────────────────────────────────── -->
@@ -171,15 +173,19 @@
         <div class="gosti-layout">
           <div class="gosti-main">
             <div class="gosti-toolbar">
-              <input id="quick-add-guest" class="form-control" type="text" placeholder="Ime gosta + Enter za dodavanje" autocomplete="off" style="flex:1;min-width:160px">
-              <button class="btn-secondary" id="btn-import-guests"><svg class="ic" aria-hidden="true"><use href="#i-import"/></svg> Uvoz</button>
-              <button class="btn-secondary" id="btn-manage-categories"><svg class="ic" aria-hidden="true"><use href="#i-palette"/></svg> Kategorije</button>
-              <button class="btn-primary" id="btn-add-guest-btn">+ Gost</button>
+              <div class="quick-add">
+                <svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>
+                <input id="quick-add-guest" class="form-control" type="text" placeholder="Upiši ime ili par (Ana i Marko Horvat) + Enter" autocomplete="off" enterkeyhint="done">
+              </div>
+              <div class="gosti-actions">
+                <button class="btn-secondary" id="btn-import-guests"><svg class="ic" aria-hidden="true"><use href="#i-import"/></svg> Zalijepi popis</button>
+                <button class="btn-secondary" id="btn-manage-categories"><svg class="ic" aria-hidden="true"><use href="#i-palette"/></svg> Kategorije</button>
+                <button class="btn-secondary" id="btn-add-guest-btn" title="Dodaj gosta s detaljima"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> Novi gost</button>
+              </div>
             </div>
             <div class="gosti-filter-bar">
-              <span class="gosti-filter-label">Kategorija:</span>
+              <input id="guest-search" class="form-control" type="search" placeholder="Pretraži...">
               <div id="category-filter-chips"></div>
-              <input id="guest-search" class="form-control" type="search" placeholder="Pretraži..." style="width:140px;margin-left:auto">
             </div>
             <div class="guest-count-bar">
               <span id="guest-count">0 gostiju</span>
@@ -197,7 +203,7 @@
         </div>
         <div class="raspored-topbar">
           <div id="seating-progress" class="seating-progress"></div>
-          <button class="btn-primary" id="btn-suggest-seating"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Predloži<span class="hide-xs">&nbsp;raspored</span></button>
+          <button class="btn-primary" id="btn-suggest-seating"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Predloži<span class="hide-xs">raspored</span></button>
         </div>
         <div class="raspored-toolbar">
           <div class="view-switch" role="tablist">
@@ -276,10 +282,10 @@
   <div class="modal modal-onboarding">
     <div class="onboarding-icon"><svg class="ic" aria-hidden="true"><use href="#i-rings"/></svg></div>
     <div class="onboarding-title">Raspored Sjedenja</div>
-    <p class="onboarding-subtitle">Dobrodošli! Postavimo vaše vjenčanje.</p>
+    <div class="ob-dots" aria-hidden="true"><span data-dot="1"></span><span data-dot="2"></span><span data-dot="3"></span></div>
 
     <div class="ob-step" data-step="1">
-      <p>Kako se zovete? Unesite naslove koji će se prikazivati u aplikaciji.</p>
+      <p class="onboarding-subtitle">Dobrodošli! Za tri koraka imate salu, goste i prijedlog rasporeda.</p>
       <div class="ob-fields">
         <div class="form-group">
           <label for="ob-title">Naslov vjenčanja</label>
@@ -293,32 +299,31 @@
     </div>
 
     <div class="ob-step" data-step="2" style="display:none">
-      <p>Koliko stolova imate? (Možeš ih uvijek urediti kasnije.)</p>
-      <div class="ob-fields">
-        <div class="ob-grid">
-          <div class="form-group">
-            <label for="ob-tables">Broj stolova</label>
-            <input id="ob-tables" class="form-control" type="number" value="10" min="0" max="50">
-          </div>
-          <div class="form-group">
-            <label for="ob-seats">Mjesta po stolu</label>
-            <input id="ob-seats" class="form-control" type="number" value="8" min="1" max="30">
-          </div>
-          <div class="form-group">
-            <label for="ob-head-seats">Mjesta za mladence (stol mladenaca)</label>
-            <input id="ob-head-seats" class="form-control" type="number" value="5" min="2" max="20">
-          </div>
+      <p class="onboarding-subtitle">Kakvi su stolovi u sali? Broj stolova izračunat ćemo iz broja gostiju.</p>
+      <div class="template-grid" id="ob-templates"></div>
+      <div class="form-row ob-fields" style="margin-top:14px">
+        <div class="form-group">
+          <label for="ob-guests">Otprilike gostiju</label>
+          <input id="ob-guests" class="form-control" type="number" value="100" min="0" max="2000" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label for="ob-seats">Mjesta po stolu</label>
+          <input id="ob-seats" class="form-control" type="number" value="8" min="2" max="40" inputmode="numeric">
         </div>
       </div>
+      <div class="hall-summary" id="ob-summary"></div>
     </div>
 
     <div class="ob-step" data-step="3" style="display:none">
-      <p>Sve je postavljeno!</p>
-      <p>Možeš dodavati goste jednog po jednog ili uvesti popis (jednog po redku ili CSV). Gosti se mogu dodavati, micati i premještati u bilo kojem trenutku.</p>
-      <p style="margin-top:10px"><strong>Savjet:</strong> Kreni s postavljanjem stolova → dodaj goste → postavi pravila → rasporedi sjedenje.</p>
+      <p class="onboarding-subtitle">Zalijepi popis gostiju, jedan red po gostu ili obitelji. Može i kasnije.</p>
+      <textarea id="ob-guest-list" class="form-control" rows="6" placeholder="Ana i Marko Horvat&#10;Ivo, Mia, Lea Kovač&#10;Petar Marić +1"></textarea>
+      <div class="import-preview" id="ob-guest-preview"></div>
     </div>
 
-    <button id="onboarding-next" class="btn-primary">Dalje →</button>
+    <div class="ob-buttons">
+      <button id="onboarding-skip" class="btn-text" style="display:none">Preskoči</button>
+      <button id="onboarding-next" class="btn-primary">Dalje →</button>
+    </div>
   </div>
 </div>
 
@@ -458,17 +463,27 @@
 
 <!-- Import guests modal -->
 <div id="modal-import" class="modal-backdrop" style="display:none">
-  <div class="modal">
+  <div class="modal modal-wide">
     <div class="modal-header">
-      <h3 class="modal-title">Uvoz gostiju</h3>
+      <h3 class="modal-title">Brzi unos gostiju</h3>
       <button class="modal-close" aria-label="Zatvori"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
     </div>
-    <p style="font-size:0.88rem;color:var(--color-muted);margin-bottom:12px">
-      Zalijepi popis — jedan gost po retku, ili CSV (prvi stupac = ime).
-    </p>
-    <textarea id="import-textarea" class="form-control" rows="8" placeholder="Ime Prezime (jedan gost po retku)"></textarea>
+    <p class="modal-lead">Zalijepi popis iz poruke, Worda ili Excela, jedan red po gostu ili obitelji.</p>
+    <div class="import-examples">
+      <span><b>Ana Horvat</b> jedan gost</span>
+      <span><b>Ana i Marko Horvat</b> par, sjede zajedno</span>
+      <span><b>Ivo, Mia, Lea Kovač</b> obitelj</span>
+      <span><b>Petar Marić +1</b> s pratnjom</span>
+      <span><b>Ana Horvat;Prijatelji</b> s kategorijom</span>
+    </div>
+    <textarea id="import-textarea" class="form-control" rows="8" placeholder="Ana i Marko Horvat&#10;Ivo, Mia, Lea Kovač&#10;Petar Marić +1"></textarea>
+    <div class="form-group" style="margin-top:12px">
+      <label for="import-category">Kategorija za sve (ako red nema svoju)</label>
+      <select id="import-category" class="form-control"></select>
+    </div>
+    <div class="import-preview" id="import-preview"></div>
     <div class="modal-footer">
-      <button class="btn-primary" id="btn-import-confirm">Uvezi</button>
+      <button class="btn-primary" id="btn-import-confirm">Dodaj goste</button>
     </div>
   </div>
 </div>
@@ -636,6 +651,7 @@
 <script src="js/sync.js"></script>
 <script src="js/floor-plan.js"></script>
 <script src="js/hall.js"></script>
+<script src="js/guest-import.js"></script>
 <script src="js/seating-algo.js"></script>
 <script src="js/app.js"></script>
 </body>

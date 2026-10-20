@@ -449,7 +449,8 @@ select.form-control { cursor: pointer; }
 .radio-row small { color: var(--color-muted); font-size: 0.78rem; }
 .radio-row input { margin-top: 3px; accent-color: var(--color-gold-deep); }
 .radio-row:has(input:checked) { border-color: var(--color-gold); background: rgba(245,235,221,0.5); }
-.hall-summary { margin-top: 14px; padding: 12px 14px; border-radius: 10px; background: var(--color-champagne); font-size: 0.92rem; color: var(--color-gold-bronze); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.hall-summary { margin-top: 14px; padding: 12px 14px; border-radius: 10px; background: var(--color-champagne); font-size: 0.92rem; color: var(--color-gold-bronze); text-align: left; }
+.hall-summary:empty { display: none; }
 .hall-summary strong { color: var(--color-gold-deep); }
 .hall-summary.ok { background: #edf5ed; color: var(--color-success); }
 .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -607,18 +608,21 @@ select.form-control { cursor: pointer; }
   background: var(--color-surface);
   flex-wrap: wrap;
 }
-#guest-search { flex: 1; min-width: 120px; }
+.quick-add { flex: 1; min-width: 240px; position: relative; display: flex; align-items: center; }
+.quick-add .ic { position: absolute; left: 12px; color: var(--color-gold); }
+.quick-add .form-control { width: 100%; padding-left: 36px; }
+.gosti-actions { display: flex; gap: 6px; }
 .gosti-filter-bar {
   padding: 8px 16px;
   border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 10px;
   background: var(--color-champagne);
 }
-.gosti-filter-label { font-size: 0.82rem; color: var(--color-muted); white-space: nowrap; }
-#category-filter-chips { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+#guest-search { width: 200px; flex-shrink: 0; padding: 6px 10px; }
+#category-filter-chips { display: flex; gap: 6px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+#category-filter-chips::-webkit-scrollbar { display: none; }
 
 .guest-count-bar {
   padding: 6px 16px;
@@ -723,6 +727,19 @@ select.form-control { cursor: pointer; }
 }
 .color-swatch-btn:hover { transform: scale(1.15); }
 .color-swatch-btn.active { border-color: var(--color-ink); transform: scale(1.1); }
+
+/* ── Quick guest import ──────────────────────────────────────────────────── */
+#import-textarea, #ob-guest-list { width: 100%; display: block; }
+.import-examples { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.import-examples span { font-size: 0.74rem; color: var(--color-muted); padding: 4px 9px; border-radius: 8px; background: var(--color-champagne); }
+.import-examples b { color: var(--color-gold-bronze); font-weight: 600; margin-right: 4px; }
+.import-preview:not(:empty) { margin-top: 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--color-border); font-size: 0.86rem; }
+.import-preview p { color: var(--color-gold-bronze); }
+.import-preview strong { font-family: var(--font-serif); font-size: 1.15rem; color: var(--color-gold-deep); }
+.import-preview ul { list-style: none; display: flex; flex-direction: column; gap: 5px; margin: 8px 0 4px; }
+.import-preview li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.import-preview .pp-chip { padding: 2px 10px; }
+.import-link { color: var(--color-gold); display: inline-flex; font-size: 0.8rem; }
 
 /* ── Guest card: seating wishes ──────────────────────────────────────────── */
 .modal-subsection {
@@ -1005,30 +1022,59 @@ select.form-control { cursor: pointer; }
 .table-select { padding: 5px 8px; font-size: 0.85rem; width: 100%; max-width: 220px; }
 
 /* ── Onboarding modal ────────────────────────────────────────────────────────── */
-.modal-onboarding { max-width: 400px; text-align: center; }
+.modal-onboarding { max-width: 420px; text-align: center; transition: max-width 0.2s; }
+.modal-onboarding.wide { max-width: 540px; }
 .onboarding-icon { font-size: 3.2rem; margin-bottom: 8px; color: var(--color-gold); line-height: 1; }
 .onboarding-icon .ic { stroke-width: 1; }
 .onboarding-title {
   font-family: var(--font-script);
   font-size: 2.5rem;
   color: var(--color-gold-deep);
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
+.ob-dots { display: flex; justify-content: center; gap: 6px; margin-bottom: 14px; }
+.ob-dots span { width: 22px; height: 3px; border-radius: 2px; background: var(--color-border); transition: background 0.2s; }
+.ob-dots span.active { background: var(--color-gold); }
 .onboarding-subtitle {
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   color: var(--color-muted);
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
-.ob-step { padding: 8px 0; }
-.ob-step p { margin-bottom: 12px; font-size: 0.92rem; color: var(--color-muted); }
+.ob-step { padding: 4px 0; text-align: left; }
+.ob-step .onboarding-subtitle { text-align: center; }
 .ob-fields { display: flex; flex-direction: column; gap: 12px; text-align: left; }
-.ob-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ob-fields.form-row { flex-direction: row; }
+.ob-buttons { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
 #onboarding-next {
-  margin-top: 20px;
-  width: 100%;
+  flex: 1;
+  justify-content: center;
   padding: 12px;
   font-size: 1rem;
 }
+
+/* ── First steps guide ───────────────────────────────────────────────────────── */
+.guide-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 16px 8px 20px;
+  background: linear-gradient(90deg, rgba(230,200,110,0.16), rgba(245,235,221,0.6));
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+.guide-bar[hidden] { display: none; }
+.guide-title { font-family: var(--font-serif); font-size: 1.05rem; font-weight: 600; color: var(--color-gold-deep); white-space: nowrap; }
+.guide-steps { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.guide-step { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px 4px 4px; border-radius: 16px; font-size: 0.84rem; color: var(--color-muted); white-space: nowrap; }
+.guide-step:hover { background: rgba(255,255,255,0.7); }
+.guide-num { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; border: 1px solid var(--color-border); background: var(--color-surface); }
+.guide-step.done { color: var(--color-success); }
+.guide-step.done .guide-num { background: var(--color-success); border-color: var(--color-success); color: #fff; }
+.guide-step.done .guide-num .ic { stroke-width: 2.4; font-size: 0.8rem; }
+.guide-step.current { color: var(--color-gold-deep); font-weight: 600; background: var(--color-surface); box-shadow: 0 1px 4px rgba(161,124,51,0.18); }
+.guide-step.current .guide-num { background: linear-gradient(135deg, var(--color-gold-light), var(--color-gold-deep)); border-color: transparent; color: #fff; }
+.guide-sep { width: 18px; height: 1px; background: var(--color-gold-light); flex-shrink: 0; }
+.guide-close { margin-left: auto; }
 
 /* ── Empty states ────────────────────────────────────────────────────────────── */
 .empty-state {
@@ -1143,6 +1189,13 @@ select.form-control { cursor: pointer; }
   .sala-tab-panel .sala-canvas { height: 100%; }
   #table-list { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
+  .guide-bar { padding: 6px 8px 6px 12px; gap: 8px; }
+  .guide-title { display: none; }
+  .guide-steps { gap: 2px; }
+  .guide-step { padding: 3px 6px 3px 3px; font-size: 0.74rem; gap: 4px; }
+  .guide-step:not(.current) .guide-label { display: none; }
+  .guide-sep { width: 10px; }
+  .ob-fields.form-row { flex-direction: row; }
   .capacity-bar { padding: 8px 12px; gap: 8px; }
   .cap-numbers { font-size: 0.8rem; }
   .cap-numbers strong { font-size: 1.1rem; }
@@ -1176,7 +1229,12 @@ select.form-control { cursor: pointer; }
   .menu { position: fixed; left: 12px; right: 12px; top: auto; bottom: calc(70px + env(safe-area-inset-bottom)); min-width: 0; }
 
   /* Gosti */
-  .gosti-toolbar { padding: 8px 10px; }
+  .gosti-toolbar { padding: 8px 10px; gap: 6px; }
+  .quick-add { min-width: 100%; }
+  .gosti-actions { width: 100%; }
+  .gosti-actions .btn-secondary { flex: 1; justify-content: center; padding: 7px 8px; font-size: 0.82rem; }
+  .gosti-filter-bar { padding: 6px 10px; gap: 8px; }
+  #guest-search { width: 110px; }
 }
 
 /* ── Print styles ────────────────────────────────────────────────────────────── */
