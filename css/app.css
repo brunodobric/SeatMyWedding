@@ -1286,3 +1286,42 @@ body.auth-logged-in #btn-login {
 .sync-status.offline { color: var(--color-muted); }
 .sync-status.error { color: var(--color-error); }
 .sync-status.off { display: none; }
+
+/* ── iPhone / instalirana aplikacija (PWA na početnom zaslonu) ──────────────── */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+html, body {
+  /* Bez "gumenog" odskakivanja cijele stranice – osjećaj kao nativna aplikacija */
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+button, .nav-item, .bottom-nav-item, .header-monogram {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* Sigurne zone (notch / Dynamic Island / zaobljeni rubovi), treba viewport-fit=cover */
+#app-header {
+  height: calc(var(--header-h) + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
+}
+#sidebar { padding-left: env(safe-area-inset-left); }
+#app-body { padding-right: env(safe-area-inset-right); }
+.modal-backdrop {
+  padding:
+    max(16px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+}
+@media (max-width: 767px) {
+  #app-header {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  #app-body { padding-left: env(safe-area-inset-left); }
+}
