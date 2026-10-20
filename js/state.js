@@ -376,6 +376,31 @@ async function deleteCategory(id) {
   emit('rules');
 }
 
+// Removes every guest (and with them their seats and wishes); tables and
+// categories stay, as does "category sits together".
+async function deleteAllGuests() {
+  await dbDeleteAll('guests', state.guests.map(g => g.id));
+  state.guests = [];
+  await replaceRules(normalizeRules(state.rules));
+  computeRuleStatus();
+  emit('guests');
+  emit('rules');
+}
+
+// "Kreni ispočetka": everything goes, the onboarding starts again.
+async function clearWeddingData() {
+  for (const store of ['guests', 'rules', 'tables', 'categories']) {
+    await dbDeleteAll(store, state[store].map(r => r.id));
+    state[store] = [];
+  }
+  Object.assign(state.settings, { weddingTitle: '', monogram: '', guideDismissed: false });
+  await dbPut('settings', state.settings);
+  updateMonogramIcon();
+  computeRuleStatus();
+  emit('tables');
+  emit('guests');
+}
+
 // Guests
 async function saveGuest(guest) {
   await dbPut('guests', guest);
@@ -486,7 +511,8 @@ function undoCopy(record) {
   return c;
 }
 
-async function withUndo(message, action) {
+// opts.onUndo runs after the records are restored (e.g. to close a dialog).
+async function withUndo(message, action, opts = {}) {
   const before = {};
   for (const store of UNDO_STORES) before[store] = new Map(state[store].map(r => [r.id, undoCopy(r)]));
   const result = await action();
@@ -500,7 +526,10 @@ async function withUndo(message, action) {
     if (restore.length || remove.length) changed = true;
   }
   if (changed && message) {
-    showToast(message, false, { label: 'Poništi', onClick: () => applyUndo(changes) });
+    showToast(message, false, { label: 'Poništi', onClick: async () => {
+      await applyUndo(changes);
+      if (opts.onUndo) await opts.onUndo();
+    } });
   }
   return result;
 }

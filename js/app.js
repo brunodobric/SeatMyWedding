@@ -117,6 +117,7 @@ function navigateTo(section) {
   });
   renderSection(section);
   renderGuide();
+  renderOptions();
 }
 
 // ── Header ─────────────────────────────────────────────────────────────────────
@@ -151,9 +152,146 @@ function updateMonogram() {
   document.querySelectorAll('.monogram-text').forEach(el => el.textContent = m);
 }
 
+// ── Opcije ─────────────────────────────────────────────────────────────────────
+// One menu on every screen: account, wedding & view, data, and what belongs to
+// the current screen (incl. the destructive "start over" actions, all undoable).
+
+function openOptions() {
+  renderOptions();
+  const panel = document.getElementById('options-panel');
+  panel.hidden = false;
+  document.getElementById('btn-options').setAttribute('aria-expanded', 'true');
+  requestAnimationFrame(() => panel.classList.add('open'));
+}
+
+function closeOptions() {
+  const panel = document.getElementById('options-panel');
+  if (panel.hidden) return;
+  panel.classList.remove('open');
+  document.getElementById('btn-options').setAttribute('aria-expanded', 'false');
+  panel.hidden = true;
+}
+
+const SCREEN_OPTIONS = {
+  sala: () => [
+    { id: 'hall', icon: 'sparkles', label: 'Složi salu', run: () => openHallModal(null) },
+    { id: 'start-over', icon: 'undo', label: 'Kreni ispočetka', danger: true, run: startOver }
+  ],
+  gosti: () => [
+    { id: 'categories', icon: 'palette', label: 'Kategorije', run: openCategoryManager },
+    { id: 'delete-guests', icon: 'trash', label: 'Obriši sve goste', danger: true, disabled: !state.guests.length, run: deleteAllGuestsConfirmed }
+  ],
+  raspored: () => [
+    { id: 'unseat-all', icon: 'user-x', label: 'Makni sve goste sa stolova', danger: true,
+      disabled: !state.guests.some(g => g.tableId && !g.locked), run: unseatAllConfirmed }
+  ]
+};
+const SCREEN_NAMES = { sala: 'Sala', gosti: 'Gosti', raspored: 'Raspored' };
+
+function renderOptions() {
+  const names = document.getElementById('opt-full-names');
+  if (!names) return;
+  names.setAttribute('aria-checked', String(!!state.settings.showFullNames));
+  document.getElementById('opt-guide').hidden = !state.settings.guideDismissed;
+  const items = (SCREEN_OPTIONS[currentSection] || (() => []))();
+  const box = document.getElementById('options-screen');
+  box.innerHTML = `<div class="options-title">${SCREEN_NAMES[currentSection] || ''}</div>` + items.map(it =>
+    `<button class="menu-item${it.danger ? ' danger' : ''}" data-screen-opt="${it.id}"${it.disabled ? ' disabled' : ''}>${icon(it.icon)} ${it.label}</button>`
+  ).join('');
+  box.querySelectorAll('[data-screen-opt]').forEach(btn => btn.addEventListener('click', () => {
+    const it = items.find(x => x.id === btn.dataset.screenOpt);
+    closeOptions();
+    it.run();
+  }));
+}
+
+function setupOptions() {
+  document.getElementById('btn-options').addEventListener('click', e => {
+    e.stopPropagation();
+    if (document.getElementById('options-panel').hidden) openOptions(); else closeOptions();
+  });
+  document.getElementById('btn-options-close').addEventListener('click', closeOptions);
+  // Click outside the sheet (the dimmed backdrop on phones) closes it.
+  document.getElementById('options-panel').addEventListener('click', e => { if (e.target.id === 'options-panel') closeOptions(); });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#options-panel, #btn-options')) closeOptions();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeOptions(); });
+  ['btn-login', 'btn-export-json', 'btn-export-csv'].forEach(id =>
+    document.getElementById(id).addEventListener('click', closeOptions));
+
+  document.getElementById('opt-full-names').addEventListener('click', () => toggleFullNames());
+  document.getElementById('opt-guide').addEventListener('click', async () => {
+    closeOptions();
+    await saveSettings({ guideDismissed: false });
+    renderGuide();
+  });
+  document.getElementById('opt-wedding').addEventListener('click', () => {
+    closeOptions();
+    document.getElementById('wedding-edit-title').value = state.settings.weddingTitle || '';
+    document.getElementById('wedding-edit-monogram').value = state.settings.monogram || '';
+    document.getElementById('modal-wedding').style.display = 'flex';
+    document.getElementById('wedding-edit-title').focus();
+  });
+  document.getElementById('btn-save-wedding').addEventListener('click', async () => {
+    await saveSettings({
+      weddingTitle: document.getElementById('wedding-edit-title').value.trim() || 'Moje Vjenčanje',
+      monogram: document.getElementById('wedding-edit-monogram').value.trim() || '♡'
+    });
+    document.getElementById('modal-wedding').style.display = 'none';
+    updateHeader();
+    updateMonogram();
+  });
+}
+
+function openCategoryManager() {
+  renderCategoryManager();
+  document.getElementById('modal-categories').style.display = 'flex';
+}
+
+const guestCountLabel = n => `${n} ${n % 10 === 1 && n % 100 !== 11 ? 'gost' : 'gostiju'}`;
+
+async function deleteAllGuestsConfirmed() {
+  const n = state.guests.length;
+  if (!n || !confirm(`Obrisati sve goste (${guestCountLabel(n)})? Brišu se i njihova mjesta i želje. Stolovi i kategorije ostaju.`)) return;
+  await withUndo(`Obrisano: ${guestCountLabel(n)}`, () => deleteAllGuests());
+}
+
+async function unseatAllConfirmed() {
+  const seated = state.guests.filter(g => g.tableId && !g.locked);
+  const locked = state.guests.filter(g => g.tableId && g.locked).length;
+  if (!seated.length || !confirm(`Maknuti ${guestCountLabel(seated.length)} sa stolova?${locked ? ` Zaključana mjesta (${locked}) ostaju.` : ''}`)) return;
+  await withUndo(`${guestCountLabel(seated.length)} je bez mjesta`,
+    () => placeGuests(seated.map(g => ({ id: g.id, tableId: null, seatIndex: null }))));
+}
+
+async function startOver() {
+  if (!confirm('Krenuti ispočetka? Brišu se svi gosti, stolovi, kategorije i naslov, i otvaraju se uvodni koraci.')) return;
+  const settings = { ...state.settings };
+  await withUndo('Sve je obrisano', () => clearWeddingData(), {
+    onUndo: async () => {
+      await saveSettings({ weddingTitle: settings.weddingTitle, monogram: settings.monogram, guideDismissed: settings.guideDismissed });
+      document.getElementById('modal-onboarding').style.display = 'none';
+      updateHeader();
+      updateMonogram();
+      renderAll();
+      navigateTo('sala');
+    }
+  });
+  updateHeader();
+  updateMonogram();
+  renderAll();
+  navigateTo('sala');
+  showOnboarding();
+}
+
 // ── Onboarding ─────────────────────────────────────────────────────────────────
 
+let resetOnboarding = null;
+
 function showOnboarding() {
+  // Set up once; "Kreni ispočetka" opens it again from the first step.
+  if (resetOnboarding) { resetOnboarding(); return; }
   const modal = document.getElementById('modal-onboarding');
   modal.style.display = 'flex';
   let step = 1;
@@ -199,6 +337,23 @@ function showOnboarding() {
   };
   nextBtn.addEventListener('click', () => run(false));
   document.getElementById('onboarding-skip').addEventListener('click', () => run(true));
+
+  resetOnboarding = () => {
+    step = 1;
+    template = 'round';
+    ['ob-title', 'ob-monogram', 'ob-guest-list'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('ob-guests').value = 100;
+    document.getElementById('ob-seats').value = HALL_TEMPLATES.round.defaultSeats;
+    document.getElementById('ob-guest-preview').innerHTML = '';
+    renderHallTemplates(document.getElementById('ob-templates'), template, key => {
+      template = key;
+      document.getElementById('ob-seats').value = HALL_TEMPLATES[key].defaultSeats;
+      summary();
+    });
+    summary();
+    showOnboardingStep(step);
+    modal.style.display = 'flex';
+  };
 
   async function onboardingStep(skip) {
     if (step === 1) {
@@ -290,8 +445,6 @@ function renderSala() {
     const violated = getViolatedTableIds();
     floorPlanEdit.update(state.tables, state.guests, state.categories, violated);
   }
-  const btnNamesSala = document.getElementById('btn-full-names-sala');
-  if (btnNamesSala) btnNamesSala.classList.toggle('active', !!state.settings.showFullNames);
 }
 
 function renderCapacityBar() {
@@ -580,7 +733,6 @@ function setupTableModal() {
     document.getElementById('btn-snap-grid').classList.toggle('active', active);
   });
 
-  document.getElementById('btn-full-names-sala')?.addEventListener('click', () => toggleFullNames());
 
   document.getElementById('btn-zoom-in').addEventListener('click', () => floorPlanEdit && floorPlanEdit.zoomIn());
   document.getElementById('btn-zoom-out').addEventListener('click', () => floorPlanEdit && floorPlanEdit.zoomOut());
@@ -592,8 +744,7 @@ async function toggleFullNames() {
   await saveSettings({ showFullNames: next });
   if (floorPlanEdit) floorPlanEdit.setShowFullNames(next);
   if (floorPlanAssign) floorPlanAssign.setShowFullNames(next);
-  document.getElementById('btn-full-names-sala')?.classList.toggle('active', next);
-  document.getElementById('btn-full-names-raspored')?.classList.toggle('active', next);
+  renderOptions();
 }
 
 // ── GOSTI ──────────────────────────────────────────────────────────────────────
@@ -749,11 +900,6 @@ function setupGostiEvents() {
   document.getElementById('guest-search').addEventListener('input', (e) => {
     guestSearchQuery = e.target.value;
     renderGuestList();
-  });
-
-  document.getElementById('btn-manage-categories').addEventListener('click', () => {
-    renderCategoryManager();
-    document.getElementById('modal-categories').style.display = 'flex';
   });
 
   document.getElementById('btn-add-guest-btn').addEventListener('click', () => openGuestModal(null));
@@ -1077,7 +1223,6 @@ function renderRaspored() {
     }
     floorPlanAssign.setShowFullNames(!!state.settings.showFullNames);
     floorPlanAssign.update(state.tables, state.guests, state.categories, getViolatedTableIds());
-    document.getElementById('btn-full-names-raspored').classList.toggle('active', !!state.settings.showFullNames);
   } else if (rasporedView === 'tables') {
     renderTablesView();  // replaces the guests-view skeleton, if any
   } else {
@@ -1415,17 +1560,12 @@ function setupRasporedEvents() {
     rasporedView = btn.dataset.view;
     renderRaspored();
   }));
-  document.getElementById('btn-full-names-raspored').addEventListener('click', () => toggleFullNames());
   document.getElementById('btn-zoom-in-assign').addEventListener('click', () => floorPlanAssign && floorPlanAssign.zoomIn());
   document.getElementById('btn-zoom-out-assign').addEventListener('click', () => floorPlanAssign && floorPlanAssign.zoomOut());
   document.getElementById('btn-zoom-reset-assign').addEventListener('click', () => floorPlanAssign && floorPlanAssign.resetView());
 
-  const menuBtn = document.getElementById('btn-export-menu');
-  const menu = document.getElementById('export-menu');
-  menuBtn.addEventListener('click', e => { e.stopPropagation(); menu.hidden = !menu.hidden; });
-  document.addEventListener('click', () => { menu.hidden = true; });
-
   document.getElementById('btn-print').addEventListener('click', () => {
+    if (!state.guests.some(g => g.tableId)) { showToast('Još nitko nema mjesto'); return; }
     document.getElementById('modal-print').style.display = 'flex';
   });
   document.getElementById('btn-print-go').addEventListener('click', () => {
@@ -1462,6 +1602,7 @@ function setupRasporedEvents() {
   });
 
   document.getElementById('btn-import-json').addEventListener('click', () => {
+    closeOptions();
     document.getElementById('json-import-input').click();
   });
 
@@ -1475,6 +1616,7 @@ function setupRasporedEvents() {
         await importData(data);
         renderAll();
         navigateTo('sala');
+        showToast('Podaci su vraćeni iz kopije');
       }
     } catch (e) {
       alert('Neispravna JSON datoteka.');
@@ -1622,6 +1764,7 @@ async function _appMain() {
   setupAutoSeating();
   setupSeatingResultModal();
   setupSalaTabs();
+  setupOptions();
   await init();
 }
 
