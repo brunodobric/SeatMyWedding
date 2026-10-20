@@ -22,6 +22,13 @@
   --shadow-card: 0 2px 12px rgba(43,38,34,0.07);
   --sidebar-w: 220px;
   --header-h: 62px;
+  /* Zaglavlje i donja traka: karamela iz ikone, tamnija uz rub ekrana,
+     svjetlija prema sadržaju */
+  --bar-edge: #7B5E3C;
+  --bar-inner: #C2A274;
+  --bar-line: rgba(230,200,110,0.55);
+  --bar-text: #FFF6DF;
+  --bar-text-soft: rgba(255,250,238,0.85);
 }
 
 /* ── Reset & base ──────────────────────────────────────────────────────────── */
@@ -78,9 +85,11 @@ a { color: var(--color-gold-deep); }
   gap: 12px;
   height: var(--header-h);
   padding: 0 20px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  box-shadow: 0 1px 6px rgba(43,38,34,0.06);
+  background:
+    radial-gradient(ellipse 60% 140% at 50% 0%, rgba(230,200,110,0.28), transparent 70%),
+    linear-gradient(180deg, var(--bar-edge) 0%, var(--bar-inner) 100%);
+  border-bottom: 1px solid var(--bar-line);
+  box-shadow: 0 3px 14px rgba(35,27,21,0.22);
   z-index: 10;
   flex-shrink: 0;
 }
@@ -96,13 +105,20 @@ a { color: var(--color-gold-deep); }
   color: #fff;
   font-weight: 600;
   flex-shrink: 0;
-  box-shadow: 0 1px 4px rgba(161,124,51,0.3);
+  box-shadow: 0 0 0 1.5px rgba(255,240,200,0.55), 0 2px 8px rgba(0,0,0,0.3);
 }
 
 #wedding-title-display {
   font-family: var(--font-script);
-  font-size: 1.8rem;
-  color: var(--color-gold-deep);
+  font-size: 2.15rem;
+  /* Pinyon is thin: a stroke in the same colour makes it bolder */
+  -webkit-text-stroke: 0.7px var(--bar-text);
+  color: var(--bar-text);
+  text-shadow: 0 1px 3px rgba(60,40,15,0.45);
+  line-height: 1;
+  /* The script's line box sits high: nudge the letters to the bar's middle */
+  position: relative;
+  top: 0.17em;
   cursor: pointer;
   padding: 2px 6px;
   border-radius: 4px;
@@ -110,9 +126,9 @@ a { color: var(--color-gold-deep); }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
+  max-width: 60vw;
 }
-#wedding-title-display:hover { background: var(--color-champagne); }
+#wedding-title-display:hover { background: rgba(255,255,255,0.10); }
 
 #wedding-title-input {
   display: none;
@@ -160,7 +176,7 @@ a { color: var(--color-gold-deep); }
 /* Sidebar (desktop/tablet) */
 #sidebar {
   width: var(--sidebar-w);
-  background: var(--color-surface);
+  background: linear-gradient(180deg, #F8F0E3 0%, var(--color-bg) 55%);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
@@ -186,7 +202,7 @@ a { color: var(--color-gold-deep); }
 .nav-item.active {
   color: var(--color-gold-deep);
   border-left-color: var(--color-gold);
-  background: linear-gradient(to right, rgba(230,200,110,0.12), transparent);
+  background: linear-gradient(to right, rgba(201,162,75,0.20), transparent);
   font-weight: 600;
 }
 .nav-icon { font-size: 1.2rem; width: 24px; display: inline-flex; align-items: center; justify-content: center; }
@@ -232,8 +248,11 @@ a { color: var(--color-gold-deep); }
   display: none;
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-border);
+  background:
+    radial-gradient(ellipse 60% 140% at 50% 100%, rgba(230,200,110,0.2), transparent 70%),
+    linear-gradient(0deg, var(--bar-edge) 0%, var(--bar-inner) 100%);
+  border-top: 1px solid var(--bar-line);
+  box-shadow: 0 -3px 14px rgba(35,27,21,0.18);
   height: auto;
   z-index: 10;
   /* Keep clear of the iPhone home indicator and rounded-corner cutouts so the
@@ -254,7 +273,7 @@ a { color: var(--color-gold-deep); }
   justify-content: center;
   gap: 2px;
   font-size: 0.65rem;
-  color: var(--color-muted);
+  color: var(--bar-text-soft);
   font-weight: 500;
   cursor: pointer;
   border: none;
@@ -266,10 +285,10 @@ a { color: var(--color-gold-deep); }
 }
 .bottom-nav-item .nav-icon { font-size: 1.35rem; width: auto; line-height: 1; }
 .bottom-nav-item.active {
-  color: var(--color-gold-deep);
+  color: var(--bar-text);
   font-weight: 600;
-  background: linear-gradient(180deg, rgba(201, 162, 75, 0.12), transparent 70%);
-  border-top-color: var(--color-gold);
+  background: linear-gradient(180deg, rgba(230,200,110,0.22), transparent 75%);
+  border-top-color: var(--color-gold-light);
 }
 
 /* ── Buttons ────────────────────────────────────────────────────────────────── */
@@ -1156,7 +1175,7 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
 /* ── Responsive: tablet ──────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   :root { --sidebar-w: 180px; }
-  #wedding-title-display { max-width: 160px; font-size: 1.3rem; }
+  #wedding-title-display { font-size: 1.95rem; }
   .header-stats { gap: 6px; }
   .stat-badge { font-size: 0.72rem; padding: 3px 8px; }
   .sala-panel { width: 220px; }
@@ -1178,7 +1197,7 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
 
   #app-header { padding: 0 12px; gap: 8px; height: 52px; }
   :root { --header-h: 52px; }
-  #wedding-title-display { max-width: 130px; font-size: 1.2rem; }
+  #wedding-title-display { max-width: calc(100vw - 150px); font-size: 1.75rem; }
   .stat-badge { font-size: 0.68rem; padding: 3px 6px; }
 
   /* Sala: mobile uses tabs instead of the desktop split layout.
@@ -1667,19 +1686,19 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 14px;
   border-radius: var(--radius-btn);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-gold-deep);
+  border: 1px solid var(--bar-line);
+  background: rgba(255,255,255,0.10);
+  color: var(--bar-text);
   font-size: 0.88rem;
   font-weight: 500;
   flex-shrink: 0;
 }
-.btn-options:hover, .btn-options[aria-expanded="true"] { background: var(--color-champagne); border-color: var(--color-gold); }
+.btn-options:hover, .btn-options[aria-expanded="true"] { background: rgba(255,255,255,0.20); border-color: var(--color-gold-light); }
 .btn-options .ic { font-size: 1.1rem; }
 .options-dot {
   position: absolute; top: 4px; right: 4px;
   width: 8px; height: 8px; border-radius: 50%;
-  border: 1.5px solid var(--color-surface);
+  border: 1.5px solid var(--bar-inner);
   display: none;
 }
 .btn-options[data-sync="synced"] .options-dot { display: block; background: #5a8a6a; }
