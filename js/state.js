@@ -39,7 +39,35 @@ async function saveTable(table) {
   await dbPut('tables', table);
   const idx = state.tables.findIndex(t => t.id === table.id);
   if (idx >= 0) state.tables[idx] = table; else state.tables.push(table);
+  // If the seat count shrank, guests on removed seats move to free seats of the
+  // same table (or become unassigned when the table is full).
+  const moved = reseatOverflowGuests(table);
+  if (moved.length) {
+    await dbPutAll('guests', moved);
+    computeRuleStatus();
+  }
   emit('tables');
+}
+
+function reseatOverflowGuests(table) {
+  const seated = state.guests.filter(g => g.tableId === table.id);
+  const fits = g => Number.isInteger(g.seatIndex) && g.seatIndex >= 0 && g.seatIndex < table.seats;
+  const overflow = seated.filter(g => !fits(g));
+  if (overflow.length === 0) return [];
+  const taken = new Set(seated.filter(fits).map(g => g.seatIndex));
+  const free = [];
+  for (let i = 0; i < table.seats; i++) if (!taken.has(i)) free.push(i);
+  overflow.sort((a, b) => (b.locked ? 1 : 0) - (a.locked ? 1 : 0) || (a.seatIndex || 0) - (b.seatIndex || 0));
+  for (const g of overflow) {
+    if (free.length) {
+      g.seatIndex = free.shift();
+    } else {
+      g.tableId = null;
+      g.seatIndex = null;
+      g.status = 'unassigned';
+    }
+  }
+  return overflow;
 }
 
 async function deleteTable(id) {
@@ -51,8 +79,8 @@ async function deleteTable(id) {
     g.tableId = null;
     g.seatIndex = null;
     g.status = 'unassigned';
-    await dbPut('guests', g);
   }
+  if (affected.length) await dbPutAll('guests', affected);
   // Remove rules referencing this table
   const rulesAffected = state.rules.filter(r => r.tableId === id);
   for (const r of rulesAffected) {
@@ -77,10 +105,9 @@ async function deleteCategory(id) {
   await dbDelete('categories', id);
   state.categories = state.categories.filter(c => c.id !== id);
   // Remove category from guests
-  for (const g of state.guests.filter(g => g.categoryId === id)) {
-    g.categoryId = null;
-    await dbPut('guests', g);
-  }
+  const affectedGuests = state.guests.filter(g => g.categoryId === id);
+  for (const g of affectedGuests) g.categoryId = null;
+  if (affectedGuests.length) await dbPutAll('guests', affectedGuests);
   // Remove category-together rules
   const affected = state.rules.filter(r => r.categoryId === id);
   for (const r of affected) await dbDelete('rules', r.id);
@@ -100,10 +127,17 @@ async function saveGuest(guest) {
   emit('guests');
 }
 
+// Add many guests at once (bulk import) — one DB transaction, one re-render.
+async function addGuests(guests) {
+  if (!guests.length) return;
+  await dbPutAll('guests', guests);
+  state.guests.push(...guests);
+  computeRuleStatus();
+  emit('guests');
+}
+
 async function deleteGuest(id) {
   await dbDelete('guests', id);
-  // Free the seat
-  const guest = state.guests.find(g => g.id === id);
   state.guests = state.guests.filter(g => g.id !== id);
   // Remove from rules
   const rulesAffected = state.rules.filter(r => r.guestIds && r.guestIds.includes(id));
@@ -150,14 +184,30 @@ async function unassignGuest(guestId) {
 
 async function applySeatingResult(assignments) {
   // assignments: [{guestId, tableId, seatIndex}]
+  const byId = new Map(state.guests.map(g => [g.id, g]));
+  const changed = [];
   for (const a of assignments) {
-    const guest = state.guests.find(g => g.id === a.guestId);
+    const guest = byId.get(a.guestId);
     if (!guest || guest.locked) continue;
     guest.tableId = a.tableId;
     guest.seatIndex = a.seatIndex;
     guest.status = a.tableId ? 'assigned' : 'unassigned';
-    await dbPut('guests', guest);
+    changed.push(guest);
   }
+  if (changed.length) await dbPutAll('guests', changed);
+  computeRuleStatus();
+  emit('guests');
+}
+
+// Restore guests from a snapshot (undo of auto-seating) in one transaction.
+async function restoreGuests(snapshot) {
+  const byId = new Map(state.guests.map(g => [g.id, g]));
+  const changed = [];
+  for (const s of snapshot) {
+    const curr = byId.get(s.id);
+    if (curr) { Object.assign(curr, s); changed.push(curr); }
+  }
+  if (changed.length) await dbPutAll('guests', changed);
   computeRuleStatus();
   emit('guests');
 }
@@ -231,11 +281,7 @@ async function importData(data) {
   if (data.guests && data.guests.length) await dbPutAll('guests', data.guests);
   if (data.rules && data.rules.length) await dbPutAll('rules', data.rules);
   await loadAll();
-  emit('settings');
-  emit('tables');
-  emit('categories');
-  emit('guests');
-  emit('rules');
+  emit('import');
 }
 
 function updateMonogramIcon() {

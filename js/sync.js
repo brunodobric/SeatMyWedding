@@ -13,6 +13,23 @@ let _pushTimer = null;
 let _lastPushedAt = 0;
 let _cloudUpdatedAt = 0;
 let _unsubscribe = null;
+let _pushPending = false;
+let _applyingCloud = false;
+
+// Time of the last local change made while logged in (or of the last synced
+// snapshot), per user. Persisted so that edits made offline survive a reload:
+// without it the stale cloud copy would win on the next login and overwrite them.
+function localTsKey() {
+  return 'smw-local-updated-at:' + (currentUser ? currentUser.uid : '');
+}
+function getLocalUpdatedAt() {
+  if (!currentUser) return 0;
+  try { return Number(localStorage.getItem(localTsKey())) || 0; } catch (e) { return 0; }
+}
+function setLocalUpdatedAt(ts) {
+  if (!currentUser) return;
+  try { localStorage.setItem(localTsKey(), String(ts)); } catch (e) { /* ignore */ }
+}
 
 function isFirestoreReady() {
   try {
@@ -92,13 +109,16 @@ async function applyCloudSnapshot(data) {
   // Spriječi push petlju dok primjenjujemo cloud podatke
   const wasEnabled = _syncEnabled;
   _syncEnabled = false;
+  _applyingCloud = true;
   clearTimeout(_pushTimer);
   try {
     await importData(payload);
     _cloudUpdatedAt = data.updatedAt || 0;
     _lastPushedAt = data.updatedAt || 0;
+    setLocalUpdatedAt(_lastPushedAt);
   } finally {
     _syncEnabled = wasEnabled;
+    _applyingCloud = false;
   }
 }
 
@@ -110,7 +130,12 @@ function scheduleCloudPush(delay = 1200) {
 }
 
 async function pushToCloud() {
-  if (!_syncEnabled || !currentUser || _syncing) return;
+  if (!_syncEnabled || !currentUser) return;
+  if (_syncing) {
+    // A push is in flight — push again once it finishes so this change isn't lost.
+    _pushPending = true;
+    return;
+  }
   if (!navigator.onLine) {
     setSyncStatus('offline');
     return;
@@ -127,6 +152,7 @@ async function pushToCloud() {
     await getUserDocRef(currentUser.uid).set(snap, { merge: false });
     _lastPushedAt = snap.updatedAt || Date.now();
     _cloudUpdatedAt = _lastPushedAt;
+    if (getLocalUpdatedAt() <= _lastPushedAt) setLocalUpdatedAt(_lastPushedAt);
     setSyncStatus('synced');
   } catch (err) {
     console.error('[Sync] push failed', err);
@@ -140,6 +166,10 @@ async function pushToCloud() {
     }
   } finally {
     _syncing = false;
+    if (_pushPending) {
+      _pushPending = false;
+      scheduleCloudPush(300);
+    }
   }
 }
 
@@ -196,7 +226,7 @@ async function onAuthForSync(user) {
     } else if (cloudHasData && localHasData) {
       const cloudTs = cloud.updatedAt || 0;
       // Ako cloud znatno noviji (> 2 s), preuzmi; inače push
-      if (cloudTs > _lastPushedAt + 2000) {
+      if (cloudTs > Math.max(_lastPushedAt, getLocalUpdatedAt()) + 2000) {
         await applyCloudSnapshot(cloud);
         if (typeof renderAll === 'function') renderAll();
         if (typeof showToast === 'function') showToast('Sinkronizirano s cloudom');
@@ -211,7 +241,7 @@ async function onAuthForSync(user) {
     if (_unsubscribe) _unsubscribe();
     _unsubscribe = getUserDocRef(user.uid).onSnapshot(
       async doc => {
-        if (!doc.exists || _syncing) return;
+        if (!doc.exists || _syncing || doc.metadata.hasPendingWrites) return;
         const data = doc.data();
         const ts = data.updatedAt || 0;
         // Ignoriraj vlastiti push
@@ -275,7 +305,9 @@ function setupSync() {
 
   // Debounced push na svaku lokalnu promjenu
   window.addEventListener('stateChange', () => {
-    if (_syncEnabled && currentUser) scheduleCloudPush();
+    if (_applyingCloud || !currentUser) return;
+    setLocalUpdatedAt(Date.now());
+    if (_syncEnabled) scheduleCloudPush();
   });
 
   // Online/offline
