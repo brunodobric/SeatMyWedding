@@ -101,15 +101,18 @@ a { color: var(--color-gold-deep); }
 .header-monogram {
   width: 38px; height: 38px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-gold-light), var(--color-gold-deep));
+  /* Same glass look as the Opcije button on the other side of the bar */
+  background: rgba(255,255,255,0.10);
+  border: 1px solid var(--bar-line);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-serif);
   font-style: italic;
   font-size: 17px;
-  color: #fff;
+  color: var(--bar-text);
   font-weight: 600;
   flex-shrink: 0;
-  box-shadow: 0 0 0 1.5px rgba(255,240,200,0.55), 0 2px 8px rgba(0,0,0,0.3);
 }
 
 #wedding-title-display {
@@ -132,6 +135,18 @@ a { color: var(--color-gold-deep); }
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 60vw;
+}
+/* Where supported, trim the line box to the capitals and the baseline so the
+   bar centres the letters themselves, the same in Safari and Chrome (their
+   line boxes for this script font differ). The padding gives the swashes and
+   descenders room inside overflow: hidden. */
+@supports (text-box: trim-both cap alphabetic) {
+  #wedding-title-display {
+    text-box: trim-both cap alphabetic;
+    line-height: 1;
+    top: 0;
+    padding: 0.4em 6px;
+  }
 }
 #wedding-title-display:hover { background: rgba(255,255,255,0.10); }
 
