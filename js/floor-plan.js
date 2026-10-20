@@ -732,6 +732,15 @@ class FloorPlan {
   }
 
   /** Zoom keeping (cx, cy) in SVG coords fixed on screen */
+  // Move the view by a number of screen pixels (auto-pan while dragging a guest).
+  panBy(dxScreen, dyScreen) {
+    const rect = this.svg.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    this.viewBox.x += (dxScreen / rect.width) * this.viewBox.w;
+    this.viewBox.y += (dyScreen / rect.height) * this.viewBox.h;
+    this._applyViewBox();
+  }
+
   _zoomAt(scale, cx, cy) {
     const newW = Math.max(200, Math.min(WORLD_W * 1.5, this.viewBox.w * scale));
     const newH = Math.max(140, Math.min(WORLD_H * 1.5, this.viewBox.h * scale));

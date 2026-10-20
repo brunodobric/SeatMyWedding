@@ -83,20 +83,19 @@
     </div>
     <span id="wedding-title-display" title="Klikni za uređivanje naslova">Raspored Sjedenja</span>
     <input id="wedding-title-input" type="text" class="form-control" placeholder="Ana & Marko" autocomplete="off">
-  </header>
-
-  <!-- Auth + cloud sync bar (below title row) -->
-  <div id="auth-bar" class="auth-bar">
-    <span id="sync-status" class="sync-status off" style="display:none" title=""></span>
-    <button type="button" id="btn-login" class="btn-secondary btn-login" title="Prijava">
-      <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg></span> Prijava
-    </button>
-    <div id="user-menu" class="user-menu" style="display:none">
-      <div id="user-avatar" class="user-avatar" aria-hidden="true"></div>
-      <span id="user-display-name" class="user-display-name"></span>
-      <button type="button" id="btn-logout" class="btn-text" title="Odjava">Odjava</button>
+    <!-- Auth + cloud sync (right side of the header) -->
+    <div id="auth-bar" class="auth-bar">
+      <span id="sync-status" class="sync-status off" style="display:none" title=""></span>
+      <button type="button" id="btn-login" class="btn-secondary btn-login" title="Prijava">
+        <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg></span> Prijava
+      </button>
+      <div id="user-menu" class="user-menu" style="display:none">
+        <div id="user-avatar" class="user-avatar" aria-hidden="true"></div>
+        <span id="user-display-name" class="user-display-name"></span>
+        <button type="button" id="btn-logout" class="btn-text" title="Odjava">Odjava</button>
+      </div>
     </div>
-  </div>
+  </header>
 
   <div id="guide-bar" class="guide-bar" hidden></div>
 
@@ -430,6 +429,7 @@
         <div class="form-group">
           <label><svg class="ic" aria-hidden="true"><use href="#i-together"/></svg> Sjedi s</label>
           <div class="people-picker" id="pp-together" data-placeholder="Dodaj partnera, obitelj…"></div>
+          <p class="pp-note" id="pp-together-note" hidden></p>
         </div>
         <div class="form-group">
           <label><svg class="ic" aria-hidden="true"><use href="#i-apart"/></svg> Ne sjedi s</label>
@@ -483,7 +483,15 @@
       <label for="import-category">Kategorija za sve (ako red nema svoju)</label>
       <select id="import-category" class="form-control"></select>
     </div>
+    <label class="checkbox-row">
+      <input id="import-surname-first" type="checkbox">
+      <span>Prezime je napisano prvo (Horvat Ana, Horvat, Ana)</span>
+    </label>
     <div class="import-preview" id="import-preview"></div>
+    <label class="checkbox-row import-dup-row" id="import-dup-row" hidden>
+      <input id="import-include-existing" type="checkbox">
+      <span id="import-dup-label"></span>
+    </label>
     <div class="modal-footer">
       <button class="btn-primary" id="btn-import-confirm">Dodaj goste</button>
     </div>
@@ -571,6 +579,7 @@
     </div>
     <p id="seat-options-label" style="font-size:0.95rem;font-weight:500;margin-bottom:16px"></p>
     <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn-secondary" id="btn-seat-move" style="justify-content:flex-start"><svg class="ic" aria-hidden="true"><use href="#i-chair"/></svg> Premjesti na drugo mjesto</button>
       <button class="btn-secondary" id="btn-seat-unassign" style="justify-content:flex-start"><svg class="ic" aria-hidden="true"><use href="#i-user-x"/></svg> Ukloni s mjesta</button>
       <button class="btn-secondary" id="btn-seat-lock" style="justify-content:flex-start"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Zaključaj</button>
       <button class="btn-secondary" id="btn-seat-edit-guest" style="justify-content:flex-start"><svg class="ic" aria-hidden="true"><use href="#i-edit"/></svg> Uredi gosta</button>

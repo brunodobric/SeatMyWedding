@@ -739,6 +739,10 @@ select.form-control { cursor: pointer; }
 .import-preview ul { list-style: none; display: flex; flex-direction: column; gap: 5px; margin: 8px 0 4px; }
 .import-preview li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .import-preview .pp-chip { padding: 2px 10px; }
+.import-dup-row { margin-top: 10px; align-items: flex-start; }
+.import-dup-row[hidden] { display: none; }
+.import-dup-row span { line-height: 1.4; }
+.import-dup-row em { font-style: normal; color: var(--color-gold-deep); }
 .import-link { color: var(--color-gold); display: inline-flex; font-size: 0.8rem; }
 
 /* ── Guest card: seating wishes ──────────────────────────────────────────── */
@@ -789,6 +793,10 @@ select.form-control { cursor: pointer; }
 .pp-input { flex: 1; min-width: 120px; border: none; outline: none; background: transparent; font-size: 0.92rem; padding: 4px 2px; color: var(--color-ink); }
 .pp-input::placeholder { color: var(--color-muted); }
 .pp-suggest { display: flex; flex-direction: column; }
+.pp-note { display: flex; gap: 8px; align-items: flex-start; margin-top: 6px; padding: 7px 10px; border-radius: 8px; background: var(--color-champagne); color: var(--color-gold-bronze); font-size: 0.8rem; line-height: 1.45; }
+.pp-note[hidden] { display: none; }
+.pp-note .ic { flex-shrink: 0; margin-top: 2px; color: var(--color-gold); }
+.pp-note strong { color: var(--color-gold-deep); font-weight: 600; }
 .pp-suggest:not(:empty) {
   margin-top: 4px;
   border: 1px solid var(--color-border);
@@ -939,6 +947,8 @@ select.form-control { cursor: pointer; }
 #unassigned-count { font-weight: 500; color: var(--color-muted); }
 .unassigned-hint { font-size: 0.75rem; color: var(--color-muted); }
 .unassigned-hint:empty { display: none; }
+.unassigned-hint.selecting { color: var(--color-gold-deep); }
+.unassigned-hint .hint-cancel { font-size: inherit; padding: 0 4px; margin-left: 4px; text-decoration: underline; }
 #raspored-search { width: 100%; }
 
 #unassigned-list {
@@ -1212,10 +1222,12 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
   .sala-tab-panel .sala-canvas { height: 100%; }
   #table-list { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
-  .guide-bar { padding: 6px 8px 6px 12px; gap: 8px; }
+  .guide-bar { padding: 2px 4px 2px 10px; gap: 6px; }
+  .guide-bar .guide-close { width: 30px; height: 30px; }
   .guide-title { display: none; }
   .guide-steps { gap: 2px; }
-  .guide-step { padding: 3px 6px 3px 3px; font-size: 0.74rem; gap: 4px; }
+  .guide-step { padding: 2px 6px 2px 2px; font-size: 0.74rem; gap: 4px; }
+  .guide-num { width: 18px; height: 18px; font-size: 0.66rem; }
   .guide-step:not(.current) .guide-label { display: none; }
   .guide-sep { width: 10px; }
   .ob-fields.form-row { flex-direction: row; }
@@ -1247,8 +1259,8 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
   .table-cards { grid-template-columns: 1fr; }
   .hide-touch { display: none !important; }
   .unassigned-panel.all-seated #unassigned-list { display: none; }
-  .section-header { padding: 10px 16px 8px; }
-  .section-title { font-size: 1.4rem; }
+  /* The bottom navigation already names the section. */
+  .section-header { display: none; }
   .menu { position: fixed; left: 12px; right: 12px; top: auto; bottom: calc(70px + env(safe-area-inset-bottom)); min-width: 0; }
 
   /* Gosti */
@@ -1286,22 +1298,30 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
   .print-alpha-row { display: flex; align-items: baseline; gap: 2mm; break-inside: avoid; line-height: 1.7; }
   .print-alpha-row strong { font-family: var(--font-serif); font-size: 12pt; color: #A17C33; white-space: nowrap; }
   .print-dots { flex: 1; border-bottom: 0.3mm dotted #C9A24B; transform: translateY(-1mm); }
-  .print-floor { width: 100%; height: 200mm; display: block; }
+  /* A4 portrait inside 15mm margins is 180 x 267mm. */
+  .print-floor-page { height: 265mm; overflow: hidden; position: relative; }
+  .print-floor-page .print-head { margin-bottom: 4mm; }
+  .print-floor { width: 100%; height: 215mm; display: block; }
+  .print-floor-page.landscape .print-floor-wrap {
+    position: absolute; top: 0; left: 0;
+    width: 265mm; height: 180mm;
+    transform-origin: top left;
+    transform: translateX(180mm) rotate(90deg);
+  }
+  .print-floor-page.landscape .print-monogram { display: none; }
+  .print-floor-page.landscape .print-title { font-size: 22pt; }
+  .print-floor-page.landscape .print-floor { height: 150mm; }
   @page { margin: 15mm; }
 }
 
-/* ── Auth bar (below header) ──────────────────────────────────────────────── */
+/* ── Auth + sync (right side of the header) ───────────────────────────────── */
 .auth-bar {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  min-height: 40px;
-  padding: 6px 20px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
-  z-index: 9;
+  margin-left: auto;
+  min-width: 0;
 }
 
 /* ── Firebase Auth UI ─────────────────────────────────────────────────────── */
@@ -1460,7 +1480,8 @@ body.auth-logged-in #btn-login {
   transition: opacity 0.25s, transform 0.25s;
   z-index: 9999;
   box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-  max-width: 90vw;
+  width: max-content;
+  max-width: calc(100vw - 32px);
 }
 .auth-toast.show {
   opacity: 1;
@@ -1469,13 +1490,31 @@ body.auth-logged-in #btn-login {
 .auth-toast.error {
   background: #b33a2e;
 }
+.auth-toast.has-action {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  pointer-events: auto;
+  padding: 8px 8px 8px 20px;
+}
+.auth-toast:not(.show) { pointer-events: none; }
+.toast-action {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.35);
+  color: #f3dfb8;
+  font: inherit;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.toast-action:hover { background: rgba(255,255,255,0.08); }
 
 @media (max-width: 767px) {
-  .auth-bar {
-    padding: 4px 12px;
-    min-height: 36px;
-    gap: 8px;
-  }
+  .auth-bar { gap: 8px; }
+  .user-avatar { width: 28px; height: 28px; }
+  .btn-text#btn-logout { padding: 4px 6px; }
 }
 
 @media (max-width: 640px) {
@@ -1490,7 +1529,6 @@ body.auth-logged-in #btn-login {
   font-weight: 500;
   color: var(--color-muted);
   white-space: nowrap;
-  margin-right: auto; /* left side of auth-bar */
   flex-shrink: 1;
   opacity: 0.85;
   transition: color 0.2s;

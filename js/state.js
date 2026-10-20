@@ -445,6 +445,59 @@ async function restoreGuests(snapshot) {
   emit('guests');
 }
 
+// ── Undo ──────────────────────────────────────────────────────────────────────
+// withUndo runs an action and remembers only the records it changed, so undoing
+// it never touches anything else (e.g. edits synced from another device since).
+
+const UNDO_STORES = ['tables', 'categories', 'guests', 'rules'];
+
+function undoCopy(record) {
+  const c = JSON.parse(JSON.stringify(record));
+  delete c.satisfied;
+  return c;
+}
+
+async function withUndo(message, action) {
+  const before = {};
+  for (const store of UNDO_STORES) before[store] = new Map(state[store].map(r => [r.id, undoCopy(r)]));
+  const result = await action();
+  const changes = {};
+  let changed = false;
+  for (const store of UNDO_STORES) {
+    const after = new Map(state[store].map(r => [r.id, JSON.stringify(undoCopy(r))]));
+    const restore = [...before[store].values()].filter(r => after.get(r.id) !== JSON.stringify(r));
+    const remove = [...after.keys()].filter(id => !before[store].has(id));
+    changes[store] = { restore, remove };
+    if (restore.length || remove.length) changed = true;
+  }
+  if (changed && message) {
+    showToast(message, false, { label: 'Poništi', onClick: () => applyUndo(changes) });
+  }
+  return result;
+}
+
+async function applyUndo(changes) {
+  for (const store of UNDO_STORES) {
+    const { restore, remove } = changes[store];
+    if (remove.length) {
+      await dbDeleteAll(store, remove);
+      const gone = new Set(remove);
+      state[store] = state[store].filter(r => !gone.has(r.id));
+    }
+    if (restore.length) {
+      await dbPutAll(store, restore);
+      const byId = new Map(state[store].map((r, i) => [r.id, i]));
+      for (const r of restore) {
+        const copy = { ...r };
+        if (byId.has(r.id)) state[store][byId.get(r.id)] = copy; else state[store].push(copy);
+      }
+    }
+  }
+  computeRuleStatus();
+  for (const type of UNDO_STORES) emit(type);
+  showToast('Poništeno');
+}
+
 function computeRuleStatus() {
   for (const rule of state.rules) {
     rule.satisfied = evaluateRule(rule);

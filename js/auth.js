@@ -300,19 +300,38 @@ function handleAuthError(err) {
   showLoginError(msg);
 }
 
-function showToast(message, isError) {
+// action: { label, onClick, duration } adds a button (e.g. "Poništi").
+// duration 0 keeps the toast until the button is used.
+function showToast(message, isError, action) {
   var toast = document.getElementById('auth-toast');
   if (!toast) {
     toast = document.createElement('div');
     toast.id = 'auth-toast';
     toast.className = 'auth-toast';
+    toast.setAttribute('role', 'status');
     document.body.appendChild(toast);
   }
-  toast.textContent = message;
+  toast.textContent = '';
+  var text = document.createElement('span');
+  text.textContent = message;
+  toast.appendChild(text);
   toast.classList.toggle('error', !!isError);
+  toast.classList.toggle('has-action', !!action);
+  if (action) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'toast-action';
+    btn.textContent = action.label;
+    btn.addEventListener('click', function () {
+      toast.classList.remove('show');
+      action.onClick();
+    });
+    toast.appendChild(btn);
+  }
   toast.classList.add('show');
   clearTimeout(toast._timer);
-  toast._timer = setTimeout(function () { toast.classList.remove('show'); }, 3200);
+  var duration = action && action.duration !== undefined ? action.duration : (action ? 6000 : 3200);
+  if (duration) toast._timer = setTimeout(function () { toast.classList.remove('show'); }, duration);
 }
 
 function getCurrentUser() {

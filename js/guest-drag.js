@@ -32,9 +32,61 @@ const guestDrag = {
   move(x, y) {
     const a = this.active;
     if (!a) return;
+    a.x = x;
+    a.y = y;
     a.ghost.style.left = x + 'px';
     a.ghost.style.top = y + 'px';
-    const target = this.hitTest(x, y);
+    this.autoScroll();
+    this.updateTarget();
+  },
+
+  // Near the edge of the floor plan or of a scrolling list, keep moving it
+  // while the finger or mouse stays there, so far tables can be reached.
+  autoScroll() {
+    const a = this.active;
+    if (!a || a.scrollFrame) return;
+    const EDGE = 44, MAX = 14;
+    const speed = (pos, start, end) => {
+      if (pos < start + EDGE) return -Math.ceil(MAX * (1 - Math.max(0, pos - start) / EDGE));
+      if (pos > end - EDGE) return Math.ceil(MAX * (1 - Math.max(0, end - pos) / EDGE));
+      return 0;
+    };
+    const step = () => {
+      a.scrollFrame = null;
+      if (this.active !== a) return;
+      const el = document.elementFromPoint(a.x, a.y);
+      let moved = false;
+      const svg = el && el.closest && el.closest('#fp-assign-svg');
+      if (svg && typeof floorPlanAssign !== 'undefined' && floorPlanAssign) {
+        const r = svg.getBoundingClientRect();
+        const dx = speed(a.x, r.left, r.right), dy = speed(a.y, r.top, r.bottom);
+        if (dx || dy) { floorPlanAssign.panBy(dx, dy); moved = true; }
+      } else {
+        let box = el;
+        while (box && box !== document.body) {
+          const cs = getComputedStyle(box);
+          if (/(auto|scroll)/.test(cs.overflowY) && box.scrollHeight > box.clientHeight) break;
+          box = box.parentElement;
+        }
+        if (box && box !== document.body) {
+          const r = box.getBoundingClientRect();
+          const dy = speed(a.y, r.top, r.bottom);
+          const before = box.scrollTop;
+          if (dy) box.scrollTop += dy;
+          moved = box.scrollTop !== before;
+        }
+      }
+      if (moved) {
+        this.updateTarget();
+        a.scrollFrame = requestAnimationFrame(step);
+      }
+    };
+    a.scrollFrame = requestAnimationFrame(step);
+  },
+
+  updateTarget() {
+    const a = this.active;
+    const target = this.hitTest(a.x, a.y);
     const el = target ? target.el : null;
     if (el !== a.targetEl) {
       if (a.targetEl) a.targetEl.classList.remove('drop-target');
@@ -75,6 +127,7 @@ const guestDrag = {
   cleanup() {
     const a = this.active;
     if (!a) return;
+    if (a.scrollFrame) cancelAnimationFrame(a.scrollFrame);
     if (a.targetEl) a.targetEl.classList.remove('drop-target');
     a.ghost.remove();
     document.body.classList.remove('dragging-guest');
@@ -104,8 +157,9 @@ async function dropGuest(guestId, target) {
   if (occupant && occupant.locked) { showToast(`${occupant.name} ima zaključano mjesto`, true); return; }
   const changes = [{ id: guestId, tableId: table.id, seatIndex: target.seatIndex }];
   if (occupant) changes.push({ id: occupant.id, tableId: guest.tableId, seatIndex: guest.seatIndex });
-  await placeGuests(changes);
-  if (occupant) showToast(guest.tableId ? `${guest.name} i ${occupant.name} su zamijenili mjesta` : `${occupant.name} je sada bez mjesta`);
+  if (!occupant) { await placeGuests(changes); return; }
+  const message = guest.tableId ? `${guest.name} i ${occupant.name} su zamijenili mjesta` : `${occupant.name} je sada bez mjesta`;
+  await withUndo(message, () => placeGuests(changes));
 }
 
 // Call from mousedown / touchstart on something that represents a guest.

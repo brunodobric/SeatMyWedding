@@ -16,7 +16,7 @@ let lastSeatingSnapshot = null;
 
 async function init() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    setupAppUpdates();
   }
   await loadAll();
   setupNav();
@@ -38,6 +38,39 @@ function renderSection(section) {
   if (section === 'sala') renderSala();
   else if (section === 'gosti') renderGosti();
   else if (section === 'raspored') renderRaspored();
+}
+
+// A new deploy installs in the background; the open page keeps its version
+// until the user chooses to reload, so old and new files never mix.
+function setupAppUpdates() {
+  // Reload only after the user asked for the new version (the first install
+  // also changes the controller, and that must not reload the page).
+  let reloadOnChange = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!reloadOnChange) return;
+    reloadOnChange = false;
+    location.reload();
+  });
+  const offer = worker => {
+    showToast('Dostupna je nova verzija aplikacije', false, {
+      label: 'Osvježi',
+      duration: 0,
+      onClick: () => { reloadOnChange = true; worker.postMessage('SKIP_WAITING'); }
+    });
+  };
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+    if (reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
+    reg.addEventListener('updatefound', () => {
+      const worker = reg.installing;
+      if (!worker) return;
+      worker.addEventListener('statechange', () => {
+        if (worker.state === 'installed' && navigator.serviceWorker.controller) offer(worker);
+      });
+    });
+    const check = () => reg.update().catch(() => {});
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+    setInterval(check, 60 * 60 * 1000);
+  }).catch(() => {});
 }
 
 function onStateChange(e) {
@@ -143,7 +176,7 @@ function showOnboarding() {
 
   const listEl = document.getElementById('ob-guest-list');
   listEl.addEventListener('input', () => {
-    const p = previewGuestImport(parseGuestText(listEl.value));
+    const p = previewGuestImport(parseGuestText(listEl.value, { surnameFirst: detectSurnameFirst(listEl.value) }));
     document.getElementById('ob-guest-preview').innerHTML = p.guests
       ? `<p><strong>${p.guests}</strong> ${p.guests === 1 ? 'gost' : 'gostiju'}${p.groups ? ` · ${p.groups} ${p.groups === 1 ? 'par ili obitelj' : 'parova i obitelji'} sjedi zajedno` : ''}</p>`
       : '';
@@ -186,7 +219,7 @@ function showOnboarding() {
       step = 3;
       showOnboardingStep(step);
     } else {
-      const rows = skip ? [] : parseGuestText(listEl.value);
+      const rows = skip ? [] : parseGuestText(listEl.value, { surnameFirst: detectSurnameFirst(listEl.value) });
       if (rows.length) await importGuestRows(rows, null);
       modal.style.display = 'none';
       renderAll();
@@ -362,15 +395,14 @@ function setupHallModal() {
   document.querySelectorAll('input[name="hall-mode"]').forEach(r => r.addEventListener('change', updateHallSummary));
   document.getElementById('btn-apply-hall').addEventListener('click', async () => {
     const form = readHallForm();
-    if (form.mode === 'rebuild' && state.tables.some(t => !isHeadTable(t))) {
-      const seated = state.guests.filter(g => g.tableId && !isHeadTable(state.tables.find(t => t.id === g.tableId) || {})).length;
-      if (!confirm(`Složiti salu ispočetka?${seated ? ` ${seated} gostiju ostat će bez mjesta.` : ''}`)) return;
-    }
-    await applyHallPlan(planHall(form));
+    const seated = form.mode === 'rebuild'
+      ? state.guests.filter(g => g.tableId && !isHeadTable(state.tables.find(t => t.id === g.tableId) || {})).length
+      : 0;
+    await withUndo(seated ? `Sala je složena, ${seated} gostiju je bez mjesta` : 'Sala je složena',
+      () => applyHallPlan(planHall(form)));
     document.getElementById('modal-hall').style.display = 'none';
     if (floorPlanEdit) floorPlanEdit.fitToContent();
     if (floorPlanAssign) floorPlanAssign._fitted = false;
-    showToast('Sala je složena');
   });
 }
 
@@ -519,8 +551,9 @@ function setupTableModal() {
   document.getElementById('btn-delete-table').addEventListener('click', async () => {
     const modal = document.getElementById('modal-table');
     const id = modal.dataset.editId;
-    if (id && confirm('Obrisati stol i osloboditi sva mjesta?')) {
-      await deleteTable(id);
+    const table = state.tables.find(t => t.id === id);
+    if (table) {
+      await withUndo(`Obrisano: ${table.name}`, () => deleteTable(id));
       modal.style.display = 'none';
       renderSala();
     }
@@ -667,9 +700,19 @@ function setupGostiEvents() {
     if (e.key !== 'Enter') return;
     const rows = parseGuestText(input.value);
     if (!rows.length) return;
-    const result = await importGuestRows(rows, guestCategoryFilter || null);
+    const categoryId = guestCategoryFilter || null;
+    const result = await importGuestRows(rows, categoryId);
     input.value = '';
-    if (result.skipped && !result.guests) showToast('Taj gost već postoji');
+    if (result.skipped && !result.guests) {
+      const name = result.duplicates[0];
+      showToast(`${name} je već na popisu`, false, {
+        label: 'Dodaj ipak',
+        onClick: async () => {
+          await importGuestRows(rows, categoryId, { includeExisting: true });
+          showToast(`Dodan još jedan gost: ${name}`);
+        }
+      });
+    }
     else if (result.guests > 1) showToast(`Dodano ${result.guests} gostiju, sjede zajedno`);
   });
   // Pasting several lines into the quick-add field opens the full import.
@@ -682,12 +725,21 @@ function setupGostiEvents() {
   });
 
   document.getElementById('btn-import-guests').addEventListener('click', () => openImportModal(''));
-  document.getElementById('import-textarea').addEventListener('input', updateImportPreview);
+  const importText = document.getElementById('import-textarea');
+  const surnameBox = document.getElementById('import-surname-first');
+  importText.addEventListener('input', () => {
+    // A header such as "Prezime i ime" sets the order; otherwise the user's choice stays.
+    if (detectSurnameFirst(importText.value)) surnameBox.checked = true;
+    updateImportPreview();
+  });
+  surnameBox.addEventListener('change', updateImportPreview);
+  document.getElementById('import-include-existing').addEventListener('change', updateImportPreview);
 
   document.getElementById('btn-import-confirm').addEventListener('click', async () => {
-    const rows = parseGuestText(document.getElementById('import-textarea').value);
+    const rows = parseGuestText(importText.value, { surnameFirst: surnameBox.checked });
     if (!rows.length) return;
-    const result = await importGuestRows(rows, document.getElementById('import-category').value || null);
+    const result = await importGuestRows(rows, document.getElementById('import-category').value || null,
+      { includeExisting: document.getElementById('import-include-existing').checked });
     document.getElementById('modal-import').style.display = 'none';
     document.getElementById('import-textarea').value = '';
     showToast(`Dodano ${result.guests} gostiju`);
@@ -713,6 +765,8 @@ function setupGostiEvents() {
 
 function openImportModal(text) {
   document.getElementById('import-textarea').value = text || '';
+  document.getElementById('import-surname-first').checked = detectSurnameFirst(text);
+  document.getElementById('import-include-existing').checked = false;
   document.getElementById('import-category').innerHTML = '<option value="">— bez kategorije —</option>' +
     state.categories.map(c => `<option value="${c.id}"${c.id === guestCategoryFilter ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
   updateImportPreview();
@@ -722,12 +776,27 @@ function openImportModal(text) {
 
 function updateImportPreview() {
   const el = document.getElementById('import-preview');
-  const p = previewGuestImport(parseGuestText(document.getElementById('import-textarea').value));
+  const rows = parseGuestText(document.getElementById('import-textarea').value,
+    { surnameFirst: document.getElementById('import-surname-first').checked });
+  const includeBox = document.getElementById('import-include-existing');
+  const p = previewGuestImport(rows, { includeExisting: includeBox.checked });
   document.getElementById('btn-import-confirm').disabled = p.guests === 0;
+  // Names already on the list: skipped by default, since a list pasted twice is the usual cause.
+  const dupRow = document.getElementById('import-dup-row');
+  dupRow.hidden = !p.duplicates.length;
+  if (p.duplicates.length) {
+    const shown = p.duplicates.slice(0, 4).map(n => {
+      const cat = state.categories.find(c => c.id === (state.guests.find(g => g.name.toLowerCase() === n.toLowerCase()) || {}).categoryId);
+      return `<em>${esc(n)}</em>${cat ? ` (${esc(cat.name)})` : ''}`;
+    }).join(', ');
+    const more = p.duplicates.length > 4 ? ` i još ${p.duplicates.length - 4}` : '';
+    document.getElementById('import-dup-label').innerHTML =
+      `${p.duplicates.length === 1 ? 'Već je na popisu' : `Već su na popisu (${p.duplicates.length})`}: ${shown}${more}. <strong>Dodaj ih ipak</strong> kao nove goste (npr. imenjaci).`;
+  }
   if (!p.guests && !p.skipped) { el.innerHTML = ''; return; }
   const summary = [`<strong>${p.guests}</strong> ${p.guests === 1 ? 'gost' : 'gostiju'}`];
   if (p.groups) summary.push(`${p.groups} ${p.groups === 1 ? 'par ili obitelj' : 'parova i obitelji'} sjedi zajedno`);
-  if (p.skipped) summary.push(`${p.skipped} već na popisu`);
+  if (p.skipped) summary.push(`${p.skipped} preskočeno`);
   const sample = p.rows.slice(0, 6).map(r =>
     `<li>${r.names.map(n => `<span class="pp-chip">${esc(n)}</span>`).join(r.names.length > 1 ? `<span class="import-link">${icon('together')}</span>` : '')}${r.category ? ` <span class="muted">· ${esc(r.category)}</span>` : ''}</li>`
   ).join('');
@@ -747,7 +816,11 @@ function renderCategoryManager() {
   ).join('') || '<p class="muted">Nema kategorija.</p>';
   list.querySelectorAll('[data-del-cat]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      if (confirm('Obrisati kategoriju?')) { await deleteCategory(btn.dataset.delCat); renderCategoryManager(); renderGosti(); }
+      const cat = state.categories.find(c => c.id === btn.dataset.delCat);
+      if (!cat) return;
+      await withUndo(`Kategorija ${cat.name} je obrisana`, () => deleteCategory(cat.id));
+      renderCategoryManager();
+      renderGosti();
     });
   });
   list.querySelectorAll('[data-edit-cat]').forEach(btn => {
@@ -867,6 +940,28 @@ class PeoplePicker {
 let ppTogether = null;
 let ppApart = null;
 
+// Picking someone who already sits with a group brings that whole group along;
+// say so before saving instead of merging silently.
+function renderTogetherNote() {
+  const note = document.getElementById('pp-together-note');
+  const guestId = document.getElementById('modal-guest').dataset.editId;
+  const picked = ppTogether.getValue();
+  const known = new Set([guestId, ...picked]);
+  const lines = [];
+  for (const id of picked) {
+    const group = state.rules.find(r => r.type === 'together' && r.guestIds.includes(id) && !r.guestIds.includes(guestId));
+    if (!group) continue;
+    const extra = group.guestIds.filter(g => !known.has(g));
+    if (!extra.length) continue;
+    extra.forEach(g => known.add(g));
+    lines.push(`${esc(nameOf(id))} već sjedi s: <strong>${extra.map(g => esc(nameOf(g))).join(', ')}</strong>`);
+  }
+  note.hidden = !lines.length;
+  note.innerHTML = lines.length
+    ? `${icon('together')}<span>${lines.join('<br>')}<br>Spremanjem će svi sjediti zajedno.</span>`
+    : '';
+}
+
 function fillFixedSeatOptions(tableId, selected) {
   const table = state.tables.find(t => t.id === tableId);
   const seatSel = document.getElementById('guest-edit-fixed-seat');
@@ -889,8 +984,10 @@ function openGuestModal(id) {
     state.categories.map(c => `<option value="${c.id}"${(guest ? guest.categoryId : undefined) === c.id ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
 
   const rel = guest ? getGuestRelations(guest.id) : { together: [], apart: [], fixed: null };
+  modal.dataset.editId = id || '';
   ppTogether.setValue(rel.together);
   ppApart.setValue(rel.apart);
+  renderTogetherNote();
   const fixedTableId = rel.fixed ? rel.fixed.tableId : '';
   document.getElementById('guest-edit-fixed-table').innerHTML = '<option value="">— bilo koji —</option>' +
     state.tables.map(t => `<option value="${t.id}"${t.id === fixedTableId ? ' selected' : ''}>${esc(t.name)}</option>`).join('');
@@ -904,7 +1001,8 @@ function openGuestModal(id) {
 function setupGuestModal() {
   // A person can't be in both lists: picking them in one hides them in the other.
   ppTogether = new PeoplePicker(document.getElementById('pp-together'), {
-    exclude: () => [document.getElementById('modal-guest').dataset.editId, ...ppApart.getValue()]
+    exclude: () => [document.getElementById('modal-guest').dataset.editId, ...ppApart.getValue()],
+    onChange: renderTogetherNote
   });
   ppApart = new PeoplePicker(document.getElementById('pp-apart'), {
     exclude: () => [document.getElementById('modal-guest').dataset.editId, ...ppTogether.getValue()]
@@ -947,8 +1045,8 @@ function setupGuestModal() {
     const id = modal.dataset.editId;
     if (!id) return;
     const g = state.guests.find(x => x.id === id);
-    if (confirm(`Obrisati gosta ${g ? g.name : ''}?`)) {
-      await deleteGuest(id);
+    if (g) {
+      await withUndo(`Obrisano s popisa: ${g.name}`, () => deleteGuest(id));
       modal.style.display = 'none';
       refreshCurrentSection();
     }
@@ -1030,7 +1128,7 @@ function renderUnassignedPanel() {
   const panel = document.getElementById('unassigned-panel');
   if (!panel) return;
   const all = unseatedGuests();
-  if (selectedGuestForAssign && !all.some(g => g.id === selectedGuestForAssign)) selectedGuestForAssign = null;
+  if (selectedGuestForAssign && !state.guests.some(g => g.id === selectedGuestForAssign)) selectedGuestForAssign = null;
   let guests = all;
   if (rasporedSearch) {
     const q = rasporedSearch.toLowerCase();
@@ -1038,9 +1136,15 @@ function renderUnassignedPanel() {
   }
   guests.sort((a, b) => a.name.localeCompare(b.name));
   document.getElementById('unassigned-count').textContent = all.length ? `(${all.length})` : '';
-  document.getElementById('unassigned-hint').textContent = selectedGuestForAssign
-    ? `Odaberi slobodno mjesto za: ${nameOf(selectedGuestForAssign)}`
-    : all.length ? 'Povuci gosta na mjesto ili stol, ili ga dodirni pa odaberi mjesto.' : '';
+  const hint = document.getElementById('unassigned-hint');
+  if (selectedGuestForAssign) {
+    hint.innerHTML = `Dodirni mjesto za: <strong>${esc(nameOf(selectedGuestForAssign))}</strong> <button class="btn-text hint-cancel" id="btn-cancel-select">Odustani</button>`;
+    hint.classList.add('selecting');
+    document.getElementById('btn-cancel-select').addEventListener('click', () => clearGuestSelection());
+  } else {
+    hint.textContent = all.length ? 'Povuci gosta na mjesto ili stol, ili ga dodirni pa dodirni mjesto.' : '';
+    hint.classList.remove('selecting');
+  }
   const list = document.getElementById('unassigned-list');
   panel.classList.toggle('all-seated', all.length === 0);
   if (guests.length === 0) {
@@ -1065,6 +1169,12 @@ function renderUnassignedPanel() {
       if (rasporedView === 'tables') renderTablesView();
     });
   });
+}
+
+function clearGuestSelection() {
+  selectedGuestForAssign = null;
+  renderUnassignedPanel();
+  if (rasporedView === 'tables') renderTablesView();
 }
 
 function firstFreeSeat(table) {
@@ -1182,14 +1292,15 @@ function renderGuestsView() {
 
 async function handleSeatClick(tableId, seatIndex, guest) {
   if (guestDrag.justDropped()) return;
-  if (guest) {
-    showSeatOptionsModal(tableId, seatIndex, guest);
-  } else if (selectedGuestForAssign) {
-    const existingAtSeat = state.guests.find(g => g.tableId === tableId && g.seatIndex === seatIndex);
-    if (existingAtSeat) { alert('To mjesto je zauzeto.'); return; }
+  if (selectedGuestForAssign) {
+    // Tap a guest, then tap a seat: takes a free seat or swaps with whoever sits there.
     const id = selectedGuestForAssign;
     selectedGuestForAssign = null;
-    await assignGuest(id, tableId, seatIndex);
+    if (guest && guest.id === id) { renderUnassignedPanel(); return; }
+    await dropGuest(id, { kind: 'seat', tableId, seatIndex });
+    renderUnassignedPanel();
+  } else if (guest) {
+    showSeatOptionsModal(tableId, seatIndex, guest);
   } else {
     showAssignSeatModal(tableId, seatIndex);
   }
@@ -1227,10 +1338,18 @@ function showSeatOptionsModal(tableId, seatIndex, guest) {
 }
 
 function setupSeatOptionsModal() {
+  document.getElementById('btn-seat-move').addEventListener('click', () => {
+    const modal = document.getElementById('modal-seat-options');
+    modal.style.display = 'none';
+    selectedGuestForAssign = modal.dataset.guestId;
+    if (rasporedView !== 'floor') { rasporedView = 'floor'; renderRaspored(); } else renderUnassignedPanel();
+  });
+
   document.getElementById('btn-seat-unassign').addEventListener('click', async () => {
     const modal = document.getElementById('modal-seat-options');
     modal.style.display = 'none';
-    await unassignGuest(modal.dataset.guestId);
+    const guest = state.guests.find(g => g.id === modal.dataset.guestId);
+    if (guest) await withUndo(`${guest.name} je sada bez mjesta`, () => unassignGuest(guest.id));
   });
 
   document.getElementById('btn-seat-lock').addEventListener('click', async () => {
@@ -1401,14 +1520,18 @@ function buildPrintArea(parts) {
     </section>`);
   }
   if (parts.floor) {
-    pages.push(`<section class="print-page print-floor-page">${header('Tlocrt sale')}
+    pages.push(`<section class="print-page print-floor-page"><div class="print-floor-wrap">${header('Tlocrt sale')}
       <svg id="fp-print-svg" class="print-floor" xmlns="http://www.w3.org/2000/svg"></svg>
-    </section>`);
+    </div></section>`);
   }
   area.innerHTML = pages.join('');
   if (parts.floor) {
     const fp = new FloorPlan(document.getElementById('fp-print-svg'), { mode: 'assign', showFullNames: true });
     fp.update(state.tables, state.guests, state.categories, new Set());
+    // A hall wider than tall is turned sideways, so it fills the portrait page
+    // (a landscape page of its own is not reliably supported, e.g. in Safari).
+    const b = fp._contentBounds();
+    if (b && (b.x2 - b.x1) > (b.y2 - b.y1) * 1.15) area.querySelector('.print-floor-page').classList.add('landscape');
     fp.fitToContent(70); // room for full names around the outer seats
   }
 }
