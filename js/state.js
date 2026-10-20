@@ -23,8 +23,208 @@ async function loadAll() {
   state.categories = categories || [];
   state.guests = guests || [];
   state.rules = rules || [];
+  await migrateRules();
   computeRuleStatus();
   updateMonogramIcon();
+}
+
+// ── Rule model ────────────────────────────────────────────────────────────────
+// Rules are edited from the guest card and the category editor, so they are
+// kept in a normalized shape:
+//   together          – one rule per group (couple, family…), 2+ guests
+//   apart             – one rule per pair of guests
+//   fixed             – at most one per guest
+//   category-together – at most one per category
+// Older data (multi-guest "apart", overlapping "together", legacy "companion")
+// is converted on load; the meaning of every rule stays the same.
+
+function normalizeRules(rules) {
+  const guestIds = new Set(state.guests.map(g => g.id));
+  const tableIds = new Set(state.tables.map(t => t.id));
+  const catIds = new Set(state.categories.map(c => c.id));
+  const out = [];
+  const base = { categoryId: null, tableId: null, seatIndex: null };
+
+  // together: merge overlapping groups (togetherness is transitive)
+  const parent = new Map();
+  const find = id => { while (parent.get(id) !== id) id = parent.get(id); return id; };
+  const groupRuleId = new Map();
+  for (const r of rules) {
+    if (r.type !== 'together' && r.type !== 'companion') continue;
+    const ids = (r.guestIds || []).filter(id => guestIds.has(id));
+    ids.forEach(id => { if (!parent.has(id)) parent.set(id, id); });
+    for (let i = 1; i < ids.length; i++) parent.set(find(ids[i]), find(ids[0]));
+    if (ids.length) groupRuleId.set(ids[0], groupRuleId.get(ids[0]) || r.id);
+  }
+  const groups = new Map();
+  for (const id of parent.keys()) {
+    const root = find(id);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root).push(id);
+  }
+  for (const members of groups.values()) {
+    if (members.length < 2) continue;
+    const id = members.map(m => groupRuleId.get(m)).find(Boolean) || crypto.randomUUID();
+    out.push({ ...base, id, type: 'together', guestIds: members });
+  }
+
+  // apart: one rule per pair
+  const pairs = new Set();
+  for (const r of rules) {
+    if (r.type !== 'apart') continue;
+    const ids = [...new Set((r.guestIds || []).filter(id => guestIds.has(id)))];
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const key = [ids[i], ids[j]].sort().join('|');
+        if (pairs.has(key)) continue;
+        pairs.add(key);
+        out.push({ ...base, id: ids.length === 2 ? r.id : crypto.randomUUID(), type: 'apart', guestIds: [ids[i], ids[j]] });
+      }
+    }
+  }
+
+  // fixed: last one per guest wins
+  const fixed = new Map();
+  for (const r of rules) {
+    if (r.type !== 'fixed') continue;
+    const gid = (r.guestIds || [])[0];
+    if (!guestIds.has(gid) || !tableIds.has(r.tableId)) continue;
+    fixed.set(gid, { ...base, id: r.id, type: 'fixed', guestIds: [gid], tableId: r.tableId, seatIndex: Number.isInteger(r.seatIndex) ? r.seatIndex : null });
+  }
+  out.push(...fixed.values());
+
+  // category-together: one per category
+  const cats = new Set();
+  for (const r of rules) {
+    if (r.type !== 'category-together' || !catIds.has(r.categoryId) || cats.has(r.categoryId)) continue;
+    cats.add(r.categoryId);
+    out.push({ ...base, id: r.id, type: 'category-together', guestIds: [], categoryId: r.categoryId });
+  }
+  return out;
+}
+
+function ruleKey(r) {
+  return JSON.stringify([r.type, r.guestIds, r.categoryId, r.tableId, r.seatIndex]);
+}
+
+// Persist a new rule list, writing only what changed.
+async function replaceRules(next) {
+  const prev = new Map(state.rules.map(r => [r.id, r]));
+  const nextIds = new Set(next.map(r => r.id));
+  const removed = state.rules.filter(r => !nextIds.has(r.id)).map(r => r.id);
+  const changed = next.filter(r => !prev.has(r.id) || ruleKey(prev.get(r.id)) !== ruleKey(r));
+  const clean = changed.map(r => { const c = { ...r }; delete c.satisfied; return c; });
+  if (removed.length) await dbDeleteAll('rules', removed);
+  if (clean.length) await dbPutAll('rules', clean);
+  state.rules = next;
+  return removed.length + changed.length > 0;
+}
+
+async function migrateRules() {
+  await replaceRules(normalizeRules(state.rules));
+}
+
+function getGuestRelations(guestId) {
+  const together = new Set();
+  const apart = new Set();
+  let fixed = null;
+  for (const r of state.rules) {
+    if (!r.guestIds || !r.guestIds.includes(guestId)) continue;
+    if (r.type === 'together' || r.type === 'companion') r.guestIds.forEach(id => id !== guestId && together.add(id));
+    else if (r.type === 'apart') r.guestIds.forEach(id => id !== guestId && apart.add(id));
+    else if (r.type === 'fixed') fixed = r;
+  }
+  return { together: [...together], apart: [...apart], fixed };
+}
+
+// Rewrite every rule that concerns this guest from the guest card.
+// rel = { together: [ids], apart: [ids], fixedTableId, fixedSeat }
+async function setGuestRelations(guestId, rel) {
+  const together = new Set((rel.together || []).filter(id => id !== guestId));
+  const apart = new Set((rel.apart || []).filter(id => id !== guestId && !together.has(id)));
+  let rules = state.rules.map(r => ({ ...r, guestIds: [...(r.guestIds || [])] }));
+
+  // together: the guest leaves its old group; whoever is still wanted joins the
+  // new group, and groups of newly picked guests are merged in.
+  const merged = new Set([guestId, ...together]);
+  rules = rules.filter(r => {
+    if (r.type !== 'together') return true;
+    if (r.guestIds.includes(guestId)) {
+      r.guestIds = r.guestIds.filter(id => id !== guestId && !together.has(id));
+      return r.guestIds.length >= 2;
+    }
+    if (r.guestIds.some(id => together.has(id))) {
+      r.guestIds.forEach(id => merged.add(id));
+      return false;
+    }
+    return true;
+  });
+  if (merged.size >= 2) {
+    const old = state.rules.find(r => r.type === 'together' && r.guestIds.includes(guestId));
+    const reuse = old && !rules.some(r => r.id === old.id) ? old.id : crypto.randomUUID();
+    rules.push({ id: reuse, type: 'together', guestIds: [...merged], categoryId: null, tableId: null, seatIndex: null });
+  }
+
+  // apart: one pair rule per person, existing pairs keep their ids
+  const oldApart = new Map();
+  rules = rules.filter(r => {
+    if (r.type !== 'apart' || !r.guestIds.includes(guestId)) return true;
+    oldApart.set(r.guestIds.find(id => id !== guestId), r.id);
+    return false;
+  });
+  for (const other of apart) {
+    rules.push({ id: oldApart.get(other) || crypto.randomUUID(), type: 'apart', guestIds: [guestId, other], categoryId: null, tableId: null, seatIndex: null });
+  }
+
+  // fixed table
+  const oldFixed = rules.find(r => r.type === 'fixed' && r.guestIds[0] === guestId);
+  rules = rules.filter(r => !(r.type === 'fixed' && r.guestIds[0] === guestId));
+  if (rel.fixedTableId) {
+    rules.push({
+      id: oldFixed ? oldFixed.id : crypto.randomUUID(), type: 'fixed', guestIds: [guestId],
+      categoryId: null, tableId: rel.fixedTableId,
+      seatIndex: Number.isInteger(rel.fixedSeat) ? rel.fixedSeat : null
+    });
+  }
+
+  if (await replaceRules(normalizeRules(rules))) {
+    computeRuleStatus();
+    emit('rules');
+  }
+}
+
+// Add couples / families from a bulk import as "together" groups.
+async function addTogetherGroups(groups) {
+  const rules = [...state.rules];
+  for (const ids of groups) {
+    if (ids.length >= 2) rules.push({ id: crypto.randomUUID(), type: 'together', guestIds: ids, categoryId: null, tableId: null, seatIndex: null });
+  }
+  if (await replaceRules(normalizeRules(rules))) {
+    computeRuleStatus();
+    emit('rules');
+  }
+}
+
+function isCategoryTogether(categoryId) {
+  return state.rules.some(r => r.type === 'category-together' && r.categoryId === categoryId);
+}
+
+async function setCategoryTogether(categoryId, on) {
+  if (on === isCategoryTogether(categoryId)) return;
+  const rules = on
+    ? [...state.rules, { id: crypto.randomUUID(), type: 'category-together', guestIds: [], categoryId, tableId: null, seatIndex: null }]
+    : state.rules.filter(r => !(r.type === 'category-together' && r.categoryId === categoryId));
+  await replaceRules(rules);
+  computeRuleStatus();
+  emit('rules');
+}
+
+// Rules that involve a guest directly (pairs, groups, fixed seat) or via the
+// guest's category.
+function rulesForGuest(guest) {
+  return state.rules.filter(r =>
+    (r.guestIds && r.guestIds.includes(guest.id)) ||
+    (r.type === 'category-together' && guest.categoryId && r.categoryId === guest.categoryId));
 }
 
 async function saveSettings(data) {
@@ -140,20 +340,7 @@ async function deleteGuest(id) {
   await dbDelete('guests', id);
   state.guests = state.guests.filter(g => g.id !== id);
   // Remove from rules
-  const rulesAffected = state.rules.filter(r => r.guestIds && r.guestIds.includes(id));
-  const rulesToDelete = [];
-  for (const r of rulesAffected) {
-    r.guestIds = r.guestIds.filter(gid => gid !== id);
-    if (r.guestIds.length < (r.type === 'fixed' ? 1 : 2)) {
-      rulesToDelete.push(r.id);
-    } else {
-      await dbPut('rules', r);
-    }
-  }
-  for (const rid of rulesToDelete) {
-    await dbDelete('rules', rid);
-  }
-  state.rules = state.rules.filter(r => !rulesToDelete.includes(r.id));
+  await replaceRules(normalizeRules(state.rules));
   computeRuleStatus();
   emit('guests');
   emit('rules');
@@ -210,21 +397,6 @@ async function restoreGuests(snapshot) {
   if (changed.length) await dbPutAll('guests', changed);
   computeRuleStatus();
   emit('guests');
-}
-
-// Rules
-async function saveRule(rule) {
-  await dbPut('rules', rule);
-  const idx = state.rules.findIndex(r => r.id === rule.id);
-  if (idx >= 0) state.rules[idx] = rule; else state.rules.push(rule);
-  computeRuleStatus();
-  emit('rules');
-}
-
-async function deleteRule(id) {
-  await dbDelete('rules', id);
-  state.rules = state.rules.filter(r => r.id !== id);
-  emit('rules');
 }
 
 function computeRuleStatus() {

@@ -32,12 +32,11 @@ async function init() {
   }
 }
 
-const SECTIONS = ['sala', 'gosti', 'pravila', 'raspored', 'pregled'];
+const SECTIONS = ['sala', 'gosti', 'raspored', 'pregled'];
 
 function renderSection(section) {
   if (section === 'sala') renderSala();
   else if (section === 'gosti') renderGosti();
-  else if (section === 'pravila') renderPravila();
   else if (section === 'raspored') renderRaspored();
   else if (section === 'pregled') renderPregled();
 }
@@ -45,17 +44,11 @@ function renderSection(section) {
 function onStateChange(e) {
   const type = (e.detail ? e.detail.type : null);
   if (type === 'settings' || type === 'import') updateMonogram();
-  if (type === 'rules') refreshRules();
-  else refreshCurrentSection();
+  refreshCurrentSection();
 }
 
 function refreshCurrentSection() {
   renderSection(currentSection);
-  updateHeader();
-}
-
-function refreshRules() {
-  if (currentSection === 'pravila') renderPravila();
   updateHeader();
 }
 
@@ -404,11 +397,35 @@ async function toggleFullNames() {
 
 let guestSearchQuery = '';
 let guestCategoryFilter = '';
+let guestViolationFilter = false;
+
+function guestHasViolation(g) {
+  return rulesForGuest(g).some(r => r.satisfied === false);
+}
+
+// One muted line under the guest's name summarizing their seating wishes.
+function guestRelationLine(g) {
+  const rel = getGuestRelations(g.id);
+  const parts = [];
+  if (rel.together.length) parts.push(`<span title="Sjedi s">${icon('together')} ${esc(rel.together.map(nameOf).join(', '))}</span>`);
+  if (rel.apart.length) parts.push(`<span title="Ne sjedi s">${icon('apart')} ${esc(rel.apart.map(nameOf).join(', '))}</span>`);
+  if (rel.fixed) {
+    const t = state.tables.find(x => x.id === rel.fixed.tableId);
+    parts.push(`<span title="Uvijek za stolom">${icon('pin')} ${esc(t ? t.name : '?')}${rel.fixed.seatIndex !== null ? `, mj. ${rel.fixed.seatIndex + 1}` : ''}</span>`);
+  }
+  return parts.length ? `<span class="guest-rel">${parts.join('')}</span>` : '';
+}
 
 function renderGosti() {
   renderCategoryChips();
   renderGuestList();
   document.getElementById('guest-count').textContent = `${state.guests.length} gostiju`;
+  const violated = state.guests.filter(guestHasViolation).length;
+  if (!violated) guestViolationFilter = false;
+  const vBtn = document.getElementById('btn-filter-violated');
+  vBtn.style.display = violated ? '' : 'none';
+  vBtn.classList.toggle('active', guestViolationFilter);
+  vBtn.innerHTML = `${icon('alert')} ${violated} ${violated === 1 ? 'gost ima neispunjen zahtjev' : 'gostiju ima neispunjen zahtjev'}`;
 }
 
 function renderCategoryChips() {
@@ -434,6 +451,9 @@ function renderGuestList() {
   if (guestCategoryFilter) {
     guests = guests.filter(g => g.categoryId === guestCategoryFilter);
   }
+  if (guestViolationFilter) {
+    guests = guests.filter(guestHasViolation);
+  }
   guests.sort((a, b) => a.name.localeCompare(b.name));
   if (guests.length === 0) {
     list.innerHTML = '<div class="empty-state"><p>Nema gostiju.</p></div>';
@@ -442,13 +462,16 @@ function renderGuestList() {
   list.innerHTML = guests.map(g => {
     const cat = state.categories.find(c => c.id === g.categoryId);
     const table = g.tableId ? state.tables.find(t => t.id === g.tableId) : null;
-    const statusLabel = g.status === 'assigned' ? `<span class="status-badge assigned">Stol: ${esc((table ? table.name : undefined) || '?')}</span>`
+    const statusLabel = g.status === 'assigned' ? `<span class="status-badge assigned">${esc((table ? table.name : undefined) || '?')}</span>`
       : g.status === 'maybe' ? '<span class="status-badge maybe">Možda</span>'
-      : '<span class="status-badge unassigned">Nedodijeljen</span>';
-    return `<div class="guest-row" data-id="${g.id}">
+      : '<span class="status-badge unassigned">Bez mjesta</span>';
+    return `<div class="guest-row${guestHasViolation(g) ? ' violated' : ''}" data-id="${g.id}">
       <div class="guest-row-main">
-        <span class="guest-name">${esc(g.name)}</span>
-        ${cat ? `<span class="cat-chip" style="background:${cat.color}">${esc(cat.name)}</span>` : '<span class="cat-chip no-cat">—</span>'}
+        <div class="guest-row-text">
+          <span class="guest-name">${esc(g.name)}${guestHasViolation(g) ? ` <span class="rel-bad" title="Zahtjev nije ispunjen">${icon('alert')}</span>` : ''}</span>
+          ${guestRelationLine(g)}
+        </div>
+        ${cat ? `<span class="cat-chip" style="background:${cat.color}">${esc(cat.name)}</span>` : ''}
       </div>
       <div class="guest-row-meta">
         ${statusLabel}
@@ -504,6 +527,11 @@ function setupGostiEvents() {
   });
 
   document.getElementById('btn-add-guest-btn').addEventListener('click', () => openGuestModal(null));
+
+  document.getElementById('btn-filter-violated').addEventListener('click', () => {
+    guestViolationFilter = !guestViolationFilter;
+    renderGosti();
+  });
 }
 
 function renderCategoryManager() {
@@ -532,6 +560,7 @@ function openCategoryEditModal(id) {
   const modal = document.getElementById('modal-category-edit');
   document.getElementById('cat-edit-name').value = (cat ? cat.name : undefined) || '';
   document.getElementById('cat-edit-head').checked = !!(cat && cat.atHeadTable);
+  document.getElementById('cat-edit-together').checked = !!(cat && isCategoryTogether(cat.id));
   document.querySelectorAll('.color-swatch-btn').forEach((btn, i) => {
     btn.style.background = CATEGORY_COLORS[i];
     btn.classList.toggle('active', CATEGORY_COLORS[i] === ((cat ? cat.color : undefined) || CATEGORY_COLORS[0]));
@@ -556,6 +585,7 @@ function setupCategoryEditModal() {
     const color = document.querySelector('.color-swatch-btn.active').dataset.color || CATEGORY_COLORS[0];
     const atHeadTable = document.getElementById('cat-edit-head').checked;
     await saveCategory({ id, name, color, atHeadTable });
+    await setCategoryTogether(id, document.getElementById('cat-edit-together').checked);
     modal.style.display = 'none';
     renderCategoryManager();
     renderGosti();
@@ -566,6 +596,85 @@ function setupAddCategoryBtn() {
   document.getElementById('btn-add-category').addEventListener('click', () => openCategoryEditModal(null));
 }
 
+// Chip-style multi-select of guests with type-ahead search.
+class PeoplePicker {
+  constructor(el, options = {}) {
+    this.el = el;
+    this.exclude = options.exclude || (() => []);
+    this.onChange = options.onChange || (() => {});
+    this.value = [];
+    el.innerHTML = `<div class="pp-box"><span class="pp-chips"></span><input class="pp-input" type="text" autocomplete="off" placeholder="${esc(el.dataset.placeholder || 'Dodaj…')}"></div><div class="pp-suggest"></div>`;
+    this.chips = el.querySelector('.pp-chips');
+    this.input = el.querySelector('.pp-input');
+    this.suggest = el.querySelector('.pp-suggest');
+    el.querySelector('.pp-box').addEventListener('click', () => this.input.focus());
+    this.input.addEventListener('input', () => this.renderSuggest());
+    this.input.addEventListener('focus', () => this.renderSuggest());
+    this.input.addEventListener('blur', () => setTimeout(() => { this.suggest.innerHTML = ''; }, 150));
+    this.input.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !this.input.value && this.value.length) {
+        this.value.pop(); this.render(); this.onChange();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const first = this.suggest.querySelector('[data-pick]');
+        if (first) this.add(first.dataset.pick);
+      }
+    });
+  }
+
+  setValue(ids) { this.value = [...ids]; this.input.value = ''; this.render(); }
+  getValue() { return [...this.value]; }
+
+  add(id) {
+    if (!this.value.includes(id)) this.value.push(id);
+    this.input.value = '';
+    this.render();
+    this.renderSuggest();
+    this.onChange();
+  }
+
+  render() {
+    this.chips.innerHTML = this.value.map(id =>
+      `<span class="pp-chip">${esc(nameOf(id))}<button type="button" data-remove="${id}" aria-label="Ukloni">${icon('x')}</button></span>`
+    ).join('');
+    this.chips.querySelectorAll('[data-remove]').forEach(btn => btn.addEventListener('click', e => {
+      e.stopPropagation();
+      this.value = this.value.filter(id => id !== btn.dataset.remove);
+      this.render();
+      this.onChange();
+    }));
+  }
+
+  renderSuggest() {
+    const q = this.input.value.trim().toLowerCase();
+    const skip = new Set([...this.value, ...this.exclude()]);
+    const matches = state.guests
+      .filter(g => !skip.has(g.id) && (!q || g.name.toLowerCase().includes(q)))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, 6);
+    if (document.activeElement !== this.input || matches.length === 0) { this.suggest.innerHTML = ''; return; }
+    this.suggest.innerHTML = matches.map(g => {
+      const cat = state.categories.find(c => c.id === g.categoryId);
+      return `<button type="button" class="pp-option" data-pick="${g.id}">${cat ? `<span class="chip-dot" style="background:${cat.color}"></span>` : ''}${esc(g.name)}</button>`;
+    }).join('');
+    this.suggest.querySelectorAll('[data-pick]').forEach(btn => {
+      btn.addEventListener('mousedown', e => e.preventDefault()); // keep focus in the input
+      btn.addEventListener('click', () => this.add(btn.dataset.pick));
+    });
+  }
+}
+
+let ppTogether = null;
+let ppApart = null;
+
+function fillFixedSeatOptions(tableId, selected) {
+  const table = state.tables.find(t => t.id === tableId);
+  const seatSel = document.getElementById('guest-edit-fixed-seat');
+  seatSel.innerHTML = '<option value="">bilo koje mjesto</option>' +
+    (table ? Array.from({ length: table.seats }, (_, i) => `<option value="${i}"${selected === i ? ' selected' : ''}>Mjesto ${i + 1}</option>`).join('') : '');
+  seatSel.disabled = !table;
+}
+
 function openGuestModal(id) {
   const guest = id ? state.guests.find(g => g.id === id) : null;
   const modal = document.getElementById('modal-guest');
@@ -573,11 +682,19 @@ function openGuestModal(id) {
   document.getElementById('guest-edit-name').value = (guest ? guest.name : undefined) || '';
   document.getElementById('guest-edit-notes').value = (guest ? guest.notes : undefined) || '';
   document.getElementById('guest-edit-locked').checked = (guest ? guest.locked : undefined) || false;
-  document.getElementById('guest-edit-status').value = (guest ? guest.status : undefined) || 'unassigned';
+  document.getElementById('guest-edit-maybe').checked = !!(guest && guest.status === 'maybe');
 
   const catSel = document.getElementById('guest-edit-category');
   catSel.innerHTML = '<option value="">— bez kategorije —</option>' +
     state.categories.map(c => `<option value="${c.id}"${(guest ? guest.categoryId : undefined) === c.id ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
+
+  const rel = guest ? getGuestRelations(guest.id) : { together: [], apart: [], fixed: null };
+  ppTogether.setValue(rel.together);
+  ppApart.setValue(rel.apart);
+  const fixedTableId = rel.fixed ? rel.fixed.tableId : '';
+  document.getElementById('guest-edit-fixed-table').innerHTML = '<option value="">— bilo koji —</option>' +
+    state.tables.map(t => `<option value="${t.id}"${t.id === fixedTableId ? ' selected' : ''}>${esc(t.name)}</option>`).join('');
+  fillFixedSeatOptions(fixedTableId, rel.fixed ? rel.fixed.seatIndex : null);
 
   document.getElementById('btn-delete-guest').style.display = guest ? '' : 'none';
   modal.dataset.editId = id || '';
@@ -585,6 +702,15 @@ function openGuestModal(id) {
 }
 
 function setupGuestModal() {
+  // A person can't be in both lists: picking them in one hides them in the other.
+  ppTogether = new PeoplePicker(document.getElementById('pp-together'), {
+    exclude: () => [document.getElementById('modal-guest').dataset.editId, ...ppApart.getValue()]
+  });
+  ppApart = new PeoplePicker(document.getElementById('pp-apart'), {
+    exclude: () => [document.getElementById('modal-guest').dataset.editId, ...ppTogether.getValue()]
+  });
+  document.getElementById('guest-edit-fixed-table').addEventListener('change', e => fillFixedSeatOptions(e.target.value, null));
+
   document.getElementById('btn-save-guest').addEventListener('click', async () => {
     const modal = document.getElementById('modal-guest');
     const id = modal.dataset.editId || crypto.randomUUID();
@@ -592,173 +718,40 @@ function setupGuestModal() {
     const name = document.getElementById('guest-edit-name').value.trim();
     if (!name) return;
     const catId = document.getElementById('guest-edit-category').value || null;
-    const status = document.getElementById('guest-edit-status').value;
+    const maybe = document.getElementById('guest-edit-maybe').checked;
     const locked = document.getElementById('guest-edit-locked').checked;
     const notes = document.getElementById('guest-edit-notes').value.trim();
     const guest = {
-      id, name, categoryId: catId, status,
+      id, name, categoryId: catId,
       tableId: (existing && existing.tableId) || null,
       seatIndex: (existing && existing.seatIndex != null) ? existing.seatIndex : null,
       locked, notes
     };
-    if (status !== 'assigned') { guest.tableId = null; guest.seatIndex = null; }
-    // "Dodijeljen" without a seat would hide the guest from the unassigned list.
-    else if (!guest.tableId) guest.status = 'unassigned';
+    // An unconfirmed guest gives up their seat.
+    if (maybe) { guest.tableId = null; guest.seatIndex = null; }
+    guest.status = maybe ? 'maybe' : guest.tableId ? 'assigned' : 'unassigned';
     await saveGuest(guest);
+    const seatVal = document.getElementById('guest-edit-fixed-seat').value;
+    await setGuestRelations(id, {
+      together: ppTogether.getValue(),
+      apart: ppApart.getValue(),
+      fixedTableId: document.getElementById('guest-edit-fixed-table').value || null,
+      fixedSeat: seatVal !== '' ? parseInt(seatVal) : null
+    });
     modal.style.display = 'none';
-    renderGosti();
-    if (currentSection === 'raspored') renderRaspored();
+    refreshCurrentSection();
   });
 
   document.getElementById('btn-delete-guest').addEventListener('click', async () => {
     const modal = document.getElementById('modal-guest');
     const id = modal.dataset.editId;
     if (!id) return;
-    const rulesAffected = state.rules.filter(r => r.guestIds && r.guestIds.includes(id));
-    let msg = 'Obrisati gosta?';
-    if (rulesAffected.length > 0) msg += ` Gost je u ${rulesAffected.length} pravil(u/ima) — bit će uklonjen iz njih.`;
-    if (confirm(msg)) {
+    const g = state.guests.find(x => x.id === id);
+    if (confirm(`Obrisati gosta ${g ? g.name : ''}?`)) {
       await deleteGuest(id);
       modal.style.display = 'none';
-      renderGosti();
-      if (currentSection === 'raspored') renderRaspored();
+      refreshCurrentSection();
     }
-  });
-}
-
-// ── PRAVILA ────────────────────────────────────────────────────────────────────
-
-function renderPravila() {
-  const list = document.getElementById('rules-list');
-  if (!list) return;
-  if (state.rules.length === 0) {
-    list.innerHTML = `<div class="empty-state">
-      <p>Nema pravila.</p>
-    </div>`;
-    return;
-  }
-  list.innerHTML = state.rules.map(r => {
-    const icons = { apart: 'apart', together: 'together', companion: 'together', fixed: 'pin', 'category-together': 'users' };
-    const labels = { apart: 'Odvojeni', together: 'Zajedno', companion: 'Zajedno', fixed: 'Fiksno', 'category-together': 'Kategorija zajedno' };
-    let desc = '';
-    if (r.type === 'apart' || r.type === 'together' || r.type === 'companion') {
-      desc = r.guestIds.map(nameOf).join(', ');
-    } else if (r.type === 'fixed') {
-      const g = state.guests.find(x => x.id === r.guestIds[0]);
-      const t = state.tables.find(x => x.id === r.tableId);
-      desc = `${(g ? g.name : undefined) || '?'} → ${(t ? t.name : undefined) || '?'}${r.seatIndex !== null ? `, mj. ${r.seatIndex + 1}` : ''}`;
-    } else if (r.type === 'category-together') {
-      const cat = state.categories.find(c => c.id === r.categoryId);
-      desc = (cat ? cat.name : undefined) || '?';
-    }
-    const status = r.satisfied === true ? `<span class="rule-status ok">${icon('check')}</span>`
-      : r.satisfied === false ? `<span class="rule-status bad">${icon('x')}</span>`
-      : '<span class="rule-status na">—</span>';
-    return `<div class="rule-row">
-      <span class="rule-icon">${icon(icons[r.type])}</span>
-      <div class="rule-info">
-        <span class="rule-type-label">${labels[r.type]}</span>
-        <span class="rule-desc">${esc(desc)}</span>
-      </div>
-      ${status}
-      <button class="btn-icon danger" data-del-rule="${r.id}" title="Obriši">${icon('trash')}</button>
-    </div>`;
-  }).join('');
-  list.querySelectorAll('[data-del-rule]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      await deleteRule(btn.dataset.delRule);
-      renderPravila();
-    });
-  });
-}
-
-function setupPravilaEvents() {
-  document.getElementById('btn-add-rule').addEventListener('click', () => {
-    openRuleModal();
-  });
-}
-
-function openRuleModal(prefillType) {
-  const modal = document.getElementById('modal-rule');
-  const type = prefillType || 'apart';
-  document.querySelectorAll('.rule-type-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.type === type));
-  updateRuleModalFields(type);
-  modal.style.display = 'flex';
-}
-
-function updateRuleModalFields(type) {
-  const guestPickerWrap = document.getElementById('rule-guest-picker-wrap');
-  const catPickerWrap = document.getElementById('rule-cat-picker-wrap');
-  const tablePickerWrap = document.getElementById('rule-table-picker-wrap');
-  const seatPickerWrap = document.getElementById('rule-seat-picker-wrap');
-
-  guestPickerWrap.style.display = (type === 'apart' || type === 'together' || type === 'companion' || type === 'fixed') ? '' : 'none';
-  catPickerWrap.style.display = type === 'category-together' ? '' : 'none';
-  tablePickerWrap.style.display = type === 'fixed' ? '' : 'none';
-  seatPickerWrap.style.display = type === 'fixed' ? '' : 'none';
-
-  const guestLabel = document.querySelector('#rule-guest-picker-wrap label');
-  if (guestLabel) guestLabel.textContent = 'Odaberi goste';
-
-  const guestSel = document.getElementById('rule-guest-select');
-  guestSel.multiple = type !== 'fixed';
-  guestSel.size = type === 'fixed' ? 1 : 5;
-  guestSel.innerHTML = state.guests.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
-
-  const catSel = document.getElementById('rule-cat-select');
-  catSel.innerHTML = state.categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
-
-  const tableSel = document.getElementById('rule-table-select');
-  tableSel.innerHTML = state.tables.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
-
-  updateSeatOptions();
-}
-
-function updateSeatOptions() {
-  const tableId = document.getElementById('rule-table-select').value;
-  const table = state.tables.find(t => t.id === tableId);
-  const seatSel = document.getElementById('rule-seat-select');
-  if (!seatSel) return;
-  seatSel.innerHTML = '<option value="">— bilo koje mjesto —</option>' +
-    (table ? Array.from({ length: table.seats }, (_, i) => `<option value="${i}">Mjesto ${i + 1}</option>`).join('') : '');
-}
-
-function setupRuleModal() {
-  document.querySelectorAll('.rule-type-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.rule-type-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      updateRuleModalFields(btn.dataset.type);
-    });
-  });
-
-  document.getElementById('rule-table-select').addEventListener('change', updateSeatOptions);
-
-  document.getElementById('btn-save-rule').addEventListener('click', async () => {
-    const type = document.querySelector('.rule-type-btn.active').dataset.type || 'apart';
-    const rule = { id: crypto.randomUUID(), type, guestIds: [], categoryId: null, tableId: null, seatIndex: null, satisfied: null };
-
-    if (type === 'apart' || type === 'together' || type === 'companion') {
-      const sel = document.getElementById('rule-guest-select');
-      rule.guestIds = Array.from(sel.selectedOptions).map(o => o.value);
-      if (rule.guestIds.length < 2) {
-        alert('Odaberi najmanje 2 gosta.');
-        return;
-      }
-    } else if (type === 'fixed') {
-      const sel = document.getElementById('rule-guest-select');
-      rule.guestIds = [sel.value];
-      rule.tableId = document.getElementById('rule-table-select').value;
-      const seatVal = document.getElementById('rule-seat-select').value;
-      rule.seatIndex = seatVal !== '' ? parseInt(seatVal) : null;
-      if (!rule.guestIds[0] || !rule.tableId) { alert('Odaberi gosta i stol.'); return; }
-    } else if (type === 'category-together') {
-      rule.categoryId = document.getElementById('rule-cat-select').value;
-      if (!rule.categoryId) { alert('Odaberi kategoriju.'); return; }
-    }
-    await saveRule(rule);
-    document.getElementById('modal-rule').style.display = 'none';
-    renderPravila();
   });
 }
 
@@ -906,11 +899,11 @@ function showSeatingResultModal(result) {
   const placed = result.assignments.filter(a => a.tableId).length;
   let html = `<p><strong>${placed}/${total}</strong> gostiju raspoređeno.</p>`;
   if (result.violations.length > 0) {
-    html += `<p class="text-error">${icon('alert')} ${result.violations.length} pravilo(a) nije moglo biti zadovoljeno:</p><ul>`;
+    html += `<p class="text-error">${icon('alert')} ${result.violations.length} zahtjev(a) nije moguće ispuniti:</p><ul>`;
     result.violations.forEach(v => { html += `<li>${esc(v.reason)}</li>`; });
     html += '</ul>';
   } else {
-    html += `<p class="text-success">${icon('check')} Sva pravila su zadovoljena.</p>`;
+    html += `<p class="text-success">${icon('check')} Svi posebni zahtjevi su ispunjeni.</p>`;
   }
   document.getElementById('seating-result-body').innerHTML = html;
   modal.style.display = 'flex';
@@ -1132,8 +1125,6 @@ async function _appMain() {
   setupGuestModal();
   setupCategoryEditModal();
   setupAddCategoryBtn();
-  setupPravilaEvents();
-  setupRuleModal();
   setupRasporedSearch();
   setupAssignSeatModal();
   setupSeatOptionsModal();

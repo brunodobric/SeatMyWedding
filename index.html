@@ -37,7 +37,6 @@
     <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
     <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="7.5" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M15.5 4.2a3.5 3.5 0 0 1 0 6.6"/><path d="M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></symbol>
     <symbol id="i-hall" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M2.5 9.5h19L12 3z"/><path d="M5.5 9.5V18M10 9.5V18M14 9.5V18M18.5 9.5V18"/><path d="M4 18h16"/></symbol>
-    <symbol id="i-rules" viewBox="0 0 24 24"><path d="M12 4v17"/><path d="M8 21h8"/><path d="M5 7h14"/><circle cx="12" cy="4" r="1"/><path d="M2.5 14 5 7.5 7.5 14a2.5 2.5 0 0 1-5 0z"/><path d="M16.5 14 19 7.5 21.5 14a2.5 2.5 0 0 1-5 0z"/></symbol>
     <symbol id="i-chair" viewBox="0 0 24 24"><path d="M7 11V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v6"/><rect x="5" y="11" width="14" height="3.5" rx="1"/><path d="M6.5 14.5V21M17.5 14.5V21M9 7h6"/></symbol>
     <symbol id="i-overview" viewBox="0 0 24 24"><rect x="8" y="2.5" width="8" height="3.5" rx="1"/><path d="M16 4.5h2a2 2 0 0 1 2 2V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2h2"/><path d="M11.5 11H16M11.5 16H16M8 11h.01M8 16h.01"/></symbol>
     <symbol id="i-list" viewBox="0 0 24 24"><path d="M8.5 6H21M8.5 12H21M8.5 18H21M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
@@ -109,10 +108,6 @@
       <button class="nav-item" data-nav="gosti">
         <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg></span>
         <span>Gosti</span>
-      </button>
-      <button class="nav-item" data-nav="pravila">
-        <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-rules"/></svg></span>
-        <span>Pravila</span>
       </button>
       <button class="nav-item" data-nav="raspored">
         <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-chair"/></svg></span>
@@ -191,21 +186,11 @@
             </div>
             <div class="guest-count-bar">
               <span id="guest-count">0 gostiju</span>
+              <button type="button" class="chip chip-alert" id="btn-filter-violated" style="display:none"></button>
             </div>
             <div id="guest-list"></div>
           </div>
         </div>
-      </section>
-
-      <!-- ═══ PRAVILA ═════════════════════════════════════════════════════ -->
-      <section id="section-pravila" class="section">
-        <div class="section-header">
-          <h2 class="section-title">Posebni zahtjevi i pravila</h2>
-        </div>
-        <div class="pravila-toolbar">
-          <button class="btn-primary" id="btn-add-rule">+ Dodaj pravilo</button>
-        </div>
-        <div class="pravila-layout" id="rules-list"></div>
       </section>
 
       <!-- ═══ RASPORED ════════════════════════════════════════════════════ -->
@@ -281,10 +266,6 @@
       <button class="bottom-nav-item" data-nav="gosti">
         <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg></span>
         <span>Gosti</span>
-      </button>
-      <button class="bottom-nav-item" data-nav="pravila">
-        <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-rules"/></svg></span>
-        <span>Pravila</span>
       </button>
       <button class="bottom-nav-item" data-nav="raspored">
         <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-chair"/></svg></span>
@@ -416,18 +397,32 @@
         <label for="guest-edit-category">Kategorija</label>
         <select id="guest-edit-category" class="form-control"></select>
       </div>
-      <div class="form-group">
-        <label for="guest-edit-status">Status</label>
-        <select id="guest-edit-status" class="form-control">
-          <option value="unassigned">Nedodijeljen</option>
-          <option value="assigned">Dodijeljen</option>
-          <option value="maybe">Možda (na čekanju)</option>
-        </select>
+      <div class="modal-subsection">
+        <div class="modal-subsection-title"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Posebni zahtjevi</div>
+        <div class="form-group">
+          <label><svg class="ic" aria-hidden="true"><use href="#i-together"/></svg> Sjedi s</label>
+          <div class="people-picker" id="pp-together" data-placeholder="Dodaj partnera, obitelj…"></div>
+        </div>
+        <div class="form-group">
+          <label><svg class="ic" aria-hidden="true"><use href="#i-apart"/></svg> Ne sjedi s</label>
+          <div class="people-picker" id="pp-apart" data-placeholder="Dodaj osobu…"></div>
+        </div>
+        <div class="form-group">
+          <label for="guest-edit-fixed-table"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg> Uvijek za stolom</label>
+          <div class="form-row">
+            <select id="guest-edit-fixed-table" class="form-control"></select>
+            <select id="guest-edit-fixed-seat" class="form-control"></select>
+          </div>
+        </div>
       </div>
       <div class="form-group">
         <label for="guest-edit-notes">Bilješka</label>
         <textarea id="guest-edit-notes" class="form-control" placeholder="Npr. vegetarijanac, blizu izlaza..."></textarea>
       </div>
+      <label class="checkbox-row">
+        <input id="guest-edit-maybe" type="checkbox">
+        <span>Dolazak još nije potvrđen (ne raspoređuj)</span>
+      </label>
       <label class="checkbox-row">
         <input id="guest-edit-locked" type="checkbox">
         <span><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Zaključano mjesto (automatika ne smije premjestiti)</span>
@@ -500,50 +495,13 @@
         <input id="cat-edit-head" type="checkbox">
         <span><svg class="ic" aria-hidden="true"><use href="#i-toast"/></svg> Sjedi za stolom mladenaca (kum/kuma)</span>
       </label>
+      <label class="checkbox-row">
+        <input id="cat-edit-together" type="checkbox">
+        <span><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg> Svi iz ove kategorije sjede za istim stolom</span>
+      </label>
     </div>
     <div class="modal-footer">
       <button class="btn-primary" id="btn-save-category">Spremi</button>
-    </div>
-  </div>
-</div>
-
-<!-- Rule add modal -->
-<div id="modal-rule" class="modal-backdrop" style="display:none">
-  <div class="modal">
-    <div class="modal-header">
-      <h3 class="modal-title">Dodaj pravilo</h3>
-      <button class="modal-close" aria-label="Zatvori"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:14px">
-      <div class="form-group">
-        <label>Vrsta pravila</label>
-        <div class="rule-type-btns">
-          <button class="rule-type-btn active" data-type="apart"><svg class="ic" aria-hidden="true"><use href="#i-apart"/></svg> Odvojeni</button>
-          <button class="rule-type-btn" data-type="together"><svg class="ic" aria-hidden="true"><use href="#i-together"/></svg> Zajedno</button>
-          <button class="rule-type-btn" data-type="fixed"><svg class="ic" aria-hidden="true"><use href="#i-pin"/></svg> Fiksno mjesto</button>
-          <button class="rule-type-btn" data-type="category-together"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg> Kategorija zajedno</button>
-        </div>
-      </div>
-      <div id="rule-guest-picker-wrap" class="form-group">
-        <label for="rule-guest-select">Odaberi goste</label>
-        <select id="rule-guest-select" class="form-control" multiple size="5"></select>
-        <span style="font-size:0.78rem;color:var(--color-muted)">Drži Ctrl (Cmd na Mac) za višestruki odabir</span>
-      </div>
-      <div id="rule-cat-picker-wrap" class="form-group" style="display:none">
-        <label for="rule-cat-select">Kategorija</label>
-        <select id="rule-cat-select" class="form-control"></select>
-      </div>
-      <div id="rule-table-picker-wrap" class="form-group" style="display:none">
-        <label for="rule-table-select">Stol</label>
-        <select id="rule-table-select" class="form-control"></select>
-      </div>
-      <div id="rule-seat-picker-wrap" class="form-group" style="display:none">
-        <label for="rule-seat-select">Mjesto (opcionalno)</label>
-        <select id="rule-seat-select" class="form-control"></select>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-primary" id="btn-save-rule">Spremi pravilo</button>
     </div>
   </div>
 </div>
