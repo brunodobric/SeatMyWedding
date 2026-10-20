@@ -387,6 +387,23 @@ async function assignGuest(guestId, tableId, seatIndex) {
   emit('guests');
 }
 
+// Manual moves (drag & drop, swaps): [{ id, tableId, seatIndex }] in one write.
+async function placeGuests(changes) {
+  const byId = new Map(state.guests.map(g => [g.id, g]));
+  const changed = [];
+  for (const c of changes) {
+    const guest = byId.get(c.id);
+    if (!guest) continue;
+    guest.tableId = c.tableId || null;
+    guest.seatIndex = c.tableId ? c.seatIndex : null;
+    guest.status = c.tableId ? 'assigned' : 'unassigned';
+    changed.push(guest);
+  }
+  if (changed.length) await dbPutAll('guests', changed);
+  computeRuleStatus();
+  emit('guests');
+}
+
 async function unassignGuest(guestId) {
   const guest = state.guests.find(g => g.id === guestId);
   if (!guest) return;

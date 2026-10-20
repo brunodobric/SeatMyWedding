@@ -972,7 +972,8 @@ function renderRaspored() {
       floorPlanAssign = new FloorPlan(svg, {
         mode: 'assign',
         showFullNames: !!state.settings.showFullNames,
-        onSeatClick: (tableId, seatIndex, guest) => handleSeatClick(tableId, seatIndex, guest)
+        onSeatClick: (tableId, seatIndex, guest) => handleSeatClick(tableId, seatIndex, guest),
+        onSeatPress: (e, tableId, seatIndex, guest) => armGuestDrag(e, guest.id, false)
       });
     }
     floorPlanAssign.setShowFullNames(!!state.settings.showFullNames);
@@ -1039,7 +1040,7 @@ function renderUnassignedPanel() {
   document.getElementById('unassigned-count').textContent = all.length ? `(${all.length})` : '';
   document.getElementById('unassigned-hint').textContent = selectedGuestForAssign
     ? `Odaberi slobodno mjesto za: ${nameOf(selectedGuestForAssign)}`
-    : all.length ? 'Dodirni gosta pa slobodno mjesto.' : '';
+    : all.length ? 'Povuci gosta na mjesto ili stol, ili ga dodirni pa odaberi mjesto.' : '';
   const list = document.getElementById('unassigned-list');
   panel.classList.toggle('all-seated', all.length === 0);
   if (guests.length === 0) {
@@ -1055,7 +1056,10 @@ function renderUnassignedPanel() {
     </div>`;
   }).join('');
   list.querySelectorAll('.guest-chip').forEach(chip => {
+    chip.addEventListener('mousedown', e => armGuestDrag(e, chip.dataset.id, true));
+    chip.addEventListener('touchstart', e => armGuestDrag(e, chip.dataset.id, true), { passive: true });
     chip.addEventListener('click', () => {
+      if (guestDrag.justDropped()) return;
       selectedGuestForAssign = selectedGuestForAssign === chip.dataset.id ? null : chip.dataset.id;
       renderUnassignedPanel();
       if (rasporedView === 'tables') renderTablesView();
@@ -1082,7 +1086,7 @@ function renderTablesView() {
     const addBtn = free > 0
       ? `<button class="table-card-add${selectedGuestForAssign ? ' ready' : ''}" data-add="${t.id}">${icon('plus')} ${selectedGuestForAssign ? `Smjesti ${esc(nameOf(selectedGuestForAssign))} ovdje` : 'Dodaj gosta'}</button>`
       : '';
-    return `<div class="table-card${violated.has(t.id) ? ' violated' : ''}">
+    return `<div class="table-card${violated.has(t.id) ? ' violated' : ''}" data-table-card="${t.id}">
       <div class="table-card-head">
         <h3>${esc(t.name)}</h3>
         <span class="table-card-count${free === 0 ? ' full' : ''}">${guests.length}/${t.seats}</span>
@@ -1099,7 +1103,12 @@ function renderTablesView() {
       ${addBtn}
     </div>`;
   }).join('')}</div>`;
+  container.querySelectorAll('[data-guest]').forEach(li => {
+    li.addEventListener('mousedown', e => armGuestDrag(e, li.dataset.guest, true));
+    li.addEventListener('touchstart', e => armGuestDrag(e, li.dataset.guest, true), { passive: true });
+  });
   container.querySelectorAll('[data-guest]').forEach(li => li.addEventListener('click', () => {
+    if (guestDrag.justDropped()) return;
     const g = state.guests.find(x => x.id === li.dataset.guest);
     if (g) showSeatOptionsModal(li.dataset.table, parseInt(li.dataset.seat), g);
   }));
@@ -1172,6 +1181,7 @@ function renderGuestsView() {
 }
 
 async function handleSeatClick(tableId, seatIndex, guest) {
+  if (guestDrag.justDropped()) return;
   if (guest) {
     showSeatOptionsModal(tableId, seatIndex, guest);
   } else if (selectedGuestForAssign) {

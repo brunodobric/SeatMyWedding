@@ -34,6 +34,7 @@ class FloorPlan {
     this.onTableMove = options.onTableMove || (() => {});
     this.onTableClick = options.onTableClick || (() => {});
     this.onSeatClick = options.onSeatClick || (() => {});
+    this.onSeatPress = options.onSeatPress || null; // (event, tableId, seatIndex, guest) – start of a press on an occupied seat
     this.mode = options.mode || 'edit'; // 'edit' | 'assign'
     this.showFullNames = options.showFullNames || false;
 
@@ -297,6 +298,10 @@ class FloorPlan {
         e.stopPropagation();
         this.onSeatClick(table.id, idx, guest || null);
       });
+      if (guest && this.onSeatPress) {
+        seatG.addEventListener('mousedown', (e) => this.onSeatPress(e, table.id, idx, guest));
+        seatG.addEventListener('touchstart', (e) => this.onSeatPress(e, table.id, idx, guest), { passive: true });
+      }
       g.appendChild(seatG);
     });
 
