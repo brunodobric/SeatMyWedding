@@ -24,11 +24,6 @@ const defs = `
     <stop offset=".82" stop-color="#B98F3E"/>
     <stop offset="1" stop-color="#7A5A22"/>
   </linearGradient>
-  <linearGradient id="goldLine" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#F1DC9C"/>
-    <stop offset=".5" stop-color="#B8903E"/>
-    <stop offset="1" stop-color="#E7CB82"/>
-  </linearGradient>
   <radialGradient id="bg" cx=".5" cy=".38" r=".8">
     <stop offset="0" stop-color="#3B2F25"/>
     <stop offset=".55" stop-color="#231B15"/>
@@ -71,15 +66,8 @@ function emblem(gap) {
   ${star(392, 196, .5, .6)}`;
 }
 
-function iconSvg({ frame = true, rounded = false } = {}) {
-  const frameSvg = frame ? `
-  <rect x="34" y="34" width="444" height="444" rx="82" fill="none" stroke="url(#goldLine)" stroke-width="3"/>
-  <rect x="46" y="46" width="420" height="420" rx="70" fill="none" stroke="url(#goldLine)" stroke-opacity=".45" stroke-width="1.2"/>
-  <g fill="url(#goldLine)">
-    <path d="M256 24l10 10-10 10-10-10z"/>
-    <path d="M256 468l10 10-10 10-10-10z"/>
-  </g>` : '';
-  const body = `<rect width="512" height="512" fill="url(#bg)"/>${frameSvg}${emblem('#20180F')}`;
+function iconSvg({ rounded = false } = {}) {
+  const body = `<rect width="512" height="512" fill="url(#bg)"/>${emblem('#20180F')}`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
 <defs>${defs}
   <clipPath id="corners"><rect width="512" height="512" rx="115"/></clipPath>
@@ -128,12 +116,11 @@ writeFileSync(resolve(ICONS, 'icon.svg'), iconSvg({ rounded: true }));
 console.log('wrote icons/icon.svg');
 
 const full = iconSvg();
-const maskable = iconSvg({ frame: false });
 await renderSvg(full, 180, 'apple-touch-icon.png');
 await renderSvg(full, 192, 'icon-192.png');
 await renderSvg(full, 512, 'icon-512.png');
-await renderSvg(maskable, 192, 'icon-192-maskable.png');
-await renderSvg(maskable, 512, 'icon-512-maskable.png');
+await renderSvg(full, 192, 'icon-192-maskable.png');
+await renderSvg(full, 512, 'icon-512-maskable.png');
 await renderSvg(iconSvg({ rounded: true }), 32, 'favicon-32.png');
 
 const links = [];

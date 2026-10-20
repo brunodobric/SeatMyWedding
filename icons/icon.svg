@@ -8,11 +8,6 @@
     <stop offset=".82" stop-color="#B98F3E"/>
     <stop offset="1" stop-color="#7A5A22"/>
   </linearGradient>
-  <linearGradient id="goldLine" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#F1DC9C"/>
-    <stop offset=".5" stop-color="#B8903E"/>
-    <stop offset="1" stop-color="#E7CB82"/>
-  </linearGradient>
   <radialGradient id="bg" cx=".5" cy=".38" r=".8">
     <stop offset="0" stop-color="#3B2F25"/>
     <stop offset=".55" stop-color="#231B15"/>
@@ -26,12 +21,6 @@
   <clipPath id="corners"><rect width="512" height="512" rx="115"/></clipPath>
 </defs>
 <g clip-path="url(#corners)"><rect width="512" height="512" fill="url(#bg)"/>
-  <rect x="34" y="34" width="444" height="444" rx="82" fill="none" stroke="url(#goldLine)" stroke-width="3"/>
-  <rect x="46" y="46" width="420" height="420" rx="70" fill="none" stroke="url(#goldLine)" stroke-opacity=".45" stroke-width="1.2"/>
-  <g fill="url(#goldLine)">
-    <path d="M256 24l10 10-10 10-10-10z"/>
-    <path d="M256 468l10 10-10 10-10-10z"/>
-  </g>
   <circle cx="256" cy="262" r="190" fill="url(#glow)"/>
   
     <circle cx="206" cy="296" r="92" fill="none" stroke="#20180F" stroke-width="34"/>
