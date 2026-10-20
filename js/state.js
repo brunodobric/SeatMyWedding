@@ -23,10 +23,11 @@ async function loadAll() {
   state.categories = categories || [];
   state.guests = guests || [];
   state.rules = rules || [];
-  await migrateTables();
-  await migrateRules();
+  // Each step returns whether it had to change stored data.
+  const changed = [await migrateTables(), await migrateRules(), await repairSeating()].some(Boolean);
   computeRuleStatus();
   updateMonogramIcon();
+  return changed;
 }
 
 // Older bridal tables were saved with twice as many seats as were drawn (the
@@ -36,6 +37,34 @@ async function migrateTables() {
     t.shape === 'head' && Number.isInteger(t.seatsLong) && t.seatsLong + 2 * (t.seatsEnd || 0) !== t.seats);
   for (const t of fixed) t.seatsLong = Math.max(0, t.seats - 2 * (t.seatsEnd || 0));
   if (fixed.length) await dbPutAll('tables', fixed);
+  return fixed.length > 0;
+}
+
+// After merging two devices, a seat can hold two guests, or a guest can sit at
+// a table the other device removed. The latest placement keeps the seat (a
+// locked one first); the others go back to "bez mjesta".
+async function repairSeating() {
+  const tables = new Map(state.tables.map(t => [t.id, t]));
+  const taken = new Set();
+  const freed = [];
+  const seated = state.guests
+    .filter(g => g.tableId)
+    .sort((a, b) => (b.locked ? 1 : 0) - (a.locked ? 1 : 0) || (b.updatedAt || 0) - (a.updatedAt || 0) || (a.id < b.id ? -1 : 1));
+  for (const g of seated) {
+    const table = tables.get(g.tableId);
+    if (!table) { freed.push(g); continue; }
+    if (!Number.isInteger(g.seatIndex)) continue;
+    const key = g.tableId + ':' + g.seatIndex;
+    if (g.seatIndex < 0 || g.seatIndex >= table.seats || taken.has(key)) freed.push(g);
+    else taken.add(key);
+  }
+  for (const g of freed) {
+    g.tableId = null;
+    g.seatIndex = null;
+    if (g.status === 'assigned') g.status = 'unassigned';
+  }
+  if (freed.length) await dbPutAll('guests', freed);
+  return freed.length > 0;
 }
 
 // Replace regular tables / add missing ones in one go (see planHall in hall.js).
@@ -150,7 +179,7 @@ async function replaceRules(next) {
 }
 
 async function migrateRules() {
-  await replaceRules(normalizeRules(state.rules));
+  return replaceRules(normalizeRules(state.rules));
 }
 
 function getGuestRelations(guestId) {
