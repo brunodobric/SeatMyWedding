@@ -1203,7 +1203,10 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
 
   #app-header { padding: 0 12px; gap: 8px; height: 52px; }
   :root { --header-h: 52px; }
-  #wedding-title-display { max-width: calc(100vw - 150px); font-size: 1.75rem; }
+  #wedding-title-display { flex: 1 1 auto; min-width: 0; max-width: none; font-size: 1.75rem; text-align: center; }
+  /* Same width as the Opcije button, so the title sits in the middle of the screen */
+  .header-monogram { margin-right: 4px; }
+  .btn-options .hide-xs { display: none; }
   .stat-badge { font-size: 0.68rem; padding: 3px 6px; }
 
   /* Sala: mobile uses tabs instead of the desktop split layout.
