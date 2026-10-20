@@ -22,8 +22,10 @@
   --shadow-card: 0 2px 12px rgba(43,38,34,0.07);
   --sidebar-w: 220px;
   --header-h: 62px;
-  /* How much shorter than the screen iOS reports the viewport (index.html) */
-  --vh-fix: 0px;
+  /* iOS home-screen app only, set in index.html: the real screen height and
+     how far above the screen's edge fixed elements end */
+  --app-h: 100dvh;
+  --fixed-gap: 0px;
   /* Zaglavlje i donja traka: karamela iz ikone, tamnija uz rub ekrana,
      svjetlija prema sadržaju */
   --bar-edge: #7B5E3C;
@@ -43,7 +45,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: var(--color-bg);
   color: var(--color-ink);
-  min-height: calc(100dvh + var(--vh-fix));
+  min-height: var(--app-h);
   overflow: hidden;
   /* Disable double-tap-to-zoom (the floor plan keeps its own zoom controls) */
   touch-action: manipulation;
@@ -77,7 +79,7 @@ a { color: var(--color-gold-deep); }
 #app {
   display: flex;
   flex-direction: column;
-  height: calc(100dvh + var(--vh-fix));
+  height: var(--app-h);
 }
 
 /* Header */
@@ -250,7 +252,7 @@ a { color: var(--color-gold-deep); }
 #bottom-nav {
   display: none;
   position: fixed;
-  bottom: calc(-1 * var(--vh-fix)); left: 0; right: 0;
+  bottom: calc(-1 * var(--fixed-gap)); left: 0; right: 0;
   background:
     radial-gradient(ellipse 60% 140% at 50% 100%, rgba(230,200,110,0.2), transparent 70%),
     linear-gradient(0deg, var(--bar-edge) 0%, var(--bar-inner) 100%);
@@ -378,7 +380,7 @@ select.form-control { cursor: pointer; }
 .modal-backdrop {
   display: none;
   position: fixed; inset: 0;
-  bottom: calc(-1 * var(--vh-fix));
+  bottom: calc(-1 * var(--fixed-gap));
   background: rgba(43,38,34,0.45);
   z-index: 100;
   align-items: center;
@@ -1201,7 +1203,10 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
 
   #app-header { padding: 0 12px; gap: 8px; height: 52px; }
   :root { --header-h: 52px; }
-  #wedding-title-display { max-width: calc(100vw - 150px); font-size: 1.75rem; }
+  #wedding-title-display { flex: 1 1 auto; min-width: 0; max-width: none; font-size: 1.75rem; text-align: center; }
+  /* Same width as the Opcije button, so the title sits in the middle of the screen */
+  .header-monogram { margin-right: 4px; }
+  .btn-options .hide-xs { display: none; }
   .stat-badge { font-size: 0.68rem; padding: 3px 6px; }
 
   /* Sala: mobile uses tabs instead of the desktop split layout.
@@ -1595,7 +1600,7 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
 #splash {
   position: fixed;
   inset: 0;
-  bottom: calc(-1 * var(--vh-fix));
+  bottom: calc(-1 * var(--fixed-gap));
   z-index: 100000;
   display: flex;
   align-items: center;
@@ -1714,7 +1719,7 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
 .options-panel {
   position: fixed;
   inset: 0;
-  bottom: calc(-1 * var(--vh-fix));
+  bottom: calc(-1 * var(--fixed-gap));
   z-index: 900;
   pointer-events: none;
 }
