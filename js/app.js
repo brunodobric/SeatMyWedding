@@ -446,10 +446,10 @@ function openTableModal(id) {
     document.getElementById('table-seats-long').value = perSide;
   } else if (shape === 'head') {
     document.getElementById('table-seats-long').value = (table ? table.seatsLong : undefined) || 8;
-    document.getElementById('table-seats-end').value = (table ? table.seatsEnd : undefined) || 1;
+    document.getElementById('table-seats-end').value = table && Number.isInteger(table.seatsEnd) ? table.seatsEnd : 0;
   } else {
     document.getElementById('table-seats-long').value = (table ? table.seatsLong : undefined) || 4;
-    document.getElementById('table-seats-end').value = (table ? table.seatsEnd : undefined) || 1;
+    document.getElementById('table-seats-end').value = table && Number.isInteger(table.seatsEnd) ? table.seatsEnd : 1;
   }
 
   updateSeatsUI(shape);
