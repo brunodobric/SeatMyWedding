@@ -113,10 +113,6 @@
         <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-chair"/></svg></span>
         <span>Raspored</span>
       </button>
-      <button class="nav-item" data-nav="pregled">
-        <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-overview"/></svg></span>
-        <span>Pregled</span>
-      </button>
     </nav>
 
     <!-- ── Main content ──────────────────────────────────────────────────── -->
@@ -198,58 +194,52 @@
         <div class="section-header">
           <h2 class="section-title">Raspored sjedenja</h2>
         </div>
-        <div class="raspored-stats-bar">
-          <button class="btn-primary" id="btn-suggest-seating"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Predloži raspored</button>
+        <div class="raspored-topbar">
+          <div id="seating-progress" class="seating-progress"></div>
+          <button class="btn-primary" id="btn-suggest-seating"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Predloži<span class="hide-xs">&nbsp;raspored</span></button>
         </div>
-        <div class="raspored-layout">
-          <!-- Unassigned panel -->
-          <div class="unassigned-panel" id="unassigned-panel">
-            <div class="unassigned-header">
-              <h3>Nedodijeljeni gosti</h3>
-              <div id="unassigned-count"></div>
-              <input id="raspored-search" class="form-control" type="search" placeholder="Pretraži..." style="margin-top:6px">
-            </div>
-            <div id="unassigned-list"></div>
+        <div class="raspored-toolbar">
+          <div class="view-switch" role="tablist">
+            <button class="view-btn active" data-view="floor"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg> Tlocrt</button>
+            <button class="view-btn" data-view="tables"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Po stolovima</button>
+            <button class="view-btn" data-view="guests"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> Po gostima</button>
           </div>
-          <!-- Floor plan -->
-          <div class="raspored-canvas">
-            <div class="raspored-toolbar">
-              <button class="btn-secondary" id="btn-full-names-raspored" title="Prikaži puna imena gostiju">Aa Imena</button>
-              <div style="display:flex;gap:4px;margin-left:auto">
-                <button class="btn-icon" id="btn-zoom-in-assign" title="Povećaj"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
-                <button class="btn-icon" id="btn-zoom-out-assign" title="Smanji"><svg class="ic" aria-hidden="true"><use href="#i-minus"/></svg></button>
-                <button class="btn-icon" id="btn-zoom-reset-assign" title="Resetiraj"><svg class="ic" aria-hidden="true"><use href="#i-focus"/></svg></button>
+          <div class="toolbar-right">
+            <button class="btn-secondary floor-only" id="btn-full-names-raspored" title="Prikaži puna imena gostiju">Aa <span class="hide-sm">Imena</span></button>
+            <button class="btn-icon floor-only hide-touch" id="btn-zoom-in-assign" title="Povećaj"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
+            <button class="btn-icon floor-only hide-touch" id="btn-zoom-out-assign" title="Smanji"><svg class="ic" aria-hidden="true"><use href="#i-minus"/></svg></button>
+            <button class="btn-icon floor-only" id="btn-zoom-reset-assign" title="Resetiraj"><svg class="ic" aria-hidden="true"><use href="#i-focus"/></svg></button>
+            <div class="menu-wrap">
+              <button class="btn-secondary" id="btn-export-menu" aria-haspopup="true"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> <span class="hide-sm">Ispis i izvoz</span></button>
+              <div class="menu" id="export-menu" hidden>
+                <button class="menu-item" id="btn-print"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> Ispiši ili spremi PDF</button>
+                <button class="menu-item" id="btn-export-csv"><svg class="ic" aria-hidden="true"><use href="#i-sheet"/></svg> Tablica za Excel (CSV)</button>
+                <div class="menu-sep"></div>
+                <button class="menu-item" id="btn-export-json"><svg class="ic" aria-hidden="true"><use href="#i-archive"/></svg> Spremi sigurnosnu kopiju</button>
+                <button class="menu-item" id="btn-import-json"><svg class="ic" aria-hidden="true"><use href="#i-import"/></svg> Vrati iz kopije</button>
               </div>
-            </div>
-            <div class="floor-plan-svg-wrap">
-              <svg id="fp-assign-svg" class="floor-plan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ═══ PREGLED ══════════════════════════════════════════════════════ -->
-      <section id="section-pregled" class="section">
-        <div class="section-header">
-          <h2 class="section-title">Pregled i izvoz</h2>
-        </div>
-        <div id="pregled-validation"></div>
-        <div class="pregled-layout">
-          <div class="pregled-toolbar">
-            <div class="pregled-view-btns">
-              <button class="pregled-view-btn active" data-view="tables"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Po stolovima</button>
-              <button class="pregled-view-btn" data-view="guests"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> Po gostima</button>
-              <button class="pregled-view-btn" data-view="floor"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg> Tlocrt</button>
-            </div>
-            <div class="pregled-export-btns">
-              <button class="btn-secondary" id="btn-print"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> Ispiši</button>
-              <button class="btn-secondary" id="btn-export-csv"><svg class="ic" aria-hidden="true"><use href="#i-sheet"/></svg> CSV</button>
-              <button class="btn-secondary" id="btn-export-json"><svg class="ic" aria-hidden="true"><use href="#i-archive"/></svg> Backup</button>
-              <button class="btn-secondary" id="btn-import-json"><svg class="ic" aria-hidden="true"><use href="#i-import"/></svg> Uvezi</button>
               <input type="file" id="json-import-input" accept=".json" style="display:none">
             </div>
           </div>
-          <div id="pregled-content"></div>
+        </div>
+        <div class="raspored-layout" data-view="floor">
+          <!-- Guests without a seat -->
+          <div class="unassigned-panel" id="unassigned-panel">
+            <div class="unassigned-header">
+              <h3>Bez mjesta <span id="unassigned-count"></span></h3>
+              <input id="raspored-search" class="form-control" type="search" placeholder="Pretraži...">
+              <p class="unassigned-hint" id="unassigned-hint"></p>
+            </div>
+            <div id="unassigned-list"></div>
+          </div>
+          <div class="raspored-main">
+            <div class="raspored-canvas floor-only">
+              <div class="floor-plan-svg-wrap">
+                <svg id="fp-assign-svg" class="floor-plan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+              </div>
+            </div>
+            <div id="raspored-list" class="raspored-list"></div>
+          </div>
         </div>
       </section>
 
@@ -270,10 +260,6 @@
       <button class="bottom-nav-item" data-nav="raspored">
         <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-chair"/></svg></span>
         <span>Raspored</span>
-      </button>
-      <button class="bottom-nav-item" data-nav="pregled">
-        <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-overview"/></svg></span>
-        <span>Pregled</span>
       </button>
     </div>
   </nav>
