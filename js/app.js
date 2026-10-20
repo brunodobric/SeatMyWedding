@@ -44,7 +44,7 @@ function renderSection(section) {
 
 function onStateChange(e) {
   const type = (e.detail ? e.detail.type : null);
-  if (type === 'settings') updateMonogram();
+  if (type === 'settings' || type === 'import') updateMonogram();
   if (type === 'rules') refreshRules();
   else refreshCurrentSection();
 }
@@ -131,7 +131,22 @@ function showOnboarding() {
   let step = 1;
   showOnboardingStep(step);
 
-  document.getElementById('onboarding-next').addEventListener('click', async () => {
+  const nextBtn = document.getElementById('onboarding-next');
+  let busy = false;
+  nextBtn.addEventListener('click', async () => {
+    // Ignore repeated clicks while a step is saving (would create duplicate tables).
+    if (busy) return;
+    busy = true;
+    nextBtn.disabled = true;
+    try {
+      await onboardingStep();
+    } finally {
+      busy = false;
+      nextBtn.disabled = false;
+    }
+  });
+
+  async function onboardingStep() {
     if (step === 1) {
       const title = document.getElementById('ob-title').value.trim() || 'Moje Vjenčanje';
       const monogram = document.getElementById('ob-monogram').value.trim() || '♡';
@@ -166,7 +181,7 @@ function showOnboarding() {
       renderAll();
       navigateTo('sala');
     }
-  });
+  }
 }
 
 function showOnboardingStep(step) {
@@ -465,11 +480,14 @@ function setupGostiEvents() {
   document.getElementById('btn-import-confirm').addEventListener('click', async () => {
     const raw = document.getElementById('import-textarea').value;
     const names = raw.split('\n').map(n => n.trim().split(',')[0].trim()).filter(Boolean);
+    const seen = new Set(state.guests.map(g => g.name));
+    const toAdd = [];
     for (const name of names) {
-      if (!state.guests.find(g => g.name === name)) {
-        await saveGuest({ id: crypto.randomUUID(), name, categoryId: null, status: 'unassigned', tableId: null, seatIndex: null, locked: false, notes: '' });
-      }
+      if (seen.has(name)) continue;
+      seen.add(name);
+      toAdd.push({ id: crypto.randomUUID(), name, categoryId: null, status: 'unassigned', tableId: null, seatIndex: null, locked: false, notes: '' });
     }
+    await addGuests(toAdd);
     document.getElementById('modal-import').style.display = 'none';
     document.getElementById('import-textarea').value = '';
     renderGosti();
@@ -579,11 +597,13 @@ function setupGuestModal() {
     const notes = document.getElementById('guest-edit-notes').value.trim();
     const guest = {
       id, name, categoryId: catId, status,
-      tableId: (existing ? existing.tableId : undefined) || null,
-      seatIndex: (existing ? existing.seatIndex : undefined) || null,
+      tableId: (existing && existing.tableId) || null,
+      seatIndex: (existing && existing.seatIndex != null) ? existing.seatIndex : null,
       locked, notes
     };
     if (status !== 'assigned') { guest.tableId = null; guest.seatIndex = null; }
+    // "Dodijeljen" without a seat would hide the guest from the unassigned list.
+    else if (!guest.tableId) guest.status = 'unassigned';
     await saveGuest(guest);
     modal.style.display = 'none';
     renderGosti();
@@ -841,7 +861,7 @@ function setupAssignSeatModal() {
 function showSeatOptionsModal(tableId, seatIndex, guest) {
   const modal = document.getElementById('modal-seat-options');
   const table = state.tables.find(t => t.id === tableId);
-  document.getElementById('seat-options-label').textContent = `${esc(guest.name)} — ${(table ? table.name : undefined) || 'Stol'}, Mj. ${seatIndex + 1}`;
+  document.getElementById('seat-options-label').textContent = `${guest.name} — ${(table ? table.name : undefined) || 'Stol'}, Mj. ${seatIndex + 1}`;
   document.getElementById('btn-seat-lock').innerHTML = guest.locked ? `${icon('unlock')} Otključaj` : `${icon('lock')} Zaključaj`;
   modal.dataset.guestId = guest.id;
   modal.style.display = 'flex';
@@ -899,10 +919,7 @@ function showSeatingResultModal(result) {
 function setupSeatingResultModal() {
   document.getElementById('btn-undo-seating').addEventListener('click', async () => {
     if (!lastSeatingSnapshot) return;
-    for (const g of lastSeatingSnapshot) {
-      const curr = state.guests.find(x => x.id === g.id);
-      if (curr) { Object.assign(curr, g); await saveGuest(curr); }
-    }
+    await restoreGuests(lastSeatingSnapshot);
     lastSeatingSnapshot = null;
     document.getElementById('modal-seating-result').style.display = 'none';
     renderRaspored();
@@ -1001,15 +1018,17 @@ function setupPregledEvents() {
 
   document.getElementById('btn-export-csv').addEventListener('click', () => {
     const rows = [['Ime', 'Kategorija', 'Stol', 'Mjesto', 'Status', 'Bilješka']];
-    state.guests.sort((a, b) => a.name.localeCompare(b.name)).forEach(g => {
+    const statusLabels = { assigned: 'Dodijeljen', unassigned: 'Nedodijeljen', maybe: 'Možda' };
+    [...state.guests].sort((a, b) => a.name.localeCompare(b.name)).forEach(g => {
       const catObj = state.categories.find(c => c.id === g.categoryId);
       const cat = catObj ? catObj.name : '';
       const tableObj = g.tableId ? state.tables.find(t => t.id === g.tableId) : null;
       const table = tableObj ? tableObj.name : '';
-      rows.push([g.name, cat, table, g.seatIndex !== null ? g.seatIndex + 1 : '', g.status, g.notes || '']);
+      rows.push([g.name, cat, table, g.tableId && g.seatIndex != null ? g.seatIndex + 1 : '', statusLabels[g.status] || g.status || '', g.notes || '']);
     });
-    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-    downloadFile('raspored-sjedenja.csv', 'text/csv', csv);
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    // BOM so Excel opens the UTF-8 file with č/ć/š/ž intact.
+    downloadFile('raspored-sjedenja.csv', 'text/csv;charset=utf-8', '\uFEFF' + csv);
   });
 
   document.getElementById('btn-export-json').addEventListener('click', () => {
@@ -1043,8 +1062,12 @@ function downloadFile(filename, mime, content) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Revoking right away can cancel the download in Safari/Firefox.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

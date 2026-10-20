@@ -209,10 +209,16 @@ function updateAuthUI(user) {
     }
     if (userAvatar) {
       if (user.photoURL) {
-        userAvatar.innerHTML = '<img src="' + user.photoURL + '" alt="" referrerpolicy="no-referrer">';
+        var img = document.createElement('img');
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        img.src = user.photoURL;
+        userAvatar.replaceChildren(img);
       } else {
         var initial = (user.displayName || user.email || '?').charAt(0).toUpperCase();
-        userAvatar.innerHTML = '<span>' + initial + '</span>';
+        var span = document.createElement('span');
+        span.textContent = initial;
+        userAvatar.replaceChildren(span);
       }
     }
   } else {
@@ -247,9 +253,11 @@ function closeLoginModal() {
 
 function setLoginLoading(loading) {
   document.querySelectorAll('#modal-login button[type="submit"], #btn-google-login').forEach(function (b) {
+    // Keep the original markup (the Google button has an SVG logo) so it can be restored.
+    if (loading && b._origHTML === undefined) b._origHTML = b.innerHTML;
     b.disabled = loading;
-    if (loading) b.dataset.origText = b.dataset.origText || b.textContent;
-    b.textContent = loading ? 'Pričekajte…' : (b.dataset.origText || b.textContent);
+    if (loading) b.textContent = 'Pričekajte…';
+    else if (b._origHTML !== undefined) b.innerHTML = b._origHTML;
   });
 }
 

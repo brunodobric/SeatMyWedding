@@ -16,8 +16,16 @@ var firebaseConfig = {
   measurementId: "G-JGTDGC3SJ8"
 };
 
-// Init only once (avoid crash if script loads twice)
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
+// Init only once (avoid crash if script loads twice). If the SDK failed to
+// load (offline, blocked CDN) the app keeps working locally without login.
+var auth = null;
+if (typeof firebase !== 'undefined') {
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    auth = firebase.auth();
+  } catch (e) {
+    console.warn('[Firebase] init nije uspio – aplikacija radi bez prijave.', e);
+  }
 }
-var auth = firebase.auth();

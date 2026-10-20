@@ -53,7 +53,7 @@ function suggestSeating(tables, guests, rules, categories) {
   // table (newlyweds / best men stay put — auto-seating won't relocate them).
   const assignments = {};
   for (const g of guests) {
-    if (g.tableId !== null && (g.locked || headTableIds.has(g.tableId))) {
+    if (g.tableId && (g.locked || headTableIds.has(g.tableId))) {
       assignments[g.id] = { tableId: g.tableId, seatIndex: g.seatIndex };
     }
   }
@@ -203,6 +203,14 @@ function suggestSeating(tables, guests, rules, categories) {
     if (headTableIds.has(a.tableId)) lockedIds.add(gid);
   }
 
+  // Category members per category-together rule (computed once, not per evaluation).
+  const catGuestIds = {};
+  for (const rule of rules) {
+    if (rule.type === 'category-together') {
+      catGuestIds[rule.id] = guests.filter(g => g.categoryId === rule.categoryId).map(g => g.id);
+    }
+  }
+
   function countViolations(map) {
     let v = 0;
     for (const rule of rules) {
@@ -216,8 +224,7 @@ function suggestSeating(tables, guests, rules, categories) {
         const placed = rule.guestIds.map(id => map[id]).filter(Boolean);
         if (placed.length >= 2 && new Set(placed.map(a => a.tableId)).size > 1) v++;
       } else if (rule.type === 'category-together') {
-        const catGuests = guests.filter(g => g.categoryId === rule.categoryId);
-        const placed = catGuests.map(g => map[g.id]).filter(Boolean);
+        const placed = catGuestIds[rule.id].map(id => map[id]).filter(Boolean);
         if (placed.length >= 2 && new Set(placed.map(a => a.tableId)).size > 1) v++;
       }
     }
@@ -303,6 +310,11 @@ function suggestSeating(tables, guests, rules, categories) {
   }
 
   const best = Object.entries(asgnMap).map(([guestId, a]) => ({ guestId, tableId: a.tableId, seatIndex: a.seatIndex }));
+  // Guests that did not fit anywhere are explicitly unseated — otherwise they
+  // would keep their old seat, which may now belong to someone else.
+  for (const g of toPlace) {
+    if (!asgnMap[g.id]) best.push({ guestId: g.id, tableId: null, seatIndex: null });
+  }
 
   // Check violations for report
   const violations = [];
