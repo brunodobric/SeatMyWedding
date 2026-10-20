@@ -138,6 +138,7 @@
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
     <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
     <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3M7.5 7.5 12 3l4.5 4.5"/><path d="M8 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-2"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></symbol>
     <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z"/></symbol>
   </defs>
 </svg>
@@ -150,19 +151,48 @@
     </div>
     <span id="wedding-title-display" title="Klikni za uređivanje naslova">Raspored Sjedenja</span>
     <input id="wedding-title-input" type="text" class="form-control" placeholder="Ana & Marko" autocomplete="off">
-    <!-- Auth + cloud sync (right side of the header) -->
-    <div id="auth-bar" class="auth-bar">
-      <span id="sync-status" class="sync-status off" style="display:none" title=""></span>
-      <button type="button" id="btn-login" class="btn-secondary btn-login" title="Prijava">
-        <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg></span> Prijava
-      </button>
-      <div id="user-menu" class="user-menu" style="display:none">
-        <div id="user-avatar" class="user-avatar" aria-hidden="true"></div>
-        <span id="user-display-name" class="user-display-name"></span>
-        <button type="button" id="btn-logout" class="btn-text" title="Odjava">Odjava</button>
-      </div>
-    </div>
+    <button type="button" id="btn-options" class="btn-options" aria-haspopup="dialog" aria-expanded="false" title="Opcije">
+      <svg class="ic" aria-hidden="true"><use href="#i-more"/></svg><span class="hide-xs">Opcije</span><span class="options-dot" aria-hidden="true"></span>
+    </button>
   </header>
+
+  <!-- Options: one menu on every screen (account, wedding & view, data, this screen) -->
+  <div id="options-panel" class="options-panel" hidden>
+    <div class="options-sheet" role="dialog" aria-label="Opcije">
+      <div class="options-head">
+        <span class="options-heading">Opcije</span>
+        <button type="button" class="btn-icon" id="btn-options-close" aria-label="Zatvori"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="options-group">
+        <div class="options-title">Račun</div>
+        <div id="auth-bar" class="auth-bar">
+          <span id="sync-status" class="sync-status off" style="display:none" title=""></span>
+          <button type="button" id="btn-login" class="btn-secondary btn-login" title="Prijava">
+            <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg></span> Prijava
+          </button>
+          <div id="user-menu" class="user-menu" style="display:none">
+            <div id="user-avatar" class="user-avatar" aria-hidden="true"></div>
+            <span id="user-display-name" class="user-display-name"></span>
+            <button type="button" id="btn-logout" class="btn-text" title="Odjava">Odjava</button>
+          </div>
+        </div>
+      </div>
+      <div class="options-group">
+        <div class="options-title">Vjenčanje i prikaz</div>
+        <button class="menu-item" id="opt-wedding"><svg class="ic" aria-hidden="true"><use href="#i-rings"/></svg> Naslov i monogram</button>
+        <button class="menu-item opt-toggle" id="opt-full-names" role="switch" aria-checked="false"><span class="opt-switch" aria-hidden="true"></span> Puna imena gostiju na tlocrtu</button>
+        <button class="menu-item" id="opt-guide" hidden><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Prikaži vodič „Prvi koraci”</button>
+      </div>
+      <div class="options-group">
+        <div class="options-title">Podaci</div>
+        <button class="menu-item" id="btn-export-json"><svg class="ic" aria-hidden="true"><use href="#i-archive"/></svg> Spremi sigurnosnu kopiju</button>
+        <button class="menu-item" id="btn-import-json"><svg class="ic" aria-hidden="true"><use href="#i-import"/></svg> Vrati iz kopije</button>
+        <button class="menu-item" id="btn-export-csv"><svg class="ic" aria-hidden="true"><use href="#i-sheet"/></svg> Tablica za Excel (CSV)</button>
+        <input type="file" id="json-import-input" accept=".json" style="display:none">
+      </div>
+      <div class="options-group" id="options-screen"></div>
+    </div>
+  </div>
 
   <div id="guide-bar" class="guide-bar" hidden></div>
 
@@ -217,7 +247,6 @@
             <div class="sala-canvas">
               <div class="floor-plan-toolbar">
                 <button class="btn-secondary" id="btn-snap-grid"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg> Mreža</button>
-                <button class="btn-secondary" id="btn-full-names-sala" title="Prikaži puna imena gostiju">Aa Imena</button>
                 <div style="display:flex;gap:4px;margin-left:auto">
                   <button class="btn-icon" id="btn-zoom-in" title="Povećaj"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
                   <button class="btn-icon" id="btn-zoom-out" title="Smanji"><svg class="ic" aria-hidden="true"><use href="#i-minus"/></svg></button>
@@ -246,7 +275,6 @@
               </div>
               <div class="gosti-actions">
                 <button class="btn-secondary" id="btn-import-guests"><svg class="ic" aria-hidden="true"><use href="#i-import"/></svg> Zalijepi popis</button>
-                <button class="btn-secondary" id="btn-manage-categories"><svg class="ic" aria-hidden="true"><use href="#i-palette"/></svg> Kategorije</button>
                 <button class="btn-secondary" id="btn-add-guest-btn" title="Dodaj gosta s detaljima"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> Novi gost</button>
               </div>
             </div>
@@ -279,22 +307,11 @@
             <button class="view-btn" data-view="guests"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> Po gostima</button>
           </div>
           <div class="toolbar-right">
-            <button class="btn-secondary floor-only" id="btn-full-names-raspored" title="Prikaži puna imena gostiju">Aa <span class="hide-sm">Imena</span></button>
             <button class="btn-icon floor-only hide-touch" id="btn-zoom-in-assign" title="Povećaj"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
             <button class="btn-icon floor-only hide-touch" id="btn-zoom-out-assign" title="Smanji"><svg class="ic" aria-hidden="true"><use href="#i-minus"/></svg></button>
             <button class="btn-icon floor-only" id="btn-zoom-reset-assign" title="Resetiraj"><svg class="ic" aria-hidden="true"><use href="#i-focus"/></svg></button>
-            <div class="menu-wrap">
-              <button class="btn-secondary" id="btn-export-menu" aria-haspopup="true"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> <span class="hide-sm">Ispis i izvoz</span></button>
-              <div class="menu" id="export-menu" hidden>
-                <button class="menu-item" id="btn-print"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> Ispiši ili spremi PDF</button>
-                <button class="menu-item" id="btn-share"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> Podijeli popis „Gdje sjedim”</button>
-                <button class="menu-item" id="btn-export-csv"><svg class="ic" aria-hidden="true"><use href="#i-sheet"/></svg> Tablica za Excel (CSV)</button>
-                <div class="menu-sep"></div>
-                <button class="menu-item" id="btn-export-json"><svg class="ic" aria-hidden="true"><use href="#i-archive"/></svg> Spremi sigurnosnu kopiju</button>
-                <button class="menu-item" id="btn-import-json"><svg class="ic" aria-hidden="true"><use href="#i-import"/></svg> Vrati iz kopije</button>
-              </div>
-              <input type="file" id="json-import-input" accept=".json" style="display:none">
-            </div>
+            <button class="btn-secondary" id="btn-share" title="Podijeli popis „Gdje sjedim”"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span class="hide-sm">Podijeli</span></button>
+            <button class="btn-secondary" id="btn-print" title="Ispiši ili spremi PDF"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> <span class="hide-sm">Ispis</span></button>
           </div>
         </div>
         <div class="raspored-layout" data-view="floor">
@@ -561,6 +578,27 @@
     </label>
     <div class="modal-footer">
       <button class="btn-primary" id="btn-import-confirm">Dodaj goste</button>
+    </div>
+  </div>
+</div>
+
+<!-- Wedding title & monogram -->
+<div id="modal-wedding" class="modal-backdrop" style="display:none">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <h3 class="modal-title">Naslov i monogram</h3>
+      <button class="modal-close" aria-label="Zatvori"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="form-group">
+      <label for="wedding-edit-title">Naslov vjenčanja</label>
+      <input id="wedding-edit-title" class="form-control" type="text" placeholder="Ana & Marko" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label for="wedding-edit-monogram">Monogram (inicijali)</label>
+      <input id="wedding-edit-monogram" class="form-control" type="text" placeholder="A&M" maxlength="5" autocomplete="off">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary" id="btn-save-wedding">Spremi</button>
     </div>
   </div>
 </div>

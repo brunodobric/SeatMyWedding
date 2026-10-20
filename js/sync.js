@@ -381,6 +381,9 @@ function setSyncStatus(status) {
   el.innerHTML = labels[status] ? `${icon('cloud')} ${labels[status]}` : '';
   el.title = labels[status] || '';
   el.style.display = status === 'off' ? 'none' : '';
+  // A dot on the Opcije button shows the sync state while the menu is closed.
+  const btn = document.getElementById('btn-options');
+  if (btn) btn.dataset.sync = status;
 }
 
 function setupSync() {
