@@ -155,8 +155,8 @@ class FloorPlan {
     const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     label.setAttribute('text-anchor', 'middle');
     label.setAttribute('dominant-baseline', 'central');
-    label.setAttribute('font-family', 'Inter, system-ui');
-    label.setAttribute('font-size', '11');
+    label.setAttribute('font-family', "'Cormorant Garamond', Georgia, serif");
+    label.setAttribute('font-size', '13.5');
     label.setAttribute('font-weight', '600');
     label.setAttribute('fill', '#6B5836');
     label.setAttribute('pointer-events', 'none');
@@ -200,7 +200,7 @@ class FloorPlan {
           txt.setAttribute('y', ly);
           txt.setAttribute('text-anchor', anchor);
           txt.setAttribute('dominant-baseline', 'central');
-          txt.setAttribute('font-family', 'Inter, system-ui');
+          txt.setAttribute('font-family', "Jost, system-ui, sans-serif");
           txt.setAttribute('font-size', '9');
           txt.setAttribute('font-weight', '600');
           txt.setAttribute('fill', '#2B2622');
@@ -216,17 +216,18 @@ class FloorPlan {
           const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
           txt.setAttribute('x', pos.x); txt.setAttribute('y', pos.y);
           txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('dominant-baseline', 'central');
-          txt.setAttribute('font-family', 'Inter, system-ui'); txt.setAttribute('font-size', '7');
+          txt.setAttribute('font-family', "Jost, system-ui, sans-serif"); txt.setAttribute('font-size', '7');
           txt.setAttribute('font-weight', '700'); txt.setAttribute('fill', '#FFFFFF');
           txt.setAttribute('pointer-events', 'none');
           txt.textContent = initials;
           seatG.appendChild(txt);
         }
         if (guest.locked) {
-          const lock = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-          lock.setAttribute('x', pos.x + 7); lock.setAttribute('y', pos.y - 7);
-          lock.setAttribute('font-size', '7'); lock.setAttribute('pointer-events', 'none');
-          lock.textContent = '🔒';
+          const lock = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+          lock.setAttribute('href', '#i-lock');
+          lock.setAttribute('x', pos.x + 6); lock.setAttribute('y', pos.y - 14);
+          lock.setAttribute('width', '8'); lock.setAttribute('height', '8');
+          lock.setAttribute('class', 'fp-lock'); lock.setAttribute('pointer-events', 'none');
           seatG.appendChild(lock);
         }
       }

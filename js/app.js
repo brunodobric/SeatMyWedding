@@ -174,7 +174,7 @@ function showOnboardingStep(step) {
     el.style.display = parseInt(el.dataset.step) === step ? 'block' : 'none';
   });
   const btn = document.getElementById('onboarding-next');
-  btn.textContent = step === 3 ? 'Počni ✨' : 'Dalje →';
+  btn.textContent = step === 3 ? 'Počni' : 'Dalje →';
 }
 
 // ── SALA ───────────────────────────────────────────────────────────────────────
@@ -210,14 +210,14 @@ function renderTableList() {
   }
   list.innerHTML = state.tables.map(t => {
     const assigned = state.guests.filter(g => g.tableId === t.id).length;
-    const shapeIcon = { round: '⭕', square: '⬜', rectangular: '▭', royal: '▬', head: '🥂' }[t.shape] || '⬜';
+    const shapeIcon = icon({ round: 'round', square: 'square', rectangular: 'rect', royal: 'royal', head: 'toast' }[t.shape] || 'square');
     return `<div class="table-row" data-id="${t.id}">
       <span class="table-shape-icon">${shapeIcon}</span>
       <div class="table-row-info">
         <span class="table-row-name">${esc(t.name)}</span>
         <span class="table-row-count">${assigned}/${t.seats} mjesta</span>
       </div>
-      <button class="btn-icon" data-edit="${t.id}" title="Uredi">✏️</button>
+      <button class="btn-icon" data-edit="${t.id}" title="Uredi">${icon('edit')}</button>
     </div>`;
   }).join('');
   list.querySelectorAll('[data-edit]').forEach(btn => {
@@ -437,7 +437,7 @@ function renderGuestList() {
       </div>
       <div class="guest-row-meta">
         ${statusLabel}
-        ${g.locked ? '<span class="lock-badge">🔒</span>' : ''}
+        ${g.locked ? `<span class="lock-badge">${icon('lock')}</span>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -495,8 +495,8 @@ function renderCategoryManager() {
     `<div class="cat-manager-row" style="--cat-color:${c.color}">
       <span class="cat-swatch" style="background:${c.color}"></span>
       <span class="cat-manager-name">${esc(c.name)}</span>
-      <button class="btn-icon" data-edit-cat="${c.id}">✏️</button>
-      <button class="btn-icon danger" data-del-cat="${c.id}">🗑️</button>
+      <button class="btn-icon" data-edit-cat="${c.id}" title="Uredi">${icon('edit')}</button>
+      <button class="btn-icon danger" data-del-cat="${c.id}" title="Obriši">${icon('trash')}</button>
     </div>`
   ).join('') || '<p class="muted">Nema kategorija.</p>';
   list.querySelectorAll('[data-del-cat]').forEach(btn => {
@@ -618,7 +618,7 @@ function renderPravila() {
     return;
   }
   list.innerHTML = state.rules.map(r => {
-    const icons = { apart: '❌', together: '✅', companion: '✅', fixed: '📌', 'category-together': '👪' };
+    const icons = { apart: 'apart', together: 'together', companion: 'together', fixed: 'pin', 'category-together': 'users' };
     const labels = { apart: 'Odvojeni', together: 'Zajedno', companion: 'Zajedno', fixed: 'Fiksno', 'category-together': 'Kategorija zajedno' };
     let desc = '';
     if (r.type === 'apart' || r.type === 'together' || r.type === 'companion') {
@@ -631,17 +631,17 @@ function renderPravila() {
       const cat = state.categories.find(c => c.id === r.categoryId);
       desc = (cat ? cat.name : undefined) || '?';
     }
-    const status = r.satisfied === true ? '<span class="rule-status ok">✔</span>'
-      : r.satisfied === false ? '<span class="rule-status bad">✖</span>'
+    const status = r.satisfied === true ? `<span class="rule-status ok">${icon('check')}</span>`
+      : r.satisfied === false ? `<span class="rule-status bad">${icon('x')}</span>`
       : '<span class="rule-status na">—</span>';
     return `<div class="rule-row">
-      <span class="rule-icon">${icons[r.type]}</span>
+      <span class="rule-icon">${icon(icons[r.type])}</span>
       <div class="rule-info">
         <span class="rule-type-label">${labels[r.type]}</span>
         <span class="rule-desc">${esc(desc)}</span>
       </div>
       ${status}
-      <button class="btn-icon danger" data-del-rule="${r.id}">🗑️</button>
+      <button class="btn-icon danger" data-del-rule="${r.id}" title="Obriši">${icon('trash')}</button>
     </div>`;
   }).join('');
   list.querySelectorAll('[data-del-rule]').forEach(btn => {
@@ -778,7 +778,7 @@ function renderUnassignedPanel() {
   const list = document.getElementById('unassigned-list');
   if (!list) return;
   if (guests.length === 0) {
-    list.innerHTML = '<div class="empty-state small"><p>Svi gosti su raspoređeni! 🎉</p></div>';
+    list.innerHTML = '<div class="empty-state small"><p>Svi gosti su raspoređeni!</p></div>';
     return;
   }
   list.innerHTML = guests.map(g => {
@@ -842,7 +842,7 @@ function showSeatOptionsModal(tableId, seatIndex, guest) {
   const modal = document.getElementById('modal-seat-options');
   const table = state.tables.find(t => t.id === tableId);
   document.getElementById('seat-options-label').textContent = `${esc(guest.name)} — ${(table ? table.name : undefined) || 'Stol'}, Mj. ${seatIndex + 1}`;
-  document.getElementById('btn-seat-lock').textContent = guest.locked ? '🔓 Otključaj' : '🔒 Zaključaj';
+  document.getElementById('btn-seat-lock').innerHTML = guest.locked ? `${icon('unlock')} Otključaj` : `${icon('lock')} Zaključaj`;
   modal.dataset.guestId = guest.id;
   modal.style.display = 'flex';
 }
@@ -886,11 +886,11 @@ function showSeatingResultModal(result) {
   const placed = result.assignments.filter(a => a.tableId).length;
   let html = `<p><strong>${placed}/${total}</strong> gostiju raspoređeno.</p>`;
   if (result.violations.length > 0) {
-    html += `<p class="text-error">⚠️ ${result.violations.length} pravilo(a) nije moglo biti zadovoljeno:</p><ul>`;
+    html += `<p class="text-error">${icon('alert')} ${result.violations.length} pravilo(a) nije moglo biti zadovoljeno:</p><ul>`;
     result.violations.forEach(v => { html += `<li>${esc(v.reason)}</li>`; });
     html += '</ul>';
   } else {
-    html += '<p class="text-success">✔ Sva pravila su zadovoljena.</p>';
+    html += `<p class="text-success">${icon('check')} Sva pravila su zadovoljena.</p>`;
   }
   document.getElementById('seating-result-body').innerHTML = html;
   modal.style.display = 'flex';
@@ -938,7 +938,7 @@ function renderPregled() {
       let msg = [];
       if (unassigned > 0) msg.push(`${unassigned} gostiju nije raspoređeno`);
       if (stats.violated > 0) msg.push(`${stats.violated} pravila su prekršena`);
-      bannerEl.innerHTML = `⚠️ ${msg.join(' · ')}`;
+      bannerEl.innerHTML = `${icon('alert')} ${msg.join(' · ')}`;
       bannerEl.style.display = '';
     } else {
       bannerEl.style.display = 'none';
@@ -973,7 +973,7 @@ function renderPregledContent() {
           <td>${esc(g.name)}</td>
           <td>${cat ? `<span class="cat-chip" style="background:${cat.color}">${esc(cat.name)}</span>` : '—'}</td>
           <td>${table ? esc(table.name) : '—'}</td>
-          <td>${g.status === 'assigned' ? '✔' : g.status === 'maybe' ? 'Možda' : '—'}</td>
+          <td>${g.status === 'assigned' ? icon('check') : g.status === 'maybe' ? 'Možda' : '—'}</td>
         </tr>`;
       }).join('')}</tbody>
     </table>`;
