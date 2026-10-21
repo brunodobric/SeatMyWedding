@@ -22,10 +22,6 @@
   --shadow-card: 0 2px 12px rgba(43,38,34,0.07);
   --sidebar-w: 220px;
   --header-h: 62px;
-  /* iOS home-screen app only, set in index.html: the real screen height and
-     how far above the screen's edge fixed elements end */
-  --app-h: 100dvh;
-  --fixed-gap: 0px;
   /* Zaglavlje i donja traka: karamela iz ikone, tamnija uz rub ekrana,
      svjetlija prema sadržaju */
   --bar-edge: #7B5E3C;
@@ -45,7 +41,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: var(--color-bg);
   color: var(--color-ink);
-  min-height: var(--app-h);
+  min-height: 100dvh;
   overflow: hidden;
   /* Disable double-tap-to-zoom (the floor plan keeps its own zoom controls) */
   touch-action: manipulation;
@@ -79,7 +75,7 @@ a { color: var(--color-gold-deep); }
 #app {
   display: flex;
   flex-direction: column;
-  height: var(--app-h);
+  height: 100dvh;
 }
 
 /* Header */
@@ -89,7 +85,13 @@ a { color: var(--color-gold-deep); }
   gap: 12px;
   height: var(--header-h);
   padding: 0 20px;
-  background: linear-gradient(180deg, var(--bar-edge) 0%, var(--bar-inner) 100%);
+  /* iOS 26+ colours the status bar from a fixed or sticky bar touching the
+     top of the page and picks light or dark icons to suit: a sticky header
+     with a solid caramel edge gives a caramel status bar with white icons. */
+  position: sticky;
+  top: 0;
+  background-color: var(--bar-edge);
+  background-image: linear-gradient(180deg, var(--bar-edge) 0%, var(--bar-inner) 100%);
   border-bottom: 1px solid var(--bar-line);
   box-shadow: 0 3px 14px rgba(35,27,21,0.22);
   z-index: 10;
@@ -268,7 +270,7 @@ a { color: var(--color-gold-deep); }
 #bottom-nav {
   display: none;
   position: fixed;
-  bottom: calc(-1 * var(--fixed-gap)); left: 0; right: 0;
+  bottom: 0; left: 0; right: 0;
   background:
     radial-gradient(ellipse 60% 140% at 50% 100%, rgba(230,200,110,0.2), transparent 70%),
     linear-gradient(0deg, var(--bar-edge) 0%, var(--bar-inner) 100%);
@@ -396,7 +398,6 @@ select.form-control { cursor: pointer; }
 .modal-backdrop {
   display: none;
   position: fixed; inset: 0;
-  bottom: calc(-1 * var(--fixed-gap));
   background: rgba(43,38,34,0.45);
   z-index: 100;
   align-items: center;
@@ -1572,9 +1573,8 @@ body.auth-logged-in #btn-login {
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  /* The page's own background is the body's. iOS tints the status bar area
-     from the canvas colour, so make that the header's colour: otherwise it
-     lays a fade to near-white (and a dark clock) over the top of the header. */
+  /* The page's own background is the body's. Where iOS tints the status bar
+     from the canvas colour, it gets the header's colour, not the light page. */
   background: var(--bar-edge);
 }
 html, body {
@@ -1621,7 +1621,6 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
 #splash {
   position: fixed;
   inset: 0;
-  bottom: calc(-1 * var(--fixed-gap));
   z-index: 100000;
   display: flex;
   align-items: center;
@@ -1740,7 +1739,6 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
 .options-panel {
   position: fixed;
   inset: 0;
-  bottom: calc(-1 * var(--fixed-gap));
   z-index: 900;
   pointer-events: none;
 }
