@@ -506,7 +506,7 @@ function renderHallTemplates(container, selected, onPick) {
 function openHallModal(mode) {
   const modal = document.getElementById('modal-hall');
   const regular = state.tables.filter(t => !isHeadTable(t));
-  hallTemplate = regular.length && regular.every(t => t.shape !== 'round') ? 'long' : 'round';
+  hallTemplate = currentHallTemplate();
   renderHallTemplates(document.getElementById('hall-templates'), hallTemplate, key => {
     hallTemplate = key;
     document.getElementById('hall-seats').value = HALL_TEMPLATES[key].defaultSeats;
@@ -692,7 +692,7 @@ function setupTableModal() {
       seats = seatsLong * 2 + seatsEnd * 2;
     }
 
-    const table = {
+    let table = {
       id,
       name: document.getElementById('table-name').value.trim() || 'Stol',
       shape,
@@ -702,6 +702,7 @@ function setupTableModal() {
       x: existing ? existing.x : 500, y: existing ? existing.y : 350,
       rotation: shape !== 'round' && shape !== 'square' && document.getElementById('table-rotated').checked ? 90 : 0
     };
+    if (!existing) table = placeNewTable(table);
     await saveTable(table);
     modal.style.display = 'none';
     renderSala();
@@ -723,7 +724,7 @@ function setupTableModal() {
     const id = modal.dataset.editId;
     const orig = state.tables.find(t => t.id === id);
     if (!orig) return;
-    const newTable = { ...orig, id: crypto.randomUUID(), name: orig.name + ' (kopija)', x: orig.x + 60, y: orig.y + 60 };
+    const newTable = placeNewTable({ ...orig, id: crypto.randomUUID(), name: orig.name + ' (kopija)' });
     await saveTable(newTable);
     modal.style.display = 'none';
     renderSala();
