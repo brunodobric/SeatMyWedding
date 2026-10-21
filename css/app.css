@@ -561,6 +561,9 @@ select.form-control { cursor: pointer; }
 }
 .floor-plan-toolbar .btn-secondary,
 .floor-plan-toolbar .btn-icon { font-size: 0.82rem; padding: 5px 10px; }
+/* Na računalu je popis stolova uvijek vidljiv, pa je ovaj gumb samo za mobilni tlocrt */
+.fp-add-table { display: none; }
+@media (max-width: 767px) { .fp-add-table { display: inline-flex; } }
 .floor-plan-toolbar .btn-secondary.active {
   background: var(--color-champagne);
   border-color: var(--color-gold-deep);

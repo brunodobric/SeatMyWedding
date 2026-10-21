@@ -731,6 +731,7 @@ function setupTableModal() {
   });
 
   document.getElementById('btn-add-table').addEventListener('click', () => openTableModal(null));
+  document.getElementById('btn-add-table-fp').addEventListener('click', () => openTableModal(null));
 
   document.getElementById('btn-snap-grid').addEventListener('click', () => {
     if (!floorPlanEdit) return;
