@@ -1,0 +1,24 @@
+{
+  "name": "seatmywedding",
+  "private": true,
+  "description": "Raspored sjedenja na vjenčanju: web aplikacija i iOS/Android aplikacija (Capacitor)",
+  "scripts": {
+    "build": "node tools/build-www.mjs",
+    "sync": "node tools/build-www.mjs && cap sync",
+    "ios": "node tools/build-www.mjs && cap sync ios && cap open ios",
+    "android": "node tools/build-www.mjs && cap sync android && cap open android"
+  },
+  "dependencies": {
+    "@capacitor-firebase/authentication": "^8.5.2",
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.5.3",
+    "@capacitor/share": "^8.0.3",
+    "@capgo/capacitor-printer": "^8.1.8"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3"
+  }
+}

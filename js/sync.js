@@ -83,6 +83,21 @@ async function flushCloudPush() {
   await pushToCloud();
 }
 
+// Stops syncing and deletes the account's wedding data from Firestore, before
+// the account itself is deleted.
+async function deleteCloudData(uid) {
+  _syncEnabled = false;
+  if (_pushTimer) {
+    clearTimeout(_pushTimer);
+    _pushTimer = null;
+  }
+  if (_unsubscribe) {
+    _unsubscribe();
+    _unsubscribe = null;
+  }
+  await getUserDocRef(uid).delete();
+}
+
 function isFirestoreReady() {
   try {
     return typeof firebase !== 'undefined'

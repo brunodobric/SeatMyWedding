@@ -117,7 +117,10 @@ const guestDrag = {
     const { guestId, target } = a;
     this.cleanup();
     this.lastDropAt = Date.now();
-    if (target) await dropGuest(guestId, target);
+    if (target) {
+      hapticTap();
+      await dropGuest(guestId, target);
+    }
   },
 
   cancel() {

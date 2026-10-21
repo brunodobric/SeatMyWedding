@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wedding-seating-v40';
+const CACHE_NAME = 'wedding-seating-v41';
 const ASSETS = [
   './',
   './index.html',
@@ -13,6 +13,7 @@ const ASSETS = [
   './fonts/jost-normal-latin-ext.woff2',
   './fonts/pinyon-latin.woff2',
   './fonts/pinyon-latin-ext.woff2',
+  './js/native.js',
   './js/icons.js',
   './js/db.js',
   './js/state.js',
