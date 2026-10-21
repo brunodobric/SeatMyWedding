@@ -15,7 +15,9 @@ let lastSeatingSnapshot = null;
 );
 
 async function init() {
-  if ('serviceWorker' in navigator) {
+  // The app store version ships its files inside the app and updates through
+  // the store, so only the website uses the service worker.
+  if ('serviceWorker' in navigator && !isNativeApp) {
     setupAppUpdates();
   }
   await loadAll();
@@ -1584,7 +1586,10 @@ function setupRasporedEvents() {
     document.getElementById('modal-print').style.display = 'none';
     buildPrintArea(parts);
     // Let the print layout render (fonts) before the dialog opens.
-    setTimeout(() => window.print(), 150);
+    setTimeout(() => {
+      if (isNativeApp) nativePrint('Raspored sjedenja').catch(() => showToast('Ispis nije uspio', true));
+      else window.print();
+    }, 150);
   });
   document.getElementById('btn-share').addEventListener('click', shareSeatingList);
 
@@ -1679,6 +1684,7 @@ async function shareSeatingList() {
   if (!lines.length) { showToast('Još nitko nema mjesto'); return; }
   const title = `${state.settings.weddingTitle || 'Vjenčanje'} – gdje sjedim`;
   const text = `${title}\n\n${lines.join('\n')}`;
+  if (await nativeShareText(title, text)) return;
   if (navigator.share) {
     try { await navigator.share({ title, text }); return; }
     catch (e) { if (e && e.name === 'AbortError') return; }
@@ -1691,7 +1697,15 @@ async function shareSeatingList() {
   }
 }
 
-function downloadFile(filename, mime, content) {
+async function downloadFile(filename, mime, content) {
+  if (isNativeApp) {
+    try {
+      if (await nativeSaveFile(filename, content)) return;
+    } catch (e) {
+      showToast('Spremanje nije uspjelo', true);
+      return;
+    }
+  }
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

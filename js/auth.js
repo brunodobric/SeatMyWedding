@@ -80,6 +80,7 @@ function setupAuth() {
           + 'Odaberite Odustani ako i dalje koristite ovaj uređaj.');
         if (typeof flushCloudPush === 'function') await flushCloudPush();
         if (authInst) await authInst.signOut();
+        if (typeof nativeSignOut === 'function') await nativeSignOut();
         if (wipe && typeof wipeLocalData === 'function') {
           await wipeLocalData();
           await clearFirestoreCache();
@@ -100,9 +101,14 @@ function setupAuth() {
       setLoginLoading(true);
       try {
         var authInst = getAuth();
-        var provider = new firebase.auth.GoogleAuthProvider();
-        provider.setCustomParameters({ prompt: 'select_account' });
-        await authInst.signInWithPopup(provider);
+        if (isNativeApp) {
+          var signIn = await nativeSignInCredential('google.com');
+          await authInst.signInWithCredential(signIn.credential);
+        } else {
+          var provider = new firebase.auth.GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: 'select_account' });
+          await authInst.signInWithPopup(provider);
+        }
         closeLoginModal();
         showToast('Uspješna prijava!');
       } catch (err) {
@@ -112,6 +118,27 @@ function setupAuth() {
       }
     });
   }
+
+  var btnApple = document.getElementById('btn-apple-login');
+  if (btnApple && isNativeApp && Capacitor.getPlatform() === 'ios') {
+    btnApple.hidden = false;
+    btnApple.addEventListener('click', async function () {
+      setLoginLoading(true);
+      try {
+        var signIn = await nativeSignInCredential('apple.com');
+        await getAuth().signInWithCredential(signIn.credential);
+        closeLoginModal();
+        showToast('Uspješna prijava!');
+      } catch (err) {
+        handleAuthError(err);
+      } finally {
+        setLoginLoading(false);
+      }
+    });
+  }
+
+  var btnDelete = document.getElementById('btn-delete-account');
+  if (btnDelete) btnDelete.addEventListener('click', deleteAccount);
 
   var tabLogin = document.getElementById('tab-login');
   var tabRegister = document.getElementById('tab-register');
@@ -201,11 +228,84 @@ function setupAuth() {
   updateAuthUI(null);
 }
 
+// ── Deleting the account ──────────────────────────────────────────────────────
+// Deletes the account and its wedding data in Firestore, then this device's
+// copy. The App Store requires this to be possible inside the app.
+
+var RECENT_SIGN_IN_MS = 4 * 60 * 1000;
+
+// Firebase deletes an account only right after a sign-in, so sign in again
+// unless that just happened. Returns Apple's authorization code (Apple only),
+// which is used to revoke the app's access to the Apple ID.
+async function reauthenticateForDelete(user) {
+  var providerId = (user.providerData[0] && user.providerData[0].providerId) || '';
+  var last = Date.parse(user.metadata && user.metadata.lastSignInTime) || 0;
+  var recent = Date.now() - last < RECENT_SIGN_IN_MS;
+  if (isNativeApp && (providerId === 'google.com' || providerId === 'apple.com')) {
+    if (recent && providerId === 'google.com') return null;
+    var signIn = await nativeSignInCredential(providerId);
+    await user.reauthenticateWithCredential(signIn.credential);
+    return signIn.authorizationCode;
+  }
+  if (recent) return null;
+  if (providerId === 'google.com') {
+    await user.reauthenticateWithPopup(new firebase.auth.GoogleAuthProvider());
+  } else if (providerId === 'password') {
+    var password = prompt('Za brisanje računa upišite svoju lozinku:');
+    if (!password) throw { code: 'cancelled' };
+    await user.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(user.email, password));
+  } else {
+    throw { code: 'auth/requires-recent-login' };
+  }
+  return null;
+}
+
+async function deleteAccount() {
+  var authInst = getAuth();
+  var user = authInst && authInst.currentUser;
+  if (!user) return;
+  if (!confirm('Trajno obrisati račun?\n\n'
+    + 'Obrisat će se račun i svi podaci vjenčanja spremljeni u njemu, na svim uređajima. '
+    + 'Ovo se ne može poništiti. Ako želite zadržati popis, prvo spremite sigurnosnu kopiju.')) return;
+  if (typeof closeOptions === 'function') closeOptions();
+  var cloudDeleted = false;
+  try {
+    var appleCode = await reauthenticateForDelete(user);
+    await deleteCloudData(user.uid);
+    cloudDeleted = true;
+    if (appleCode) await authInst.revokeAccessToken(appleCode).catch(function (e) {
+      console.warn('[Auth] revoking Apple access failed', e);
+    });
+    await user.delete();
+    if (typeof nativeSignOut === 'function') await nativeSignOut();
+    if (typeof wipeLocalData === 'function') await wipeLocalData();
+    if (typeof clearFirestoreCache === 'function') await clearFirestoreCache();
+    alert('Račun i podaci su obrisani.');
+    location.reload();
+  } catch (err) {
+    if (err && err.code === 'cancelled') return;
+    if (isNativeApp && err && !String(err.code || '').startsWith('auth/') && /cancel/i.test(err.message || '')) return;
+    console.error('[Auth] delete account', err);
+    var msg = {
+      'auth/requires-recent-login': 'Radi sigurnosti se odjavite i ponovno prijavite, pa pokušajte opet.',
+      'auth/user-mismatch': 'Prijavili ste se drugim računom. Odaberite račun koji želite obrisati.',
+      'auth/wrong-password': 'Pogrešna lozinka.',
+      'auth/invalid-credential': 'Pogrešna lozinka.',
+      'auth/popup-closed-by-user': 'Prozor za prijavu je zatvoren, račun nije obrisan.',
+      'auth/network-request-failed': 'Nema internetske veze.'
+    }[err && err.code] || 'Brisanje računa nije uspjelo. Pokušajte ponovno.';
+    showToast(msg, true);
+    // The account stays, so put its data back in the cloud from this device.
+    if (cloudDeleted && currentUser) onAuthForSync(currentUser);
+  }
+}
+
 function updateAuthUI(user) {
   var loginBtn = document.getElementById('btn-login');
   var userMenu = document.getElementById('user-menu');
   var userName = document.getElementById('user-display-name');
   var userAvatar = document.getElementById('user-avatar');
+  var btnDelete = document.getElementById('btn-delete-account');
 
   if (user) {
     document.body.classList.add('auth-logged-in');
@@ -214,6 +314,7 @@ function updateAuthUI(user) {
       loginBtn.hidden = true;
     }
     if (userMenu) userMenu.style.display = 'flex';
+    if (btnDelete) btnDelete.hidden = false;
     if (userName) {
       userName.textContent = user.displayName || user.email || 'Korisnik';
       userName.title = user.email || '';
@@ -239,6 +340,7 @@ function updateAuthUI(user) {
       loginBtn.hidden = false;
     }
     if (userMenu) userMenu.style.display = 'none';
+    if (btnDelete) btnDelete.hidden = true;
   }
 }
 
@@ -263,7 +365,7 @@ function closeLoginModal() {
 }
 
 function setLoginLoading(loading) {
-  document.querySelectorAll('#modal-login button[type="submit"], #btn-google-login').forEach(function (b) {
+  document.querySelectorAll('#modal-login button[type="submit"], #btn-google-login, #btn-apple-login').forEach(function (b) {
     // Keep the original markup (the Google button has an SVG logo) so it can be restored.
     if (loading && b._origHTML === undefined) b._origHTML = b.innerHTML;
     b.disabled = loading;
@@ -292,6 +394,11 @@ function handleAuthError(err) {
   console.error('[Auth]', err);
   var code = (err && err.code) || '';
   var msg = (err && err.message) || 'Došlo je do greške.';
+  // The user closed the native Google/Apple sign-in screen.
+  if (isNativeApp && !code.startsWith('auth/') && /cancel/i.test(msg)) {
+    clearLoginError();
+    return;
+  }
   var map = {
     'auth/popup-closed-by-user': 'Prozor za prijavu je zatvoren.',
     'auth/cancelled-popup-request': 'Prijava je otkazana.',
@@ -314,6 +421,7 @@ function handleAuthError(err) {
 // action: { label, onClick, duration } adds a button (e.g. "Poništi").
 // duration 0 keeps the toast until the button is used.
 function showToast(message, isError, action) {
+  if (isError && typeof hapticWarning === 'function') hapticWarning();
   var toast = document.getElementById('auth-toast');
   if (!toast) {
     toast = document.createElement('div');

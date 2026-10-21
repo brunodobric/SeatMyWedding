@@ -1,0 +1,31 @@
+{
+  "appId": "com.seatmywedding.app",
+  "appName": "SeatMyWedding",
+  "webDir": "www",
+  "backgroundColor": "#FDFBF7",
+  "ios": {
+    "contentInset": "never",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": true,
+      "providers": ["google.com", "apple.com"]
+    }
+  },
+  "experimental": {
+    "ios": {
+      "spm": {
+        "swiftToolsVersion": "6.1",
+        "packageOptions": {
+          "@capacitor-firebase/authentication": {
+            "symlink": true
+          }
+        },
+        "packageTraits": {
+          "@capacitor-firebase/authentication": ["Google"]
+        }
+      }
+    }
+  }
+}

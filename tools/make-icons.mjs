@@ -2,7 +2,7 @@
 // screens. Run from the repo root:  node tools/make-icons.mjs
 // Needs Playwright with Chromium (used only to rasterise the SVGs).
 import { chromium } from 'playwright';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -114,6 +114,22 @@ await renderSvg(full, 512, 'icon-512.png');
 await renderSvg(full, 192, 'icon-192-maskable.png');
 await renderSvg(full, 512, 'icon-512-maskable.png');
 await renderSvg(iconSvg({ rounded: true }), 32, 'favicon-32.png');
+
+// iOS app (Capacitor): the App Store icon must be square, opaque, 1024 px.
+const IOS_ASSETS = resolve(ROOT, 'ios/App/App/Assets.xcassets');
+if (existsSync(IOS_ASSETS)) {
+  await page.setViewportSize({ width: 1024, height: 1024 });
+  await page.setContent(`<style>html,body{margin:0;background:${DARK}}svg{display:block;width:1024px;height:1024px}</style>${full}`);
+  await page.screenshot({ path: resolve(IOS_ASSETS, 'AppIcon.appiconset/AppIcon-512@2x.png') });
+  console.log('wrote the iOS app icon');
+  // Launch screen: the same cream background the web splash starts from.
+  await page.setViewportSize({ width: 2732, height: 2732 });
+  await page.setContent(splashHtml());
+  for (const name of ['splash-2732x2732.png', 'splash-2732x2732-1.png', 'splash-2732x2732-2.png']) {
+    await page.screenshot({ path: resolve(IOS_ASSETS, 'Splash.imageset', name) });
+  }
+  console.log('wrote the iOS launch screen');
+}
 
 const links = [];
 for (const [w, h, dpr] of DEVICES) {

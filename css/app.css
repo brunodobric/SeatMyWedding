@@ -1448,6 +1448,25 @@ body.auth-logged-in #btn-login {
   opacity: 0.6;
   cursor: not-allowed;
 }
+/* Apple's sign-in button style: black, same size as the Google button. */
+.btn-apple {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 11px 16px;
+  border: 1px solid #000;
+  border-radius: 8px;
+  background: #000;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+}
+.btn-apple[hidden] { display: none; }
+.btn-apple:disabled { opacity: 0.6; cursor: not-allowed; }
 .login-divider {
   display: flex;
   align-items: center;
@@ -1824,3 +1843,4 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
   .options-sheet .menu-item { padding: 12px 10px; font-size: 0.95rem; }
 }
 .menu-item[hidden] { display: none; }
+.menu-item-danger, .menu-item-danger .ic { color: var(--color-error); }
