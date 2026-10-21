@@ -1,0 +1,12 @@
+// The rules deployed in the Firebase console (Firestore → Rules), kept here so
+// the repository shows what protects the data. Deploy with:
+//   firebase deploy --only firestore:rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Each account reads and writes only its own data; everything else is closed.
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}

@@ -4,7 +4,7 @@
  * Potrebno u Firebase konzoli:
  * 1. Authentication → Sign-in method → Google + Email/Password
  * 2. Firestore Database → Create database
- * 3. Firestore → Rules → allow read/write only for request.auth.uid == userId
+ * 3. Firestore → Rules → vidi firestore.rules
  */
 var firebaseConfig = {
   apiKey: "AIzaSyBEDsXIAjTXi-VZJ9d_C1EKIiPzz1w5Fqo",

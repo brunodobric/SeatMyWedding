@@ -18,16 +18,60 @@ async function loadAll() {
     dbGetAll('guests'),
     dbGetAll('rules')
   ]);
-  state.settings = settings || { id: 'main', weddingTitle: '', monogram: '' };
-  state.tables = tables || [];
-  state.categories = categories || [];
-  state.guests = guests || [];
-  state.rules = rules || [];
+  const clean = cleanData({ settings, tables, categories, guests, rules });
+  state.settings = clean.settings;
+  state.tables = clean.tables;
+  state.categories = clean.categories;
+  state.guests = clean.guests;
+  state.rules = clean.rules;
   // Each step returns whether it had to change stored data.
   const changed = [await migrateTables(), await migrateRules(), await repairSeating()].some(Boolean);
   computeRuleStatus();
   updateMonogramIcon();
   return changed;
+}
+
+// Data can come from a backup file or from the cloud, so it is not trusted:
+// ids and colours are put into HTML attributes as they are, numbers are added
+// to. Records without a valid id are dropped, colours must be hex, numbers
+// must be numbers. Names and notes stay as they are (they are always escaped).
+const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const SAFE_COLOR = /^#[0-9A-Fa-f]{3,8}$/;
+const NUMBER_FIELDS = ['seats', 'seatIndex', 'x', 'y', 'rotation', 'seatsLong', 'seatsEnd', 'updatedAt'];
+const ID_FIELDS = ['tableId', 'categoryId'];
+
+function cleanRecord(rec) {
+  if (!rec || typeof rec !== 'object' || Array.isArray(rec) || !SAFE_ID.test(rec.id)) return null;
+  const out = { ...rec };
+  for (const key of NUMBER_FIELDS) {
+    if (out[key] == null || typeof out[key] === 'number') continue;
+    const n = Number(out[key]);
+    out[key] = out[key] !== '' && Number.isFinite(n) ? n : null;
+  }
+  for (const key of ID_FIELDS) {
+    if (out[key] != null && !SAFE_ID.test(out[key])) out[key] = null;
+  }
+  if ('guestIds' in out) out.guestIds = Array.isArray(out.guestIds) ? out.guestIds.filter(id => SAFE_ID.test(id)) : [];
+  if ('color' in out && !SAFE_COLOR.test(out.color)) out.color = '#C9A24B';
+  if ('name' in out && typeof out.name !== 'string') out.name = out.name == null ? '' : String(out.name);
+  return out;
+}
+
+function cleanData(data) {
+  const list = items => (Array.isArray(items) ? items.map(cleanRecord).filter(Boolean) : []);
+  const s = data && data.settings && typeof data.settings === 'object' ? data.settings : {};
+  return {
+    settings: {
+      ...s,
+      id: 'main',
+      weddingTitle: typeof s.weddingTitle === 'string' ? s.weddingTitle : '',
+      monogram: typeof s.monogram === 'string' ? s.monogram : ''
+    },
+    tables: list(data && data.tables),
+    categories: list(data && data.categories),
+    guests: list(data && data.guests),
+    rules: list(data && data.rules)
+  };
 }
 
 // Older bridal tables were saved with twice as many seats as were drawn (the
@@ -598,7 +642,8 @@ function getStats() {
   return { total, assigned, violated };
 }
 
-async function importData(data) {
+async function importData(raw) {
+  const data = cleanData(raw);
   await dbClear('settings');
   await dbClear('tables');
   await dbClear('categories');
