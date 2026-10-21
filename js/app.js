@@ -1598,7 +1598,9 @@ function setupRasporedEvents() {
       const table = tableObj ? tableObj.name : '';
       rows.push([g.name, cat, table, g.tableId && g.seatIndex != null ? g.seatIndex + 1 : '', statusLabels[g.status] || g.status || '', g.notes || '']);
     });
-    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    // A cell starting with = + - @ would run as a formula in Excel.
+    const cell = c => { const v = String(c); return /^[=+\-@\t\r]/.test(v) ? "'" + v : v; };
+    const csv = rows.map(r => r.map(c => `"${cell(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
     // BOM so Excel opens the UTF-8 file with č/ć/š/ž intact.
     downloadFile('raspored-sjedenja.csv', 'text/csv;charset=utf-8', '﻿' + csv);
   });
@@ -1704,7 +1706,7 @@ function downloadFile(filename, mime, content) {
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function esc(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function nameOf(id) {

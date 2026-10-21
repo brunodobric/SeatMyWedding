@@ -74,7 +74,18 @@ function setupAuth() {
     btnLogout.addEventListener('click', async function () {
       try {
         var authInst = getAuth();
+        // On a shared device the guest list should not stay behind.
+        var wipe = confirm('Obrisati podatke vjenčanja s ovog uređaja?\n\n'
+          + 'Ostaju spremljeni u vašem računu i vratit će se kad se ponovno prijavite. '
+          + 'Odaberite Odustani ako i dalje koristite ovaj uređaj.');
+        if (typeof flushCloudPush === 'function') await flushCloudPush();
         if (authInst) await authInst.signOut();
+        if (wipe && typeof wipeLocalData === 'function') {
+          await wipeLocalData();
+          await clearFirestoreCache();
+          location.reload();
+          return;
+        }
         closeLoginModal();
         showToast('Odjavljeni ste');
       } catch (err) {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wedding-seating-v39';
+const CACHE_NAME = 'wedding-seating-v40';
 const ASSETS = [
   './',
   './index.html',
@@ -23,6 +23,9 @@ const ASSETS = [
   './js/seating-algo.js',
   './js/splash.js',
   './js/app.js',
+  './js/vendor/firebase-app-compat.js',
+  './js/vendor/firebase-auth-compat.js',
+  './js/vendor/firebase-firestore-compat.js',
   './js/firebase-config.js',
   './js/auth.js',
   './js/sync.js',

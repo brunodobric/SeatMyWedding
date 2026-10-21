@@ -43,6 +43,46 @@ function setLocalUpdatedAt(ts) {
   try { localStorage.setItem(localTsKey(), String(ts)); } catch (e) { /* ignore */ }
 }
 
+// The account the data on this device belongs to. Without it, logging in with
+// a second account on a shared device would upload the first one's guests to it.
+const OWNER_KEY = 'smw-data-owner';
+function getDataOwner() {
+  try { return localStorage.getItem(OWNER_KEY) || ''; } catch (e) { return ''; }
+}
+function setDataOwner(uid) {
+  try { localStorage.setItem(OWNER_KEY, uid); } catch (e) { /* ignore */ }
+}
+
+// Removes this device's copy (the cloud copy stays): the local database,
+// Firestore's offline cache and the sync bookkeeping in localStorage.
+async function wipeLocalData() {
+  await dbWipeAll();
+  try {
+    Object.keys(localStorage).filter(k => k.startsWith('smw-')).forEach(k => localStorage.removeItem(k));
+  } catch (e) { /* ignore */ }
+  await loadAll();
+  emit('sync');
+  if (typeof renderAll === 'function') renderAll();
+  if (typeof updateHeader === 'function') updateHeader();
+}
+
+async function clearFirestoreCache() {
+  try {
+    await firebase.firestore().terminate();
+    await firebase.firestore().clearPersistence();
+  } catch (e) {
+    console.warn('[Sync] clearing the offline cache failed', e);
+  }
+}
+
+// Pushes a change that is still waiting for its debounce, e.g. before logout.
+async function flushCloudPush() {
+  if (!_syncEnabled || !currentUser || !_pushTimer) return;
+  clearTimeout(_pushTimer);
+  _pushTimer = null;
+  await pushToCloud();
+}
+
 function isFirestoreReady() {
   try {
     return typeof firebase !== 'undefined'
@@ -294,6 +334,15 @@ async function onAuthForSync(user) {
   setSyncStatus('syncing');
 
   try {
+    // Data left here by another account is not merged into this one.
+    const owner = getDataOwner();
+    if (owner && owner !== user.uid) {
+      _syncEnabled = false;
+      await wipeLocalData();
+      _syncEnabled = true;
+    }
+    setDataOwner(user.uid);
+
     const cloud = await pullFromCloud();
     const localHasData = !!(state.settings.weddingTitle || state.tables.length || state.guests.length);
     const cloudHasData = !!(cloud && (cloud.settings?.weddingTitle || (cloud.tables && cloud.tables.length) || (cloud.guests && cloud.guests.length)));

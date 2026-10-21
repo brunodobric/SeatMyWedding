@@ -197,3 +197,15 @@ async function dbMergeSync(merge) {
     tx.onabort = () => reject(tx.error || new Error('Sync merge aborted'));
   });
 }
+
+// Empties every store without leaving tombstones: the data is not deleted for
+// the other devices, it just no longer lives on this one.
+async function dbWipeAll() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES, 'readwrite');
+    STORES.forEach(name => tx.objectStore(name).clear());
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
