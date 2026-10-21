@@ -41,10 +41,27 @@ const splash = {
     this.leave(el);
   },
 
+  // iOS colours the status bar from what sits at the top of the page when it
+  // opens, which is this light screen, and keeps that colour after it is gone.
+  // Nudge it to look again: a fresh theme-color tag and a re-laid-out header.
+  refreshStatusBar() {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      const fresh = meta.cloneNode();
+      meta.remove();
+      requestAnimationFrame(() => document.head.appendChild(fresh));
+    }
+    const header = document.getElementById('app-header');
+    if (header) {
+      header.style.position = 'relative';
+      requestAnimationFrame(() => requestAnimationFrame(() => { header.style.position = ''; }));
+    }
+  },
+
   leave(el) {
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const duration = reduce ? 300 : this.EXIT_MS;
-    const done = () => el.remove();
+    const done = () => { el.remove(); this.refreshStatusBar(); };
     if (!el.animate) { done(); return; }
     const opts = { duration, easing: 'cubic-bezier(.55, 0, .3, 1)', fill: 'forwards' };
     el.style.pointerEvents = 'none';

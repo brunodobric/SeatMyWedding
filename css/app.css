@@ -26,10 +26,8 @@
      how far above the screen's edge fixed elements end */
   --app-h: 100dvh;
   --fixed-gap: 0px;
-  /* Zaglavlje i donja traka: karamela iz ikone, tamnija uz rub ekrana,
-     svjetlija prema sadržaju */
+  /* Zaglavlje i donja traka: jednolična karamela iz ikone */
   --bar-edge: #7B5E3C;
-  --bar-inner: #C2A274;
   --bar-line: rgba(230,200,110,0.55);
   --bar-text: #FFF6DF;
   --bar-text-soft: rgba(255,250,238,0.85);
@@ -91,13 +89,10 @@ a { color: var(--color-gold-deep); }
   padding: 0 20px;
   /* iOS 26+ colours the status bar from a fixed or sticky bar touching the
      top of the page and picks light or dark icons to suit: a sticky header
-     with a solid caramel edge gives a caramel status bar with white icons. */
+     in solid caramel gives a caramel status bar with white icons. */
   position: sticky;
   top: 0;
   background-color: var(--bar-edge);
-  /* Solid under the status bar (where iOS lays its own tint of this colour),
-     then the gentle fade across the bar itself, so there is no seam */
-  background-image: linear-gradient(180deg, var(--bar-edge) 0, var(--bar-edge) env(safe-area-inset-top, 0px), var(--bar-inner) 100%);
   border-bottom: 1px solid var(--bar-line);
   box-shadow: 0 3px 14px rgba(35,27,21,0.22);
   z-index: 10;
@@ -277,9 +272,8 @@ a { color: var(--color-gold-deep); }
   display: none;
   position: fixed;
   bottom: calc(-1 * var(--fixed-gap)); left: 0; right: 0;
-  /* The header mirrored: solid by the home indicator, the same fade above */
+  /* One even colour, the same as the header and the status bar above it */
   background-color: var(--bar-edge);
-  background-image: linear-gradient(0deg, var(--bar-edge) 0, var(--bar-edge) env(safe-area-inset-bottom, 0px), var(--bar-inner) 100%);
   border-top: 1px solid var(--bar-line);
   box-shadow: 0 -3px 14px rgba(35,27,21,0.18);
   height: auto;
@@ -1739,7 +1733,7 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
 .options-dot {
   position: absolute; top: 4px; right: 4px;
   width: 8px; height: 8px; border-radius: 50%;
-  border: 1.5px solid var(--bar-inner);
+  border: 1.5px solid var(--bar-edge);
   display: none;
 }
 .btn-options[data-sync="synced"] .options-dot { display: block; background: #5a8a6a; }
