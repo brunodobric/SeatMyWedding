@@ -89,9 +89,7 @@ a { color: var(--color-gold-deep); }
   gap: 12px;
   height: var(--header-h);
   padding: 0 20px;
-  background:
-    radial-gradient(ellipse 60% 140% at 50% 0%, rgba(230,200,110,0.28), transparent 70%),
-    linear-gradient(180deg, var(--bar-edge) 0%, var(--bar-inner) 100%);
+  background: linear-gradient(180deg, var(--bar-edge) 0%, var(--bar-inner) 100%);
   border-bottom: 1px solid var(--bar-line);
   box-shadow: 0 3px 14px rgba(35,27,21,0.22);
   z-index: 10;
@@ -1321,7 +1319,8 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
 /* ── Print styles ────────────────────────────────────────────────────────────── */
 #print-area { display: none; }
 @media print {
-  body { background: #fff; overflow: visible; min-height: 0; }
+  html, body { background: #fff; }
+  body { overflow: visible; min-height: 0; }
   body > *:not(#print-area):not(.icon-sprite) { display: none !important; }
   #print-area { display: block; color: #2B2622; }
   .print-page { break-after: page; }
@@ -1573,6 +1572,10 @@ body.auth-logged-in #btn-login {
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* The page's own background is the body's. iOS tints the status bar area
+     from the canvas colour, so make that the header's colour: otherwise it
+     lays a fade to near-white (and a dark clock) over the top of the header. */
+  background: var(--bar-edge);
 }
 html, body {
   /* Bez "gumenog" odskakivanja cijele stranice – osjećaj kao nativna aplikacija */
