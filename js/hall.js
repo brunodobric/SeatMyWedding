@@ -102,21 +102,98 @@ function nextTableNumber() {
   return max + 1;
 }
 
-// Lowest point occupied by existing tables, so added tables go underneath.
-function tablesBottom(tables) {
-  let bottom = 0;
-  for (const t of tables) {
-    const turned = ((t.rotation || 0) % 180 + 180) % 180 === 90;
-    const half = t.shape === 'round' ? 60 : turned ? longTableLength((t.seatsLong || 4) * 2) / 2 + 30 : 60;
-    bottom = Math.max(bottom, t.y + half);
+const HALL_TOP = 110;
+const TABLE_CLEARANCE = 10;
+
+function isTurned(t) {
+  return ((t.rotation || 0) % 180 + 180) % 180 === 90;
+}
+
+// Half width/height a table takes up on the plan, its seats included
+// (same sizes as the floor plan draws).
+function tableExtent(t) {
+  let hw, hh;
+  if (t.shape === 'round') {
+    hw = hh = 70;
+  } else {
+    const base = { square: [80, 80], royal: [200, 50], head: [260, 55] }[t.shape] || [110, 70];
+    let w = base[0], h = base[1];
+    if (t.shape !== 'square' && t.seatsLong !== undefined) {
+      w = Math.max(w, (t.seatsLong || 0) * 28 + 20);
+      if (t.shape !== 'head') h = Math.max(h, (t.seatsEnd || 0) * 28 + 20);
+    }
+    const endSeats = t.shape === 'square' || t.seatsLong === undefined || t.seatsEnd > 0;
+    hw = w / 2 + (endSeats ? 24 : 0);
+    hh = h / 2 + (t.shape === 'head' ? 12 : 24); // bridal table: seats on the front only
   }
-  return bottom;
+  return isTurned(t) ? { hw: hh, hh: hw } : { hw, hh };
+}
+
+// Template the regular tables were laid out with, so new tables follow it.
+function currentHallTemplate() {
+  const regular = state.tables.filter(t => !isHeadTable(t));
+  if (!regular.length || regular.some(t => t.shape === 'round')) return 'round';
+  return regular.every(isTurned) ? 'u' : 'long';
+}
+
+// The template's places in fill order. U arms are filled in turn, so added
+// tables lengthen both arms evenly.
+function hallSlots(template, perTable, n) {
+  if (template !== 'u') return hallPositions(template, n, perTable, HALL_TOP);
+  const arms = hallPositions('u', n * 2, perTable, HALL_TOP);
+  const out = [];
+  for (let k = 0; k < n; k++) out.push(arms[k], arms[n + k]);
+  return out;
+}
+
+/**
+ * Returns place(build): build(slot) makes a table at a slot's {x, y, rotation}
+ * and place returns the one built at the next free place of the template's
+ * layout, after the last place existing tables already take, so tables are
+ * added at the end with the same spacing and never on top of another table.
+ */
+function tablePlacer(template, perTable) {
+  const placed = state.tables.map(t => ({ x: t.x, y: t.y, ...tableExtent(t) }));
+  const clashes = t => {
+    const e = tableExtent(t);
+    return placed.some(q => Math.abs(t.x - q.x) < e.hw + q.hw + TABLE_CLEARANCE &&
+      Math.abs(t.y - q.y) < e.hh + q.hh + TABLE_CLEARANCE);
+  };
+  const slots = hallSlots(template, perTable, 600 + placed.length * 2);
+  let next = 0;
+  slots.forEach((s, i) => {
+    if (clashes(makeHallTable(template, perTable, '', s.x, s.y, s.rotation))) next = i + 1;
+  });
+  return build => {
+    for (; next < slots.length; next++) {
+      const t = build(slots[next]);
+      if (!clashes(t)) {
+        next++;
+        placed.push({ x: t.x, y: t.y, ...tableExtent(t) });
+        return t;
+      }
+    }
+    // Past the template's places (tables dragged far away): go under everything.
+    const bottom = placed.reduce((b, q) => Math.max(b, q.y + q.hh), 0);
+    const t = build({ x: 500, y: bottom, rotation: 0 });
+    t.y = Math.round(bottom + tableExtent(t).hh + 40);
+    placed.push({ x: t.x, y: t.y, ...tableExtent(t) });
+    return t;
+  };
+}
+
+// A single new table goes to the next free place of the hall's layout.
+function placeNewTable(table) {
+  const template = currentHallTemplate();
+  const regular = state.tables.filter(t => !isHeadTable(t));
+  const perTable = regular.length ? regular[0].seats : HALL_TEMPLATES[template].defaultSeats;
+  return tablePlacer(template, perTable)(p => ({ ...table, x: Math.round(p.x), y: Math.round(p.y) }));
 }
 
 /**
  * Plan a hall.
  *  mode 'rebuild' – replace all regular tables (the bridal table stays)
- *  mode 'add'     – keep everything, add only the missing tables underneath
+ *  mode 'add'     – keep everything, add only the missing tables at the end
  * Returns { create: [tables], remove: [tableIds], count, perTable }.
  */
 function planHall({ template, guestCount, perTable, mode }) {
@@ -127,16 +204,15 @@ function planHall({ template, guestCount, perTable, mode }) {
   if (mode === 'rebuild') {
     if (!heads.length) create.push(makeHeadTable());
     const count = tablesNeeded(regularGuests, perTable);
-    hallPositions(template, count, perTable, 110).forEach((p, i) =>
+    hallPositions(template, count, perTable, HALL_TOP).forEach((p, i) =>
       create.push(makeHallTable(template, perTable, 'Stol ' + (i + 1), p.x, p.y, p.rotation)));
     return { create, remove: state.tables.filter(t => !isHeadTable(t)).map(t => t.id), count, perTable };
   }
   const regularSeats = state.tables.filter(t => !isHeadTable(t)).reduce((n, t) => n + t.seats, 0);
   const count = tablesNeeded(regularGuests - regularSeats, perTable);
-  const top = Math.max(110, tablesBottom(state.tables));
   const first = nextTableNumber();
-  // U arms only make sense from scratch; extra tables are added in rows.
-  hallPositions(template === 'u' ? 'long' : template, count, perTable, top).forEach((p, i) =>
-    create.push(makeHallTable(template, perTable, 'Stol ' + (first + i), p.x, p.y, p.rotation)));
+  const place = tablePlacer(template, perTable);
+  for (let i = 0; i < count; i++)
+    create.push(place(p => makeHallTable(template, perTable, 'Stol ' + (first + i), p.x, p.y, p.rotation)));
   return { create, remove: [], count, perTable };
 }
