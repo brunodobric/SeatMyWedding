@@ -95,7 +95,9 @@ a { color: var(--color-gold-deep); }
   position: sticky;
   top: 0;
   background-color: var(--bar-edge);
-  background-image: linear-gradient(180deg, var(--bar-edge) 0%, var(--bar-inner) 100%);
+  /* Solid under the status bar (where iOS lays its own tint of this colour),
+     then the gentle fade across the bar itself, so there is no seam */
+  background-image: linear-gradient(180deg, var(--bar-edge) 0, var(--bar-edge) env(safe-area-inset-top, 0px), var(--bar-inner) 100%);
   border-bottom: 1px solid var(--bar-line);
   box-shadow: 0 3px 14px rgba(35,27,21,0.22);
   z-index: 10;
@@ -275,9 +277,9 @@ a { color: var(--color-gold-deep); }
   display: none;
   position: fixed;
   bottom: calc(-1 * var(--fixed-gap)); left: 0; right: 0;
-  background:
-    radial-gradient(ellipse 60% 140% at 50% 100%, rgba(230,200,110,0.2), transparent 70%),
-    linear-gradient(0deg, var(--bar-edge) 0%, var(--bar-inner) 100%);
+  /* The header mirrored: solid by the home indicator, the same fade above */
+  background-color: var(--bar-edge);
+  background-image: linear-gradient(0deg, var(--bar-edge) 0, var(--bar-edge) env(safe-area-inset-bottom, 0px), var(--bar-inner) 100%);
   border-top: 1px solid var(--bar-line);
   box-shadow: 0 -3px 14px rgba(35,27,21,0.18);
   height: auto;
