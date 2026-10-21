@@ -10,7 +10,7 @@
   "display": "standalone",
   "orientation": "any",
   "background_color": "#FDFBF7",
-  "theme_color": "#7B5E3C",
+  "theme_color": "#9E7836",
   "categories": ["lifestyle", "productivity"],
   "icons": [
     { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
