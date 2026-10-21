@@ -19,7 +19,7 @@ var firebaseConfig = {
 // The website's key only accepts requests from the website's addresses, and the
 // iOS/Android app has none, so the app uses its own key (Google Cloud →
 // Credentials, limited to Identity Toolkit, Token Service and Firestore APIs).
-var NATIVE_APP_API_KEY = '';
+var NATIVE_APP_API_KEY = 'AIzaSyAx1Hm-8dKv1Yzus40txATVwbaPdLij6CY';
 if (typeof isNativeApp !== 'undefined' && isNativeApp && NATIVE_APP_API_KEY) {
   firebaseConfig.apiKey = NATIVE_APP_API_KEY;
 }
