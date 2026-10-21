@@ -226,13 +226,13 @@
 
         <!-- Mobile tabs -->
         <div class="sala-tabs">
-          <button class="sala-tab active" data-tab="lista"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Popis stolova</button>
-          <button class="sala-tab" data-tab="tlocrt"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg> Tlocrt</button>
+          <button class="sala-tab active" data-tab="tlocrt"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg> Tlocrt</button>
+          <button class="sala-tab" data-tab="lista"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Popis stolova</button>
         </div>
 
         <div class="sala-layout">
           <!-- Left panel wrapped in mobile tab panel -->
-          <div class="sala-tab-panel active" data-panel="lista">
+          <div class="sala-tab-panel" data-panel="lista">
             <div class="sala-panel">
               <div class="sala-panel-header">
                 <span class="sala-panel-title">Stolovi</span>
@@ -243,7 +243,7 @@
           </div>
 
           <!-- Right: floor plan canvas wrapped in mobile tab panel -->
-          <div class="sala-tab-panel" data-panel="tlocrt">
+          <div class="sala-tab-panel active" data-panel="tlocrt">
             <div class="sala-canvas">
               <div class="floor-plan-toolbar">
                 <button class="btn-secondary" id="btn-snap-grid"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg> Mreža</button>
