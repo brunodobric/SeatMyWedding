@@ -32,6 +32,50 @@
   <script>
     // The opening animation plays once per visit, not on every reload.
     try { if (sessionStorage.getItem('splashSeen')) document.documentElement.classList.add('no-splash'); } catch (e) {}
+
+    // iOS home-screen app drawn under the status bar (safe-area-inset-top > 0):
+    // some iOS versions get the viewport height wrong (short by the status
+    // bar), so the layout and the fixed bottom navigation stop above the
+    // screen's edge. There the page always fills the screen, so size the layout
+    // to the screen (--app-h) and measure where fixed elements really end
+    // (--fixed-gap) instead of trusting the reported height.
+    (function () {
+      if (!navigator.standalone) return;
+      var root = document.documentElement;
+      var probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:0;padding-top:env(safe-area-inset-top);visibility:hidden;pointer-events:none';
+      function screenHeight() {
+        return innerHeight > innerWidth
+          ? Math.max(screen.width, screen.height)
+          : Math.min(screen.width, screen.height);
+      }
+      function fit() {
+        var full = screenHeight();
+        // Much shorter means the on-screen keyboard is open: keep the last fit.
+        if (full - innerHeight > 80) return;
+        if (!probe.parentNode) root.appendChild(probe);
+        requestAnimationFrame(function () {
+          // With an opaque status bar the page starts below it and the
+          // reported height is right: leave the layout alone.
+          if (probe.offsetHeight === 0) {
+            root.style.removeProperty('--app-h');
+            root.style.setProperty('--fixed-gap', '0px');
+            return;
+          }
+          root.style.setProperty('--app-h', full + 'px');
+          requestAnimationFrame(function () {
+            var gap = full - probe.getBoundingClientRect().bottom;
+            root.style.setProperty('--fixed-gap', (gap > 0 && gap <= 80 ? gap : 0) + 'px');
+          });
+        });
+      }
+      fit();
+      addEventListener('DOMContentLoaded', fit);
+      addEventListener('load', fit);
+      addEventListener('pageshow', fit);
+      addEventListener('resize', fit);
+      addEventListener('orientationchange', function () { setTimeout(fit, 300); });
+    })();
   </script>
 </head>
 <body>
