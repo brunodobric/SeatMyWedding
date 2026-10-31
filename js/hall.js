@@ -20,18 +20,21 @@ function isHeadTable(t) {
 // regular tables (bridal-party categories, capped by the bridal table's seats).
 function headPartyCount(headSeats) {
   const headCats = new Set(state.categories.filter(c => c.atHeadTable).map(c => c.id));
-  const party = state.guests.filter(g => g.status !== 'maybe' && g.categoryId && headCats.has(g.categoryId)).length;
+  const party = invitedGuests().filter(g => g.status !== 'maybe' && g.categoryId && headCats.has(g.categoryId)).length;
   return Math.min(party, headSeats);
 }
 
+// Bridal-table seats still open to guests (the wedding party already sits there).
 function headSeatsTotal() {
-  return state.tables.filter(isHeadTable).reduce((n, t) => n + t.seats, 0);
+  const seats = state.tables.filter(isHeadTable).reduce((n, t) => n + t.seats, 0);
+  return Math.max(0, seats - state.guests.filter(isWeddingParty).length);
 }
 
 // Seats vs confirmed guests, split into the bridal table and the rest.
 function capacityInfo() {
-  const guests = state.guests.filter(g => g.status !== 'maybe').length;
-  const seats = state.tables.reduce((n, t) => n + t.seats, 0);
+  const guests = invitedGuests().filter(g => g.status !== 'maybe').length;
+  const party = state.guests.filter(isWeddingParty).length;
+  const seats = state.tables.reduce((n, t) => n + t.seats, 0) - party;
   const headSeats = headSeatsTotal();
   const regularSeats = seats - headSeats;
   const regularGuests = guests - headPartyCount(headSeats);
@@ -81,16 +84,23 @@ function hallPositions(template, count, perTable, top) {
     const gap = (1000 - cols * len) / (cols + 1);
     for (let i = 0; i < count; i++) {
       const col = i % cols, row = Math.floor(i / cols);
-      out.push({ x: gap + len / 2 + col * (len + gap), y: top + 55 + row * 150, rotation: 0 });
+      out.push({ x: rowX(col, count, cols, len + gap), y: top + 55 + row * 150, rotation: 0 });
     }
     return out;
   }
   const cols = 5;
   for (let i = 0; i < count; i++) {
     const col = i % cols, row = Math.floor(i / cols);
-    out.push({ x: 120 + col * 190, y: top + 70 + row * 175, rotation: 0 });
+    out.push({ x: rowX(col, count, cols, 190), y: top + 70 + row * 175, rotation: 0 });
   }
   return out;
+}
+
+// x of a column in a row of tables. A hall that fits in one row is centred
+// under the bridal table (x 500); fuller halls use the whole width.
+function rowX(col, count, cols, step) {
+  const n = Math.min(count, cols);
+  return 500 + (col - (n - 1) / 2) * step;
 }
 
 function nextTableNumber() {

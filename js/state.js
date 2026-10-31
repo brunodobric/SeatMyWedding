@@ -423,8 +423,8 @@ async function deleteCategory(id) {
 // Removes every guest (and with them their seats and wishes); tables and
 // categories stay, as does "category sits together".
 async function deleteAllGuests() {
-  await dbDeleteAll('guests', state.guests.map(g => g.id));
-  state.guests = [];
+  await dbDeleteAll('guests', invitedGuests().map(g => g.id));
+  state.guests = state.guests.filter(isWeddingParty);
   await replaceRules(normalizeRules(state.rules));
   computeRuleStatus();
   emit('guests');
@@ -635,9 +635,20 @@ function evaluateRule(rule) {
   return null;
 }
 
+// The couple, the kumovi and their partners (entered in the onboarding) sit at
+// the bridal table but are not guests: not listed, counted or seated by the app.
+function isWeddingParty(g) {
+  return !!(g && g.party);
+}
+
+function invitedGuests() {
+  return state.guests.filter(g => !isWeddingParty(g));
+}
+
 function getStats() {
-  const total = state.guests.filter(g => g.status !== 'maybe').length;
-  const assigned = state.guests.filter(g => g.status === 'assigned').length;
+  const guests = invitedGuests();
+  const total = guests.filter(g => g.status !== 'maybe').length;
+  const assigned = guests.filter(g => g.status === 'assigned').length;
   const violated = state.rules.filter(r => r.satisfied === false).length;
   return { total, assigned, violated };
 }

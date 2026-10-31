@@ -14,6 +14,13 @@ const WORLD_W = 2400;
 const WORLD_H = 2400;
 const GRID_SIZE = 50;
 const SEAT_PITCH = 28;
+// Seat colours: the couple, the kumovi with their partners, everyone else.
+const SEAT_COLORS = { couple: '#8A5A7E', kumovi: '#5E7F99', guest: '#C9A24B' };
+function seatColor(guest) {
+  if (!guest) return null;
+  if (guest.party === 'couple') return SEAT_COLORS.couple;
+  return guest.party ? SEAT_COLORS.kumovi : SEAT_COLORS.guest;
+}
 
 const TABLE_DIMS = {
   round:       { rx: 45, ry: 45 },
@@ -33,10 +40,12 @@ class FloorPlan {
     this.snapToGrid = options.snapToGrid || false;
     this.onTableMove = options.onTableMove || (() => {});
     this.onTableClick = options.onTableClick || (() => {});
+    this.onTableOpen = options.onTableOpen || null; // assign mode: tap on the table itself
     this.onSeatClick = options.onSeatClick || (() => {});
     this.onSeatPress = options.onSeatPress || null; // (event, tableId, seatIndex, guest) – start of a press on an occupied seat
     this.mode = options.mode || 'edit'; // 'edit' | 'assign'
-    this.showFullNames = options.showFullNames || false;
+    this.namesView = false; // tables drawn as cards with their guests' names
+    this.onNamesViewChange = options.onNamesViewChange || null;
 
     this.viewBox = { x: 0, y: 0, w: CANVAS_W, h: CANVAS_H };
     this.tables = [];
@@ -105,11 +114,6 @@ class FloorPlan {
     this._renderGrid();
   }
 
-  setShowFullNames(val) {
-    this.showFullNames = !!val;
-    this._renderTables();
-  }
-
   update(tables, guests, categories, violatedTableIds = new Set()) {
     this.tables = tables;
     this.guests = guests;
@@ -149,7 +153,7 @@ class FloorPlan {
     return { x1, y1, x2, y2 };
   }
 
-  fitToContent(extraPad = this.showFullNames ? 70 : 0) {
+  fitToContent(extraPad = 0) {
     const b = this._contentBounds();
     if (!b) { this.viewBox = { x: 0, y: 0, w: CANVAS_W, h: CANVAS_H }; this._applyViewBox(); return; }
     const pad = 30 + extraPad;
@@ -171,134 +175,103 @@ class FloorPlan {
     this.tablesLayer.innerHTML = '';
     for (const table of this.tables) {
       try {
-        const g = this._createTableGroup(table);
+        const g = this.namesView && this.mode === 'assign' ? this._createNamesCard(table) : this._createTableGroup(table);
         this.tablesLayer.appendChild(g);
       } catch (err) {
         console.error('[FloorPlan] table render failed', table && table.id, err);
       }
     }
     this.labelsLayer.innerHTML = '';
-    if (this.showFullNames) {
-      try { this._renderNameLabels(); } catch (err) { console.error('[FloorPlan] name labels failed', err); }
-    }
   }
 
-  /**
-   * Guest names around the tables. Each name points straight out from its
-   * seat (radially at round tables, perpendicular to the side at long tables)
-   * so names at the same table never cross. A name that would run into another
-   * name, table or seat is shortened ("Ana Horvat" → "Ana H." → "Ana"); if even
-   * that doesn't fit, only the initials inside the seat remain.
-   */
-  _renderNameLabels() {
-    const FONT = 9;
-    const CHAR_W = FONT * 0.56;
-    const GAP = 14;          // from seat centre to the start of the text
-    const LINE = 10.5;       // minimum distance between two names
+  // Show tables as cards listing who sits there (positions stay the same), or
+  // back as tables with seats.
+  setNamesView(on, focusTableId) {
+    on = !!on && this.mode === 'assign';
+    if (on === this.namesView) return;
+    this.namesView = on;
+    this._renderTables();
+    // On a phone the whole hall is too small to read: zoom in on the tapped table.
+    const rect = this.svg.getBoundingClientRect();
+    const t = on && focusTableId && this.tables.find(x => x.id === focusTableId);
+    if (t && rect.width > 0 && rect.width < 600 && this.viewBox.w > 480) {
+      const w = 460, h = w * rect.height / rect.width;
+      this.viewBox = { x: t.x - w / 2, y: t.y - h / 2, w, h };
+      this._applyViewBox();
+    }
+    if (this.onNamesViewChange) this.onNamesViewChange(on);
+  }
+
+  // A rounded card in the table's place: name, how full, and its guests in seat
+  // order, sized so every name fits without running into the next table.
+  _createNamesCard(table) {
     const NS = 'http://www.w3.org/2000/svg';
-    const toWorld = (t, p) => {
-      const r = (t.rotation || 0) * Math.PI / 180;
-      return { x: t.x + p.x * Math.cos(r) - p.y * Math.sin(r), y: t.y + p.x * Math.sin(r) + p.y * Math.cos(r) };
+    const el = (tag, attrs, text) => {
+      const n = document.createElementNS(NS, tag);
+      for (const k in attrs) n.setAttribute(k, attrs[k]);
+      if (text != null) n.textContent = text;
+      return n;
     };
-    const turn = (t, d) => {
-      const r = (t.rotation || 0) * Math.PI / 180;
-      return { x: d.x * Math.cos(r) - d.y * Math.sin(r), y: d.x * Math.sin(r) + d.y * Math.cos(r) };
-    };
+    const guests = this.guests.filter(gg => gg.tableId === table.id)
+      .sort((a, b) => (a.seatIndex || 0) - (b.seatIndex || 0));
+    const turned = ((table.rotation || 0) % 180 + 180) % 180 === 90;
+    const d = this._dims(table);
+    const W = table.shape === 'round' || turned ? 172 : Math.min(table.shape === 'head' ? 300 : 270, Math.max(172, d.w + 60));
+    const cols = guests.length > (W >= 260 ? 3 : 8) ? 2 : 1;
+    const rows = Math.max(1, Math.ceil(guests.length / cols));
+    const LINE = 15, HEAD = 26;
+    const H = HEAD + rows * LINE + 10;
+    const full = guests.length >= table.seats;
+    const violated = this.violatedTableIds.has(table.id);
 
-    // Obstacles: every table body and seat, tagged with its table.
-    const bodies = [];
-    const seatDots = [];
-    const items = [];
-    for (const t of this.tables) {
-      const dims = t.shape === 'round' ? null : this._dims(t);
-      bodies.push({ t, round: t.shape === 'round', hw: dims ? dims.w / 2 : 0, hh: dims ? dims.h / 2 : 0 });
-      const seats = this._getSeatPositions(t);
-      const byIdx = {};
-      for (const g of this.guests) if (g.tableId === t.id) byIdx[g.seatIndex] = g;
-      seats.forEach((pos, idx) => {
-        const w = toWorld(t, pos);
-        seatDots.push({ tableId: t.id, x: w.x, y: w.y });
-        const guest = byIdx[idx];
-        if (!guest) return;
-        let dir;
-        if (t.shape === 'round') {
-          const len = Math.hypot(pos.x, pos.y) || 1;
-          dir = { x: pos.x / len, y: pos.y / len };
-        } else if (Math.abs(pos.y) > dims.h / 2) {
-          dir = { x: 0, y: Math.sign(pos.y) };
-        } else {
-          dir = { x: Math.sign(pos.x) || 1, y: 0 };
-        }
-        dir = turn(t, dir);
-        const name = (guest.name != null && String(guest.name).trim()) ? String(guest.name).trim().replace(/\s+/g, ' ') : '';
-        if (name) items.push({ t, seat: w, dir, name });
-      });
+    const g = el('g', { class: 'table-group names-card', 'data-id': table.id, transform: `translate(${table.x},${table.y})` });
+    g.style.cursor = 'pointer';
+    g.appendChild(el('rect', {
+      x: -W / 2, y: -H / 2, width: W, height: H, rx: 12,
+      fill: full ? '#F3F8F1' : '#FFFFFF',
+      stroke: violated ? '#B04A3F' : '#A17C33', 'stroke-width': violated ? 2.5 : 1.5,
+      filter: 'drop-shadow(0 1px 3px rgba(43,38,34,0.12))'
+    }));
+    const top = -H / 2;
+    g.appendChild(el('text', {
+      x: -W / 2 + 12, y: top + 15, 'dominant-baseline': 'central', 'pointer-events': 'none',
+      'font-family': "'Cormorant Garamond', Georgia, serif", 'font-size': 14, 'font-weight': 600, fill: '#6B5836'
+    }, table.name));
+    g.appendChild(el('text', {
+      x: W / 2 - 12, y: top + 15, 'text-anchor': 'end', 'dominant-baseline': 'central', 'pointer-events': 'none',
+      'font-family': 'Jost, system-ui, sans-serif', 'font-size': 10.5, 'font-weight': full ? 700 : 500, fill: full ? '#5E8C61' : '#9A8E7E'
+    }, `${guests.length}/${table.seats}`));
+    g.appendChild(el('line', { x1: -W / 2 + 10, x2: W / 2 - 10, y1: top + HEAD - 2, y2: top + HEAD - 2, stroke: '#EADFCB', 'stroke-width': 1 }));
+
+    const colW = (W - 20) / cols;
+    const maxChars = Math.max(4, Math.floor((colW - 14) / 6.6));
+    const fit = name => {
+      if (name.length <= maxChars) return name;
+      const parts = name.split(/\s+/);
+      const short = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : name;
+      return short.length <= maxChars ? short : name.slice(0, maxChars - 1) + '…';
+    };
+    if (!guests.length) {
+      g.appendChild(el('text', {
+        x: 0, y: top + HEAD + LINE / 2 + 2, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'pointer-events': 'none',
+        'font-family': 'Jost, system-ui, sans-serif', 'font-size': 11, 'font-style': 'italic', fill: '#A99D8C'
+      }, 'prazno'));
     }
-
-    const distToSeg = (p, a, b) => {
-      const vx = b.x - a.x, vy = b.y - a.y;
-      const l2 = vx * vx + vy * vy || 1;
-      const k = Math.max(0, Math.min(1, ((p.x - a.x) * vx + (p.y - a.y) * vy) / l2));
-      return Math.hypot(p.x - a.x - k * vx, p.y - a.y - k * vy);
-    };
-    const samples = (a, b) => {
-      const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 4));
-      const out = [];
-      for (let i = 0; i <= n; i++) out.push({ x: a.x + (b.x - a.x) * i / n, y: a.y + (b.y - a.y) * i / n });
-      return out;
-    };
-    const hitsBody = (p, body) => {
-      const t = body.t;
-      const dx = p.x - t.x, dy = p.y - t.y;
-      if (body.round) return Math.hypot(dx, dy) < TABLE_DIMS.round.rx + 3;
-      const r = -(t.rotation || 0) * Math.PI / 180;
-      const lx = dx * Math.cos(r) - dy * Math.sin(r);
-      const ly = dx * Math.sin(r) + dy * Math.cos(r);
-      return Math.abs(lx) < body.hw + 3 && Math.abs(ly) < body.hh + 3;
-    };
-    const placed = [];
-    const fits = (item, a, b) => {
-      for (const p of samples(a, b)) {
-        for (const body of bodies) if (body.t !== item.t && hitsBody(p, body)) return false;
-        for (const s of seatDots) if (s.tableId !== item.t.id && Math.hypot(p.x - s.x, p.y - s.y) < 12) return false;
-        for (const q of placed) if (distToSeg(p, q.a, q.b) < LINE) return false;
-      }
-      return true;
-    };
-
-    for (const item of items) {
-      const words = item.name.split(' ');
-      const options = [item.name];
-      if (words.length > 1) options.push(`${words[0]} ${words[words.length - 1][0]}.`, words[0]);
-      const a = { x: item.seat.x + item.dir.x * GAP, y: item.seat.y + item.dir.y * GAP };
-      for (const text of options) {
-        const len = text.length * CHAR_W;
-        const b = { x: a.x + item.dir.x * len, y: a.y + item.dir.y * len };
-        if (!fits(item, a, b)) continue;
-        placed.push({ a, b });
-        // Keep text readable: never upside down, vertical names read bottom-up.
-        let angle = Math.atan2(item.dir.y, item.dir.x) * 180 / Math.PI;
-        let anchor = 'start';
-        if (item.dir.x < -0.01 || (Math.abs(item.dir.x) <= 0.01 && item.dir.y > 0)) { angle += 180; anchor = 'end'; }
-        const txt = document.createElementNS(NS, 'text');
-        txt.setAttribute('x', a.x.toFixed(1));
-        txt.setAttribute('y', a.y.toFixed(1));
-        txt.setAttribute('transform', `rotate(${angle.toFixed(1)} ${a.x.toFixed(1)} ${a.y.toFixed(1)})`);
-        txt.setAttribute('text-anchor', anchor);
-        txt.setAttribute('dominant-baseline', 'central');
-        txt.setAttribute('font-family', 'Jost, system-ui, sans-serif');
-        txt.setAttribute('font-size', FONT);
-        txt.setAttribute('font-weight', '600');
-        txt.setAttribute('fill', '#2B2622');
-        txt.setAttribute('paint-order', 'stroke');
-        txt.setAttribute('stroke', '#FDFBF7');
-        txt.setAttribute('stroke-width', '3');
-        txt.setAttribute('stroke-linejoin', 'round');
-        txt.textContent = text;
-        this.labelsLayer.appendChild(txt);
-        break;
-      }
-    }
+    guests.forEach((gg, i) => {
+      const col = Math.floor(i / rows), row = i % rows;
+      const x = -W / 2 + 10 + col * colW;
+      const y = top + HEAD + row * LINE + LINE / 2 + 2;
+      g.appendChild(el('circle', { cx: x + 4, cy: y, r: 3.5, fill: seatColor(gg), 'pointer-events': 'none' }));
+      g.appendChild(el('text', {
+        x: x + 12, y, 'dominant-baseline': 'central', 'pointer-events': 'none',
+        'font-family': 'Jost, system-ui, sans-serif', 'font-size': 11.5, fill: '#2B2622'
+      }, fit(String(gg.name || '?'))));
+    });
+    g.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (this.onTableOpen) this.onTableOpen(table.id);
+    });
+    return g;
   }
 
   _createTableGroup(table) {
@@ -343,22 +316,40 @@ class FloorPlan {
     label.setAttribute('font-weight', '600');
     label.setAttribute('fill', '#6B5836');
     label.setAttribute('pointer-events', 'none');
-    label.setAttribute('y', table.shape === 'round' ? -18 : 0);
+    const labelY = table.shape === 'round' ? -10 : -7;
+    label.setAttribute('y', labelY);
     const rot = table.rotation || 0;
     // Text stays upright even when the table is turned.
-    if (rot) label.setAttribute('transform', `rotate(${-rot} 0 ${table.shape === 'round' ? -18 : 0})`);
+    if (rot) label.setAttribute('transform', `rotate(${-rot} 0 ${labelY})`);
     label.textContent = table.name;
     g.appendChild(label);
 
+    // How full the table is ("5/8"), so free seats show without tapping.
+    const tableGuests = this.guests.filter(gg => gg.tableId === table.id);
+    const full = tableGuests.length >= table.seats;
+    const fill = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    fill.setAttribute('class', 'table-fill');
+    fill.setAttribute('text-anchor', 'middle');
+    fill.setAttribute('dominant-baseline', 'central');
+    fill.setAttribute('font-family', "Jost, system-ui, sans-serif");
+    fill.setAttribute('font-size', '11');
+    fill.setAttribute('font-weight', full ? '700' : '500');
+    fill.setAttribute('fill', full ? '#5E8C61' : '#9A8E7E');
+    fill.setAttribute('pointer-events', 'none');
+    fill.setAttribute('y', labelY + 16);
+    if (rot) fill.setAttribute('transform', `rotate(${-rot} 0 ${labelY + 16})`);
+    fill.textContent = `${tableGuests.length}/${table.seats}`;
+    g.appendChild(fill);
+    if (full) { g.classList.add('full'); g.firstChild.setAttribute('fill', '#F3F8F1'); }
+
     // Seat positions
     const seats = this._getSeatPositions(table);
-    const tableGuests = this.guests.filter(gg => gg.tableId === table.id);
     const seatMap = {};
     for (const gg of tableGuests) seatMap[gg.seatIndex] = gg;
 
     seats.forEach((pos, idx) => {
       const guest = seatMap[idx];
-      const cat = guest ? this.categories.find(c => c.id === guest.categoryId) : null;
+      const color = seatColor(guest);
       const seatG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       seatG.setAttribute('class', 'seat-group');
       seatG.setAttribute('data-seat', idx);
@@ -368,8 +359,8 @@ class FloorPlan {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', pos.x); circle.setAttribute('cy', pos.y);
       circle.setAttribute('r', '10');
-      circle.setAttribute('fill', guest ? ((cat ? cat.color : undefined) || '#C9A24B') : '#F5EBDD');
-      circle.setAttribute('stroke', guest ? ((cat ? cat.color : undefined) || '#C9A24B') : '#E8DCC8');
+      circle.setAttribute('fill', color || '#F5EBDD');
+      circle.setAttribute('stroke', color || '#E8DCC8');
       circle.setAttribute('stroke-width', '1.5');
       seatG.appendChild(circle);
 
@@ -395,6 +386,9 @@ class FloorPlan {
         }
       }
 
+      // While arranging tables a seat is just part of its table: a tap opens
+      // the table and a press starts dragging it.
+      if (this.mode === 'edit') { seatG.style.cursor = ''; g.appendChild(seatG); return; }
       seatG.addEventListener('click', (e) => {
         e.stopPropagation();
         this.onSeatClick(table.id, idx, guest || null);
@@ -405,6 +399,10 @@ class FloorPlan {
       }
       g.appendChild(seatG);
     });
+
+    if (this.mode === 'assign' && this.onTableOpen) {
+      g.addEventListener('click', (e) => { e.stopPropagation(); this.onTableOpen(table.id); });
+    }
 
     // Drag (edit mode only)
     if (this.mode === 'edit') {
@@ -577,6 +575,13 @@ class FloorPlan {
   }
 
   _bindEvents() {
+    // A tap on the empty floor (not a pan) brings back the seats.
+    this.svg.addEventListener('click', (e) => {
+      if (!this.namesView || this._panMoved) return;
+      if (e.target.closest && e.target.closest('.table-group')) return;
+      this.setNamesView(false);
+    });
+
     // Scroll wheel → zoom toward cursor
     this.svg.addEventListener('wheel', (e) => {
       e.preventDefault();
@@ -675,6 +680,7 @@ class FloorPlan {
 
   _startPan(clientX, clientY) {
     this._panning = true;
+    this._panMoved = false;
     this._panStart = {
       x: clientX,
       y: clientY,
@@ -690,6 +696,7 @@ class FloorPlan {
     if (rect.width <= 0 || rect.height <= 0) return;
     const dxScreen = clientX - this._panStart.x;
     const dyScreen = clientY - this._panStart.y;
+    if (Math.abs(dxScreen) + Math.abs(dyScreen) > 4) this._panMoved = true;
     // Convert screen pixels to viewBox units
     const dxSvg = -(dxScreen / rect.width) * this.viewBox.w;
     const dySvg = -(dyScreen / rect.height) * this.viewBox.h;
@@ -773,4 +780,5 @@ class FloorPlan {
 
 
   window.FloorPlan = FloorPlan;
+  window.seatColor = seatColor;
 })();

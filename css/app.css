@@ -499,58 +499,6 @@ select.form-control { cursor: pointer; }
 .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
 .empty-state .btn-primary { margin-top: 12px; }
 
-/* ── Sala section ───────────────────────────────────────────────────────────── */
-.sala-layout {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-.sala-panel {
-  width: 260px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--color-border);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.sala-panel-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--color-champagne);
-}
-.sala-panel-title { font-weight: 600; font-size: 0.9rem; color: var(--color-gold-bronze); }
-
-#table-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
-
-.table-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.12s;
-}
-.table-row:hover { background: var(--color-champagne); }
-.table-shape-icon { font-size: 1.1rem; color: var(--color-gold); width: 24px; display: inline-flex; justify-content: center; }
-.table-row-info { flex: 1; min-width: 0; }
-.table-row-name { display: block; font-weight: 500; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.table-row-count { font-size: 0.78rem; color: var(--color-muted); }
-
-.sala-canvas {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--color-champagne);
-}
 .floor-plan-toolbar {
   display: flex;
   align-items: center;
@@ -562,9 +510,14 @@ select.form-control { cursor: pointer; }
 }
 .floor-plan-toolbar .btn-secondary,
 .floor-plan-toolbar .btn-icon { font-size: 0.82rem; padding: 5px 10px; }
-/* Na računalu je popis stolova uvijek vidljiv, pa je ovaj gumb samo za mobilni tlocrt */
-.fp-add-table { display: none; }
-@media (max-width: 767px) { .fp-add-table { display: inline-flex; } }
+/* Raspored: tlocrt se prebacuje u slaganje stolova prekidačem „Premjesti stolove” */
+.fp-arrange-bar .arrange-only { display: none; }
+.raspored-layout.arranging .fp-arrange-bar .arrange-only { display: inline-flex; }
+/* Names view: tables shown as cards with their guests */
+.btn-show-seats { display: none; position: absolute; top: 10px; left: 10px; z-index: 2; font-size: 0.82rem; padding: 5px 10px; box-shadow: var(--shadow-card); }
+.raspored-canvas.names-view .btn-show-seats { display: inline-flex; }
+.fp-arrange-hint { font-size: 0.78rem; color: var(--color-muted); align-items: center; }
+.raspored-layout.arranging[data-view="floor"] .unassigned-panel { display: none; }
 .floor-plan-toolbar .btn-secondary.active {
   background: var(--color-champagne);
   border-color: var(--color-gold-deep);
@@ -605,42 +558,6 @@ select.form-control { cursor: pointer; }
   color: var(--color-gold-deep);
   font-weight: 600;
 }
-
-/* Mobile sala tabs */
-.sala-tabs {
-  display: none;
-  gap: 0;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface);
-}
-.sala-tab {
-  flex: 1;
-  padding: 10px;
-  text-align: center;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--color-muted);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.15s;
-}
-.sala-tab.active { color: var(--color-gold-deep); border-bottom-color: var(--color-gold); }
-.sala-tab-panel { display: flex; flex: 1; min-height: 0; overflow: hidden; flex-direction: column; }
-/* Desktop: popis stolova fiksne širine, tlocrt zauzima ostatak */
-.sala-layout > .sala-tab-panel:first-child {
-  flex: 0 0 auto;
-  width: 260px;
-  max-width: 40%;
-}
-.sala-layout > .sala-tab-panel[data-panel="tlocrt"] {
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 0;
-}
-/* The wrapped panels must fill the tab-panel's height so #table-list gets a
-   bounded height and can scroll (applies on desktop and mobile). */
-.sala-tab-panel > .sala-panel,
-.sala-tab-panel > .sala-canvas { height: 100%; min-height: 0; display: flex; flex-direction: column; }
 
 /* ── Gosti section ──────────────────────────────────────────────────────────── */
 .gosti-layout { display: flex; flex: 1; overflow: hidden; }
@@ -720,6 +637,20 @@ select.form-control { cursor: pointer; }
 .status-badge.assigned { background: #edf5ed; color: var(--color-success); }
 .status-badge.unassigned { background: var(--color-champagne); color: var(--color-muted); }
 .status-badge.maybe { background: #fdf6e6; color: var(--color-warning); }
+/* Gosti: the table badge is a picker */
+select.seat-select.status-badge {
+  appearance: none; -webkit-appearance: none;
+  border: 1px solid transparent;
+  font-family: inherit;
+  max-width: 140px;
+  overflow: hidden; text-overflow: ellipsis;
+  padding-right: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' fill='none' stroke='%23999' stroke-width='1.3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  cursor: pointer;
+}
+.seat-select:hover, .seat-select:focus { border-color: var(--color-gold); outline: none; }
 .lock-badge { font-size: 0.85rem; color: var(--color-gold-bronze); display: inline-flex; }
 
 /* Filter chips */
@@ -964,7 +895,6 @@ select.form-control { cursor: pointer; }
 .menu-sep { height: 1px; background: var(--color-border); margin: 4px 6px; }
 
 .raspored-layout { flex: 1; display: flex; overflow: hidden; min-height: 0; }
-.raspored-layout[data-view="guests"] .unassigned-panel { display: none; }
 .raspored-layout:not([data-view="floor"]) .floor-only { display: none !important; }
 .raspored-layout[data-view="floor"] .raspored-list { display: none; }
 .section:has(.raspored-layout:not([data-view="floor"])) .raspored-toolbar .floor-only { display: none; }
@@ -982,6 +912,8 @@ select.form-control { cursor: pointer; }
   overflow: hidden;
 }
 .unassigned-panel.flash { animation: flash 1s ease; }
+/* Everyone has a seat: the progress bar already says so, the panel only takes room */
+.unassigned-panel.all-seated { display: none; }
 @keyframes flash { 0%, 100% { box-shadow: none; } 30% { box-shadow: inset 0 0 0 2px var(--color-gold); } }
 .unassigned-header {
   padding: 10px 12px;
@@ -1065,6 +997,26 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
 .table-card-head h3 { font-family: var(--font-serif); font-size: 1.2rem; font-weight: 600; color: var(--color-gold-deep); }
 .table-card-count { font-size: 0.78rem; color: var(--color-muted); white-space: nowrap; }
 .table-card-count.full { color: var(--color-success); font-weight: 600; }
+.table-card-head .table-card-count { margin-left: auto; }
+.table-card-edit { width: 28px; height: 28px; align-self: center; }
+/* Guests at one table (tap on the floor plan) */
+.table-guests-list { list-style: none; display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; max-height: 60vh; overflow-y: auto; }
+.table-guests-list button {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 8px; border-radius: 8px; text-align: left; font-size: 0.95rem; color: var(--color-ink);
+}
+.table-guests-list button:hover { background: var(--color-champagne); }
+.table-guests-list button.free { color: var(--color-muted); }
+.table-guests-list .tg-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.table-card-new {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 72px;
+  border-style: dashed;
+  color: var(--color-muted);
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.table-card-new:hover { border-color: var(--color-gold); color: var(--color-gold-deep); }
 .table-card-guests { list-style: none; }
 .table-card-guests li { display: flex; align-items: center; gap: 8px; padding: 5px 4px; border-radius: 6px; font-size: 0.88rem; cursor: pointer; }
 .table-card-guests li:hover { background: var(--color-champagne); }
@@ -1123,6 +1075,11 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
 .ob-step .onboarding-subtitle { text-align: center; }
 .ob-fields { display: flex; flex-direction: column; gap: 12px; text-align: left; }
 .ob-fields.form-row { flex-direction: row; }
+.ob-party { display: flex; flex-direction: column; gap: 6px; }
+.ob-party-label { font-size: 0.8rem; font-weight: 600; color: var(--color-gold-bronze); margin-top: 6px; }
+.ob-optional { font-weight: 400; color: var(--color-muted); }
+.ob-party .form-row { gap: 8px; }
+.ob-party .form-row .form-control { flex: 1; min-width: 0; }
 .ob-buttons { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
 #onboarding-next {
   flex: 1;
@@ -1205,7 +1162,6 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
   #wedding-title-display { font-size: 1.95rem; }
   .header-stats { gap: 6px; }
   .stat-badge { font-size: 0.72rem; padding: 3px 8px; }
-  .sala-panel { width: 220px; }
   .unassigned-panel { width: 200px; }
 }
 
@@ -1230,46 +1186,7 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
   .btn-options .hide-xs { display: none; }
   .stat-badge { font-size: 0.68rem; padding: 3px 6px; }
 
-  /* Sala: mobile uses tabs instead of the desktop split layout.
-     Every flex ancestor of #table-list needs min-height:0 so it can shrink
-     below its content and hand the overflow to the scroll container. */
-  .sala-tabs { display: flex; }
-  #section-sala { flex: 1; min-height: 0; overflow: hidden; }
-  .sala-layout {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  /* Hide the raw desktop split panels; only the tab-wrapped copies show. */
-  .sala-layout > .sala-panel,
-  .sala-layout > .sala-canvas { display: none; }
-
-  /* Only the active tab panel shows; it fills the remaining height. */
-  .sala-tab-panel { display: none; flex: 1; min-height: 0; overflow: hidden; width: 100%; }
-  .sala-tab-panel.active { display: flex; width: 100%; }
-  /* Override desktop 260px / max-width 40% so popis takes full screen width */
-  .sala-layout > .sala-tab-panel:first-child,
-  .sala-layout > .sala-tab-panel[data-panel="lista"],
-  .sala-layout > .sala-tab-panel[data-panel="tlocrt"] {
-    flex: 1 1 auto;
-    min-height: 0;
-    width: 100% !important;
-    max-width: none !important;
-  }
-
-  .sala-tab-panel .sala-panel {
-    width: 100% !important;
-    max-width: none !important;
-    height: 100%;
-    max-height: none;
-    min-height: 0;
-    border-right: none;
-    border-bottom: none;
-  }
-  .sala-tab-panel .sala-canvas { height: 100%; }
-  #table-list { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .fp-arrange-hint { display: none !important; }
 
   .guide-bar { padding: 2px 4px 2px 10px; gap: 6px; }
   .guide-bar .guide-close { width: 30px; height: 30px; }
@@ -1307,7 +1224,7 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
   .raspored-list { padding: 10px; }
   .table-cards { grid-template-columns: 1fr; }
   .hide-touch { display: none !important; }
-  .unassigned-panel.all-seated #unassigned-list { display: none; }
+  .hide-touch-label { display: none; }
   /* The bottom navigation already names the section. */
   .section-header { display: none; }
   .menu { position: fixed; left: 12px; right: 12px; top: auto; bottom: calc(70px + env(safe-area-inset-bottom)); min-width: 0; }
