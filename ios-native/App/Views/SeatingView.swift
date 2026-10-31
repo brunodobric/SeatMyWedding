@@ -36,6 +36,11 @@ struct SeatingView: View {
                         .buttonStyle(.borderedProminent)
                         .tint(Theme.gold)
                     }
+                    if store.violatedRuleCount > 0 {
+                        Label("\(store.violatedRuleCount) pravila nije ispunjeno", systemImage: "exclamationmark.triangle")
+                            .font(Theme.ui(14))
+                            .foregroundStyle(Theme.error)
+                    }
                 }
 
                 Section("Bez mjesta (\(unseated.count))") {

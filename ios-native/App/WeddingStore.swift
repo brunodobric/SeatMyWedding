@@ -128,7 +128,8 @@ final class WeddingStore {
 
     /// Novi gost ili izmjena postojećeg (ostala polja ostaju kakva jesu, npr.
     /// uloga mladenaca). Gost koji je "možda" gubi mjesto, kao na webu.
-    func saveGuest(id: String?, name: String, categoryId: String?, notes: String, locked: Bool, maybe: Bool) {
+    @discardableResult
+    func saveGuest(id: String?, name: String, categoryId: String?, notes: String, locked: Bool, maybe: Bool) -> String {
         var guest = guests.first { $0.id == id } ?? Record([
             "id": .string(UUID().uuidString.lowercased()),
             "tableId": .null,
@@ -147,6 +148,7 @@ final class WeddingStore {
             guest["status"] = .string(seated ? "assigned" : "unassigned")
         }
         put("guests", [guest])
+        return guest.id ?? ""
     }
 
     /// Briše gosta i izbacuje ga iz pravila (grupa "zajedno" ostaje ako u njoj
@@ -172,6 +174,51 @@ final class WeddingStore {
         if !changed.isEmpty { sync.put("rules", changed, now: now) }
         if !gone.isEmpty { sync.remove("rules", ids: gone, now: now) }
         persist()
+    }
+
+    // MARK: Pravila
+
+    var rules: [Record] { sync.records["rules"] ?? [] }
+
+    /// Odnosi gosta: s kim sjedi, od koga je odvojen, fiksni stol/mjesto.
+    func relations(for guestId: String) -> (together: [String], apart: [String], fixed: Record?) {
+        var together: [String] = [], apart: [String] = []
+        var fixed: Record?
+        for r in rules {
+            let ids = (r["guestIds"]?.arrayValue ?? []).compactMap { $0.stringValue }
+            guard ids.contains(guestId) else { continue }
+            switch r.string("type") {
+            case "together", "companion": for id in ids where id != guestId && !together.contains(id) { together.append(id) }
+            case "apart": for id in ids where id != guestId && !apart.contains(id) { apart.append(id) }
+            case "fixed": fixed = r
+            default: break
+            }
+        }
+        return (together, apart, fixed)
+    }
+
+    func applyRules(_ next: [Record]) {
+        let diff = data.diffRules(to: next)
+        if !diff.changed.isEmpty { put("rules", diff.changed) }
+        if !diff.removedIds.isEmpty { remove("rules", ids: diff.removedIds) }
+    }
+
+    func setRelations(guestId: String, together: [String], apart: [String], fixedTableId: String?, fixedSeat: Int?) {
+        applyRules(data.rulesAfterSettingRelations(
+            guestId: guestId, together: together, apart: apart,
+            fixedTableId: fixedTableId, fixedSeat: fixedSeat.map(Double.init)))
+    }
+
+    func isCategoryTogether(_ id: String) -> Bool { data.isCategoryTogether(id) }
+
+    func setCategoryTogether(_ id: String, on: Bool) {
+        applyRules(data.rulesAfterSettingCategoryTogether(id, on: on))
+    }
+
+    /// Broj pravila koja trenutno nisu ispunjena.
+    var violatedRuleCount: Int {
+        let d = data
+        return d.rules.filter { d.isSatisfied($0) == false }.count
     }
 
     // MARK: Smještanje

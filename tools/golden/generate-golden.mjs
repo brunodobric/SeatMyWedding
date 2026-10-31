@@ -81,7 +81,7 @@ function fuzzRecord(kind) {
 const list = (kind, n) => Array.from({ length: n }, () => fuzzRecord(kind));
 
 // ── Slučajevi ────────────────────────────────────────────────────────────────
-const out = { cleanData: [], migrateTables: [], repairSeating: [], mergeSyncStates: [], cloudDoc: [], floorGeometry: [], dropGuest: [], suggestSeating: [] };
+const out = { cleanData: [], migrateTables: [], repairSeating: [], mergeSyncStates: [], cloudDoc: [], floorGeometry: [], dropGuest: [], suggestSeating: [], normalizeRules: [], setRelations: [], ruleStatus: [], categoryRules: [] };
 
 // cleanData
 const cleanInputs = [
@@ -297,6 +297,68 @@ for (let i = 0; i < 120; i++) {
   if (nc && chance(0.4)) rules.push({ id: 'r-' + rules.length, type: 'category-together', guestIds: [], categoryId: 'c-' + int(1, nc), tableId: null, seatIndex: null });
   const result = run(`suggestSeating(${JSON.stringify(tables)}, ${JSON.stringify(guests)}, ${JSON.stringify(rules)}, ${JSON.stringify(categories)})`);
   out.suggestSeating.push({ name: 'nasumično ' + i, input: { tables, categories, guests, rules }, expected: clone(result) });
+}
+
+
+// Pravila (js/state.js): normalizeRules, setGuestRelations, evaluateRule …
+ctx.dbDeleteAll = async () => {};
+ctx.dbPut = async () => {};
+let uuidCounter = 0;
+ctx.crypto = { randomUUID: () => 'u-' + (++uuidCounter) };
+const stripSatisfied = rules => clone(rules).map(r => { delete r.satisfied; return r; });
+function ruleWorld() {
+  const nt = int(1, 3), ng = int(2, 8), nc = int(0, 2);
+  const tables = Array.from({ length: nt }, (_, k) => ({ id: 't-' + (k + 1), name: 'Stol ' + (k + 1), shape: 'round', seats: int(2, 5) }));
+  const categories = Array.from({ length: nc }, (_, k) => ({ id: 'c-' + (k + 1), name: 'Kat ' + (k + 1), color: '#C9A24B' }));
+  const guests = Array.from({ length: ng }, (_, k) => {
+    const g = { id: 'g-' + (k + 1), name: 'Gost ' + (k + 1), status: 'unassigned', tableId: null, seatIndex: null, locked: false, categoryId: nc && chance(0.6) ? 'c-' + int(1, nc) : null };
+    if (chance(0.6)) { g.tableId = 't-' + int(1, nt); g.seatIndex = int(0, 3); g.status = 'assigned'; }
+    return g;
+  });
+  const gp = () => (chance(0.05) ? 'g-99' : 'g-' + int(1, ng));
+  const tp = () => (chance(0.05) ? 't-99' : 't-' + int(1, nt));
+  const rules = [];
+  const add = r => rules.push({ id: 'r-' + rules.length, categoryId: null, tableId: null, seatIndex: null, ...r });
+  for (let k = int(0, 3); k > 0; k--) add({ type: chance(0.25) ? 'companion' : 'together', guestIds: Array.from({ length: int(0, 4) }, gp) });
+  for (let k = int(0, 3); k > 0; k--) add({ type: 'apart', guestIds: Array.from({ length: int(0, 4) }, gp) });
+  for (let k = int(0, 3); k > 0; k--) add({ type: 'fixed', guestIds: [gp()], tableId: tp(), seatIndex: pick([null, 0, 1, 2, 2.5, null]) });
+  for (let k = int(0, 2); k > 0; k--) add({ type: 'category-together', guestIds: [], categoryId: chance(0.9) && nc ? 'c-' + int(1, nc) : 'c-99' });
+  if (chance(0.2)) rules.forEach(r => { r.satisfied = pick([true, false, null]); });
+  return { tables, categories, guests, rules, ng, nc, nt };
+}
+for (let i = 0; i < 150; i++) {
+  const w = ruleWorld();
+  ctx.state = { settings: {}, tables: clone(w.tables), categories: clone(w.categories), guests: clone(w.guests), rules: clone(w.rules) };
+  uuidCounter = 0;
+  const normalized = clone(run(`normalizeRules(state.rules)`));
+  out.normalizeRules.push({ name: 'nasumično ' + i, input: { tables: w.tables, categories: w.categories, guests: w.guests, rules: w.rules }, expected: normalized });
+
+  // evaluateRule na (normaliziranim) pravilima
+  ctx.state.rules = clone(normalized);
+  run('computeRuleStatus()');
+  out.ruleStatus.push({ name: 'nasumično ' + i, input: { tables: w.tables, categories: w.categories, guests: w.guests, rules: normalized }, expected: ctx.state.rules.map(r => r.satisfied) });
+
+  // setGuestRelations
+  const gid = 'g-' + int(1, w.ng);
+  const others = () => Array.from({ length: int(0, 3) }, () => 'g-' + int(1, w.ng));
+  const rel = { together: others(), apart: others(), fixedTableId: chance(0.4) ? 't-' + int(1, w.nt) : null, fixedSeat: pick([null, 0, 1, 2.5, undefined]) };
+  ctx.state = { settings: {}, tables: clone(w.tables), categories: clone(w.categories), guests: clone(w.guests), rules: clone(w.rules) };
+  uuidCounter = 0;
+  await run(`setGuestRelations(${JSON.stringify(gid)}, ${JSON.stringify(rel)})`);
+  out.setRelations.push({ name: 'nasumično ' + i, input: { tables: w.tables, categories: w.categories, guests: w.guests, rules: w.rules, guestId: gid, rel: { ...rel, fixedSeat: rel.fixedSeat === undefined ? null : rel.fixedSeat } }, expected: stripSatisfied(ctx.state.rules) });
+
+  // kategorija zajedno i uvoz grupa
+  const catId = w.nc ? 'c-' + int(1, w.nc) : 'c-1';
+  const on = chance(0.5);
+  const groups = Array.from({ length: int(0, 3) }, () => Array.from({ length: int(0, 3) }, () => 'g-' + int(1, w.ng)));
+  ctx.state = { settings: {}, tables: clone(w.tables), categories: clone(w.categories), guests: clone(w.guests), rules: clone(w.rules) };
+  uuidCounter = 0;
+  await run(`setCategoryTogether(${JSON.stringify(catId)}, ${on})`);
+  const afterCat = stripSatisfied(ctx.state.rules);
+  ctx.state.rules = clone(w.rules);
+  uuidCounter = 0;
+  await run(`addTogetherGroups(${JSON.stringify(groups)})`);
+  out.categoryRules.push({ name: 'nasumično ' + i, input: { tables: w.tables, categories: w.categories, guests: w.guests, rules: w.rules, categoryId: catId, on, groups }, expected: { category: afterCat, groups: stripSatisfied(ctx.state.rules) } });
 }
 
 // ── Zapis ────────────────────────────────────────────────────────────────────
