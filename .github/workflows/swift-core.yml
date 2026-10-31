@@ -1,0 +1,58 @@
+name: Swift core
+
+on:
+  push:
+    paths:
+      - 'ios-native/**'
+      - 'tools/golden/**'
+      - 'js/state.js'
+      - 'js/sync.js'
+      - 'js/db.js'
+      - '.github/workflows/swift-core.yml'
+  pull_request:
+    paths:
+      - 'ios-native/**'
+      - 'tools/golden/**'
+      - 'js/state.js'
+      - 'js/sync.js'
+      - 'js/db.js'
+      - '.github/workflows/swift-core.yml'
+
+jobs:
+  swift-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift version
+        run: swift --version
+      - name: Build and test SeatingCore
+        working-directory: ios-native/SeatingCore
+        run: swift test
+
+  app-build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate the Xcode project
+        working-directory: ios-native
+        run: xcodegen generate
+      - name: Build the app for the simulator
+        working-directory: ios-native
+        run: >
+          xcodebuild build
+          -project SeatMyWedding.xcodeproj
+          -scheme SeatMyWedding
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+
+  golden-fresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: golden.json must match the current JavaScript
+        run: node tools/golden/generate-golden.mjs --check
