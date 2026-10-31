@@ -13,6 +13,26 @@ final class WeddingStore {
     private(set) var loadError: String?
     private let fileURL: URL
 
+    /// Kratka poruka na dnu ekrana (npr. "Ana i Ivo su zamijenili mjesta"), s gumbom Poništi.
+    struct Toast: Identifiable {
+        let id = UUID()
+        var message: String
+        var isError: Bool
+        var undo: (() -> Void)?
+    }
+    private(set) var toast: Toast?
+
+    func show(_ message: String, isError: Bool = false, undo: (() -> Void)? = nil) {
+        let t = Toast(message: message, isError: isError, undo: undo)
+        toast = t
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(6))
+            if toast?.id == t.id { toast = nil }
+        }
+    }
+
+    func dismissToast() { toast = nil }
+
     nonisolated static var defaultURL: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return base.appendingPathComponent("wedding.json")
@@ -152,5 +172,44 @@ final class WeddingStore {
         if !changed.isEmpty { sync.put("rules", changed, now: now) }
         if !gone.isEmpty { sync.remove("rules", ids: gone, now: now) }
         persist()
+    }
+
+    // MARK: Smještanje
+
+    /// Spušta gosta na mjesto, stol ili "bez mjesta" (zamjena s onim tko sjedi, bez
+    /// zaključanih). Pravila su ista kao na webu (SeatingCore.dropGuest).
+    func drop(_ guestId: String, onto target: DropTarget) {
+        let result = data.dropGuest(guestId, onto: target)
+        if let n = result.notice { show(n.message, isError: n.isError) }
+        guard !result.moves.isEmpty else { return }
+        let touched = Set(result.moves.map { $0.id })
+        let before = guests.filter { touched.contains($0.id ?? "") }
+        var wedding = data
+        let changed = Set(wedding.place(result.moves))
+        put("guests", wedding.guests.filter { changed.contains($0.id ?? "") })
+        if let message = result.undoMessage {
+            show(message, undo: { [weak self] in self?.put("guests", before) })
+        }
+    }
+
+    func setLocked(_ guestId: String, _ locked: Bool) {
+        guard var g = guests.first(where: { $0.id == guestId }) else { return }
+        g["locked"] = .bool(locked)
+        put("guests", [g])
+    }
+
+    func unseatedGuests() -> [Record] {
+        invitedGuests
+            .filter { $0.string("status") != "assigned" && $0.string("status") != "maybe" }
+            .sorted { ($0.string("name") ?? "").localizedCaseInsensitiveCompare($1.string("name") ?? "") == .orderedAscending }
+    }
+
+    // MARK: Stolovi
+
+    func moveTable(_ id: String, x: Double, y: Double) {
+        guard var t = tables.first(where: { $0.id == id }) else { return }
+        t["x"] = .number(x.rounded())
+        t["y"] = .number(y.rounded())
+        put("tables", [t])
     }
 }
