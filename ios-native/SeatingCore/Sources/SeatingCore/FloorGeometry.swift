@@ -55,7 +55,7 @@ public enum FloorGeometry {
     }
 
     /// Broj mjesta za petlju (kao `i < seats` u JavaScriptu).
-    static func count(_ n: Double?) -> Int {
+    public static func count(_ n: Double?) -> Int {
         guard let n = n, n.isFinite, n > 0 else { return 0 }
         return Int(min(n, 10_000).rounded(.up))
     }
