@@ -344,16 +344,34 @@ class FloorPlan {
     label.setAttribute('font-weight', '600');
     label.setAttribute('fill', '#6B5836');
     label.setAttribute('pointer-events', 'none');
-    label.setAttribute('y', table.shape === 'round' ? -18 : 0);
+    const labelY = table.shape === 'round' ? -10 : -7;
+    label.setAttribute('y', labelY);
     const rot = table.rotation || 0;
     // Text stays upright even when the table is turned.
-    if (rot) label.setAttribute('transform', `rotate(${-rot} 0 ${table.shape === 'round' ? -18 : 0})`);
+    if (rot) label.setAttribute('transform', `rotate(${-rot} 0 ${labelY})`);
     label.textContent = table.name;
     g.appendChild(label);
 
+    // How full the table is ("5/8"), so free seats show without tapping.
+    const tableGuests = this.guests.filter(gg => gg.tableId === table.id);
+    const full = tableGuests.length >= table.seats;
+    const fill = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    fill.setAttribute('class', 'table-fill');
+    fill.setAttribute('text-anchor', 'middle');
+    fill.setAttribute('dominant-baseline', 'central');
+    fill.setAttribute('font-family', "Jost, system-ui, sans-serif");
+    fill.setAttribute('font-size', '11');
+    fill.setAttribute('font-weight', full ? '700' : '500');
+    fill.setAttribute('fill', full ? '#5E8C61' : '#9A8E7E');
+    fill.setAttribute('pointer-events', 'none');
+    fill.setAttribute('y', labelY + 16);
+    if (rot) fill.setAttribute('transform', `rotate(${-rot} 0 ${labelY + 16})`);
+    fill.textContent = `${tableGuests.length}/${table.seats}`;
+    g.appendChild(fill);
+    if (full) { g.classList.add('full'); g.firstChild.setAttribute('fill', '#F3F8F1'); }
+
     // Seat positions
     const seats = this._getSeatPositions(table);
-    const tableGuests = this.guests.filter(gg => gg.tableId === table.id);
     const seatMap = {};
     for (const gg of tableGuests) seatMap[gg.seatIndex] = gg;
 

@@ -303,13 +303,28 @@ function showOnboarding() {
   let template = 'round';
   showOnboardingStep(step);
 
+  // With a pasted guest list the hall is sized from the real number of guests;
+  // without one, from the estimate.
+  // The couple and kumovi may be on the list too; they are not counted twice.
+  const listedRows = () => {
+    const party = new Set(OB_PARTY_FIELDS.map(f => document.getElementById(f.id).value.trim().toLowerCase()).filter(Boolean));
+    return parseGuestText(listEl.value, { surnameFirst: detectSurnameFirst(listEl.value) })
+      .map(r => ({ ...r, names: r.names.filter(n => !party.has(n.toLowerCase())) }))
+      .filter(r => r.names.length);
+  };
+  const listedGuests = () => {
+    const rows = listedRows();
+    return rows.length ? previewGuestImport(rows).guests : 0;
+  };
+  const guestCount = () => listedGuests() || parseInt(document.getElementById('ob-guests').value) || 0;
   const summary = () => {
-    const guests = parseInt(document.getElementById('ob-guests').value) || 0;
+    const guests = guestCount();
     const perTable = Math.max(2, parseInt(document.getElementById('ob-seats').value) || 8);
     const n = tablesNeeded(guests, perTable);
     document.getElementById('ob-summary').innerHTML =
-      `Složit ćemo <strong>${n} ${n === 1 ? 'stol' : n > 1 && n < 5 ? 'stola' : 'stolova'}</strong> po ${perTable} mjesta i stol mladenaca.`;
+      `${listedGuests() ? `Za ${guests} ${guests === 1 ? 'gosta' : 'gostiju'} s popisa s` : 'S'}ložit ćemo <strong>${n} ${n === 1 ? 'stol' : n > 1 && n < 5 ? 'stola' : 'stolova'}</strong> po ${perTable} mjesta i stol mladenaca.`;
   };
+  const listEl = document.getElementById('ob-guest-list');
   renderHallTemplates(document.getElementById('ob-templates'), template, key => {
     template = key;
     document.getElementById('ob-seats').value = HALL_TEMPLATES[key].defaultSeats;
@@ -318,9 +333,8 @@ function showOnboarding() {
   ['ob-guests', 'ob-seats'].forEach(id => document.getElementById(id).addEventListener('input', summary));
   summary();
 
-  const listEl = document.getElementById('ob-guest-list');
   listEl.addEventListener('input', () => {
-    const p = previewGuestImport(parseGuestText(listEl.value, { surnameFirst: detectSurnameFirst(listEl.value) }));
+    const p = previewGuestImport(listedRows());
     document.getElementById('ob-guest-preview').innerHTML = p.guests
       ? `<p><strong>${p.guests}</strong> ${p.guests === 1 ? 'gost' : 'gostiju'}${p.groups ? ` · ${p.groups} ${p.groups === 1 ? 'par ili obitelj' : 'parova i obitelji'} sjedi zajedno` : ''}</p>`
       : '';
@@ -346,7 +360,7 @@ function showOnboarding() {
   resetOnboarding = () => {
     step = 1;
     template = 'round';
-    ['ob-title', 'ob-monogram', 'ob-guest-list', ...OB_PARTY_FIELDS.map(f => f.id)].forEach(id => { document.getElementById(id).value = ''; });
+    ['ob-guest-list', ...OB_PARTY_FIELDS.map(f => f.id)].forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('ob-guests').value = 100;
     document.getElementById('ob-seats').value = HALL_TEMPLATES.round.defaultSeats;
     document.getElementById('ob-guest-preview').innerHTML = '';
@@ -362,56 +376,64 @@ function showOnboarding() {
 
   async function onboardingStep(skip) {
     if (step === 1) {
-      const title = document.getElementById('ob-title').value.trim() || 'Moje Vjenčanje';
-      const monogram = document.getElementById('ob-monogram').value.trim() || '♡';
-      await saveSettings({ weddingTitle: title, monogram });
       step = 2;
-      showOnboardingStep(step);
     } else if (step === 2) {
+      if (skip) listEl.value = '';
+      // The guest count comes from the list; ask for an estimate only without one.
+      document.getElementById('ob-guests-group').style.display = listedGuests() ? 'none' : '';
+      summary();
       step = 3;
-      showOnboardingStep(step);
-    } else if (step === 3) {
-      // Default bridal-party categories — auto-seated at the bridal table.
-      const cats = {
-        mladenci: { id: crypto.randomUUID(), name: 'Mladenci', color: '#7A8FA6', atHeadTable: true },
-        kumovi: { id: crypto.randomUUID(), name: 'Kumovi', color: '#B07B72', atHeadTable: true }
-      };
-      await saveCategory(cats.mladenci);
-      await saveCategory(cats.kumovi);
+    } else {
+      // Title and monogram from the couple's names (both can be changed in the header).
+      const first = id => document.getElementById(id).value.trim().split(/\s+/)[0] || '';
+      const names = [first('ob-bride'), first('ob-groom')].filter(Boolean);
+      await saveSettings({
+        weddingTitle: names.length ? names.join(' i ') : 'Moje Vjenčanje',
+        monogram: names.length ? names.map(n => n[0].toUpperCase()).join('&') : '♡'
+      });
+      for (const c of DEFAULT_CATEGORIES) await saveCategory({ id: crypto.randomUUID(), ...c });
       await applyHallPlan(planHall({
         template,
-        guestCount: parseInt(document.getElementById('ob-guests').value) || 0,
+        guestCount: guestCount(),
         perTable: Math.max(2, parseInt(document.getElementById('ob-seats').value) || 8),
         mode: 'rebuild'
       }));
-      await seatWeddingParty(cats);
-      step = 4;
-      showOnboardingStep(step);
-    } else {
-      const rows = skip ? [] : parseGuestText(listEl.value, { surnameFirst: detectSurnameFirst(listEl.value) });
+      await seatWeddingParty();
+      const rows = parseGuestText(listEl.value, { surnameFirst: detectSurnameFirst(listEl.value) });
       if (rows.length) await importGuestRows(rows, null);
       modal.style.display = 'none';
       renderAll();
       navigateTo(rows.length ? 'sala' : 'gosti');
+      return;
     }
+    showOnboardingStep(step);
   }
 }
+
+// Sides and circles most weddings sort guests by (the wedding party itself is
+// not a category: it sits at the bridal table from the start).
+const DEFAULT_CATEGORIES = [
+  { name: 'Mladenkina strana', color: '#B07B72', atHeadTable: false },
+  { name: 'Mladoženjina strana', color: '#7A8FA6', atHeadTable: false },
+  { name: 'Obitelj', color: '#7B9E87', atHeadTable: false },
+  { name: 'Prijatelji', color: '#C4956A', atHeadTable: false }
+];
 
 // The bridal table, left to right: the kuma's partner, kuma, bride, groom, kum,
 // the kum's partner (on the default six-seat table the four sit in the middle).
 const OB_PARTY_FIELDS = [
-  { id: 'ob-kuma-plus', cat: 'kumovi', seat: 0, plus: true },
-  { id: 'ob-kuma', cat: 'kumovi', seat: 1 },
-  { id: 'ob-bride', cat: 'mladenci', seat: 2 },
-  { id: 'ob-groom', cat: 'mladenci', seat: 3 },
-  { id: 'ob-kum', cat: 'kumovi', seat: 4 },
-  { id: 'ob-kum-plus', cat: 'kumovi', seat: 5, plus: true }
+  { id: 'ob-kuma-plus', seat: 0 },
+  { id: 'ob-kuma', seat: 1 },
+  { id: 'ob-bride', seat: 2 },
+  { id: 'ob-groom', seat: 3 },
+  { id: 'ob-kum', seat: 4 },
+  { id: 'ob-kum-plus', seat: 5 }
 ];
 
 // The couple, the kumovi and their partners sit at the bridal table from the
 // start. They are marked as the wedding party, so they are not counted or
 // listed as guests.
-async function seatWeddingParty(cats) {
+async function seatWeddingParty() {
   const head = state.tables.find(isHeadTable);
   if (!head) return;
   const people = OB_PARTY_FIELDS
@@ -421,7 +443,7 @@ async function seatWeddingParty(cats) {
   for (const p of people) {
     const seat = Math.min(head.seats - 1, p.seat);
     await saveGuest({
-      id: crypto.randomUUID(), name: p.name, categoryId: cats[p.cat].id,
+      id: crypto.randomUUID(), name: p.name, categoryId: null,
       status: 'assigned', tableId: head.id, seatIndex: seat, locked: true, notes: '', party: true
     });
   }
@@ -433,8 +455,8 @@ function showOnboardingStep(step) {
   });
   document.querySelectorAll('.ob-dots [data-dot]').forEach(d => d.classList.toggle('active', parseInt(d.dataset.dot) <= step));
   document.querySelector('.modal-onboarding').classList.toggle('wide', step > 1);
-  document.getElementById('onboarding-next').textContent = step === 4 ? 'Počni' : 'Dalje →';
-  document.getElementById('onboarding-skip').style.display = step === 4 ? '' : 'none';
+  document.getElementById('onboarding-next').textContent = step === 3 ? 'Počni' : 'Dalje →';
+  document.getElementById('onboarding-skip').style.display = step === 2 ? '' : 'none';
 }
 
 // ── First steps guide ──────────────────────────────────────────────────────────
@@ -1366,7 +1388,8 @@ function renderTablesView() {
   container.innerHTML = `<div class="table-cards">${tables.map(t => {
     const guests = state.guests.filter(g => g.tableId === t.id).sort((a, b) => (a.seatIndex || 0) - (b.seatIndex || 0));
     const free = t.seats - guests.length;
-    const addBtn = free > 0
+    // Only offered while a guest is picked: otherwise drag or tap a seat.
+    const addBtn = free > 0 && selectedGuestForAssign
       ? `<button class="table-card-add${selectedGuestForAssign ? ' ready' : ''}" data-add="${t.id}">${icon('plus')} ${selectedGuestForAssign ? `Smjesti ${esc(nameOf(selectedGuestForAssign))} ovdje` : 'Dodaj gosta'}</button>`
       : '';
     return `<div class="table-card${violated.has(t.id) ? ' violated' : ''}" data-table-card="${t.id}">

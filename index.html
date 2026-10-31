@@ -367,24 +367,10 @@
   <div class="modal modal-onboarding">
     <div class="onboarding-icon"><svg class="ic" aria-hidden="true"><use href="#i-rings"/></svg></div>
     <div class="onboarding-title">Raspored Sjedenja</div>
-    <div class="ob-dots" aria-hidden="true"><span data-dot="1"></span><span data-dot="2"></span><span data-dot="3"></span><span data-dot="4"></span></div>
+    <div class="ob-dots" aria-hidden="true"><span data-dot="1"></span><span data-dot="2"></span><span data-dot="3"></span></div>
 
     <div class="ob-step" data-step="1">
-      <p class="onboarding-subtitle">Dobrodošli! Za nekoliko koraka imate salu, goste i prijedlog rasporeda.</p>
-      <div class="ob-fields">
-        <div class="form-group">
-          <label for="ob-title">Naslov vjenčanja</label>
-          <input id="ob-title" class="form-control" type="text" placeholder="Ana & Marko" autocomplete="off">
-        </div>
-        <div class="form-group">
-          <label for="ob-monogram">Monogram (inicijali)</label>
-          <input id="ob-monogram" class="form-control" type="text" placeholder="A&M" maxlength="5" autocomplete="off">
-        </div>
-      </div>
-    </div>
-
-    <div class="ob-step" data-step="2" style="display:none">
-      <p class="onboarding-subtitle">Tko sjedi za stolom mladenaca? Oni odmah dobivaju mjesto i ne broje se među goste.</p>
+      <p class="onboarding-subtitle">Dobrodošli! Tko sjedi za stolom mladenaca? Oni odmah dobivaju mjesto i ne broje se među goste.</p>
       <div class="ob-party">
         <div class="ob-party-label">Mladenci</div>
         <div class="form-row ob-fields">
@@ -404,11 +390,17 @@
       </div>
     </div>
 
+    <div class="ob-step" data-step="2" style="display:none">
+      <p class="onboarding-subtitle">Zalijepi popis gostiju, jedan red po gostu ili obitelji. Iz njega izračunamo koliko treba stolova. Može i kasnije.</p>
+      <textarea id="ob-guest-list" class="form-control" rows="6" placeholder="Ana i Marko Horvat&#10;Ivo, Mia, Lea Kovač&#10;Petar Marić +1"></textarea>
+      <div class="import-preview" id="ob-guest-preview"></div>
+    </div>
+
     <div class="ob-step" data-step="3" style="display:none">
-      <p class="onboarding-subtitle">Kakvi su stolovi u sali? Broj stolova izračunat ćemo iz broja gostiju.</p>
+      <p class="onboarding-subtitle">Kakvi su stolovi u sali?</p>
       <div class="template-grid" id="ob-templates"></div>
       <div class="form-row ob-fields" style="margin-top:14px">
-        <div class="form-group">
+        <div class="form-group" id="ob-guests-group">
           <label for="ob-guests">Otprilike gostiju</label>
           <input id="ob-guests" class="form-control" type="number" value="100" min="0" max="2000" inputmode="numeric">
         </div>
@@ -418,12 +410,6 @@
         </div>
       </div>
       <div class="hall-summary" id="ob-summary"></div>
-    </div>
-
-    <div class="ob-step" data-step="4" style="display:none">
-      <p class="onboarding-subtitle">Zalijepi popis gostiju, jedan red po gostu ili obitelji. Može i kasnije.</p>
-      <textarea id="ob-guest-list" class="form-control" rows="6" placeholder="Ana i Marko Horvat&#10;Ivo, Mia, Lea Kovač&#10;Petar Marić +1"></textarea>
-      <div class="import-preview" id="ob-guest-preview"></div>
     </div>
 
     <div class="ob-buttons">
