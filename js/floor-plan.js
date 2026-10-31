@@ -33,6 +33,7 @@ class FloorPlan {
     this.snapToGrid = options.snapToGrid || false;
     this.onTableMove = options.onTableMove || (() => {});
     this.onTableClick = options.onTableClick || (() => {});
+    this.onTableOpen = options.onTableOpen || null; // assign mode: tap on the table itself
     this.onSeatClick = options.onSeatClick || (() => {});
     this.onSeatPress = options.onSeatPress || null; // (event, tableId, seatIndex, guest) – start of a press on an occupied seat
     this.mode = options.mode || 'edit'; // 'edit' | 'assign'
@@ -408,6 +409,10 @@ class FloorPlan {
       }
       g.appendChild(seatG);
     });
+
+    if (this.mode === 'assign' && this.onTableOpen) {
+      g.addEventListener('click', (e) => { e.stopPropagation(); this.onTableOpen(table.id); });
+    }
 
     // Drag (edit mode only)
     if (this.mode === 'edit') {

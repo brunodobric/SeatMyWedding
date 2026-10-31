@@ -909,6 +909,8 @@ select.seat-select.status-badge {
   overflow: hidden;
 }
 .unassigned-panel.flash { animation: flash 1s ease; }
+/* Everyone has a seat: the progress bar already says so, the panel only takes room */
+.unassigned-panel.all-seated { display: none; }
 @keyframes flash { 0%, 100% { box-shadow: none; } 30% { box-shadow: inset 0 0 0 2px var(--color-gold); } }
 .unassigned-header {
   padding: 10px 12px;
@@ -994,6 +996,15 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
 .table-card-count.full { color: var(--color-success); font-weight: 600; }
 .table-card-head .table-card-count { margin-left: auto; }
 .table-card-edit { width: 28px; height: 28px; align-self: center; }
+/* Guests at one table (tap on the floor plan) */
+.table-guests-list { list-style: none; display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; max-height: 60vh; overflow-y: auto; }
+.table-guests-list button {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 8px; border-radius: 8px; text-align: left; font-size: 0.95rem; color: var(--color-ink);
+}
+.table-guests-list button:hover { background: var(--color-champagne); }
+.table-guests-list button.free { color: var(--color-muted); }
+.table-guests-list .tg-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .table-card-new {
   display: flex; align-items: center; justify-content: center; gap: 6px;
   min-height: 72px;
@@ -1205,7 +1216,7 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
   .raspored-list { padding: 10px; }
   .table-cards { grid-template-columns: 1fr; }
   .hide-touch { display: none !important; }
-  .unassigned-panel.all-seated #unassigned-list { display: none; }
+  .hide-touch-label { display: none; }
   /* The bottom navigation already names the section. */
   .section-header { display: none; }
   .menu { position: fixed; left: 12px; right: 12px; top: auto; bottom: calc(70px + env(safe-area-inset-bottom)); min-width: 0; }

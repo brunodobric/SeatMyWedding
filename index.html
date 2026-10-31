@@ -294,9 +294,9 @@
             <div class="raspored-canvas floor-only">
               <div class="floor-plan-toolbar fp-arrange-bar">
                 <button class="btn-secondary" id="btn-arrange" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-hall"/></svg> Premjesti stolove</button>
-                <button class="btn-secondary arrange-only" id="btn-snap-grid"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg> Mreža</button>
+                <button class="btn-secondary arrange-only" id="btn-snap-grid" title="Mreža"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg><span class="hide-touch-label"> Mreža</span></button>
                 <button class="btn-secondary arrange-only" id="btn-add-table-fp">+ Dodaj stol</button>
-                <button class="btn-secondary arrange-only" id="btn-hall-fp"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Složi salu</button>
+                <button class="btn-secondary arrange-only" id="btn-hall-fp" title="Složi salu"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg><span class="hide-touch-label"> Složi salu</span></button>
                 <span class="fp-arrange-hint arrange-only">Povuci stol na novo mjesto, dodirni ga za uređivanje.</span>
               </div>
               <div class="floor-plan-svg-wrap">
@@ -688,6 +688,20 @@
       <button class="btn-secondary" id="btn-seat-unassign" style="justify-content:flex-start"><svg class="ic" aria-hidden="true"><use href="#i-user-x"/></svg> Ukloni s mjesta</button>
       <button class="btn-secondary" id="btn-seat-lock" style="justify-content:flex-start"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg> Zaključaj</button>
       <button class="btn-secondary" id="btn-seat-edit-guest" style="justify-content:flex-start"><svg class="ic" aria-hidden="true"><use href="#i-edit"/></svg> Uredi gosta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Guests at one table (tap a table on the floor plan) -->
+<div id="modal-table-guests" class="modal-backdrop" style="display:none">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <h3 class="modal-title" id="table-guests-title">Stol</h3>
+      <button class="modal-close" aria-label="Zatvori"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <ol id="table-guests-list" class="table-guests-list"></ol>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="btn-table-guests-edit"><svg class="ic" aria-hidden="true"><use href="#i-edit"/></svg> Uredi stol</button>
     </div>
   </div>
 </div>

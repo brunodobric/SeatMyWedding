@@ -683,6 +683,7 @@ async function toggleFullNames() {
 let guestSearchQuery = '';
 let guestCategoryFilter = '';
 let guestViolationFilter = false;
+let guestUnseatedFilter = false;
 
 function guestHasViolation(g) {
   return rulesForGuest(g).some(r => r.satisfied === false);
@@ -716,13 +717,22 @@ function renderGosti() {
 function renderCategoryChips() {
   const container = document.getElementById('category-filter-chips');
   if (!container) return;
+  const unseated = unseatedGuests().length;
+  if (!unseated) guestUnseatedFilter = false;
   container.innerHTML = `<button class="chip${!guestCategoryFilter ? ' active' : ''}" data-cat="">Svi</button>` +
+    (unseated ? `<button class="chip chip-unseated${guestUnseatedFilter ? ' active' : ''}" id="chip-unseated">Bez mjesta (${unseated})</button>` : '') +
     state.categories.map(c =>
       `<button class="chip${guestCategoryFilter === c.id ? ' active' : ''}" data-cat="${c.id}" style="--cat-color:${c.color}">${esc(c.name)}</button>`
     ).join('');
-  container.querySelectorAll('.chip').forEach(btn => {
-    btn.addEventListener('click', () => { guestCategoryFilter = btn.dataset.cat; renderGuestList(); renderCategoryChips(); });
+  container.querySelectorAll('.chip[data-cat]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      guestCategoryFilter = btn.dataset.cat;
+      if (!btn.dataset.cat) guestUnseatedFilter = false;
+      renderGuestList(); renderCategoryChips();
+    });
   });
+  const u = document.getElementById('chip-unseated');
+  if (u) u.addEventListener('click', () => { guestUnseatedFilter = !guestUnseatedFilter; renderGuestList(); renderCategoryChips(); });
 }
 
 function renderGuestList() {
@@ -738,6 +748,10 @@ function renderGuestList() {
   }
   if (guestViolationFilter) {
     guests = guests.filter(guestHasViolation);
+  }
+  if (guestUnseatedFilter) {
+    const ids = new Set(unseatedGuests().map(g => g.id));
+    guests = guests.filter(g => ids.has(g.id));
   }
   guests.sort((a, b) => a.name.localeCompare(b.name));
   if (state.guests.length === 0) {
@@ -1192,6 +1206,7 @@ function renderRaspored() {
         showFullNames: !!state.settings.showFullNames,
         onTableMove: async (table) => { await saveTable(table); },
         onTableClick: (id) => { openTableModal(id); floorPlanAssign.selectTable(id); },
+        onTableOpen: (id) => handleTableOpen(id),
         onSeatClick: (tableId, seatIndex, guest) => handleSeatClick(tableId, seatIndex, guest),
         onSeatPress: (e, tableId, seatIndex, guest) => armGuestDrag(e, guest.id, false)
       });
@@ -1376,6 +1391,54 @@ async function handleSeatClick(tableId, seatIndex, guest) {
   }
 }
 
+// Tap on a table (not a seat): with a guest picked, seat them at the first free
+// seat; otherwise list who sits there, readable even on a small phone.
+async function handleTableOpen(tableId) {
+  if (guestDrag.justDropped()) return;
+  const table = state.tables.find(t => t.id === tableId);
+  if (!table) return;
+  if (selectedGuestForAssign) {
+    const seat = firstFreeSeat(table);
+    if (seat < 0) { showToast(`${table.name} je pun`); return; }
+    const id = selectedGuestForAssign;
+    selectedGuestForAssign = null;
+    await dropGuest(id, { kind: 'seat', tableId, seatIndex: seat });
+    renderUnassignedPanel();
+    return;
+  }
+  openTableGuests(tableId);
+}
+
+function openTableGuests(tableId) {
+  const modal = document.getElementById('modal-table-guests');
+  const table = state.tables.find(t => t.id === tableId);
+  if (!table) { modal.style.display = 'none'; return; }
+  const bySeat = {};
+  state.guests.filter(g => g.tableId === tableId).forEach(g => { bySeat[g.seatIndex] = g; });
+  const taken = Object.keys(bySeat).length;
+  document.getElementById('table-guests-title').textContent = `${table.name} · ${taken}/${table.seats}`;
+  const rows = [];
+  for (let i = 0; i < table.seats; i++) {
+    const g = bySeat[i];
+    const cat = g ? state.categories.find(c => c.id === g.categoryId) : null;
+    rows.push(g
+      ? `<li><button data-seat="${i}" data-guest="${g.id}"><span class="seat-no">${i + 1}</span>
+          ${cat ? `<span class="chip-dot" style="background:${cat.color}"></span>` : ''}
+          <span class="tg-name">${esc(g.name)}</span>${g.locked ? `<span class="lock-badge">${icon('lock')}</span>` : ''}</button></li>`
+      : `<li><button class="free" data-seat="${i}"><span class="seat-no">${i + 1}</span><span class="tg-name">slobodno</span>${icon('plus')}</button></li>`);
+  }
+  const list = document.getElementById('table-guests-list');
+  list.innerHTML = rows.join('');
+  list.querySelectorAll('button[data-seat]').forEach(btn => btn.addEventListener('click', () => {
+    modal.style.display = 'none';
+    const seat = parseInt(btn.dataset.seat);
+    const g = btn.dataset.guest && state.guests.find(x => x.id === btn.dataset.guest);
+    if (g) showSeatOptionsModal(tableId, seat, g); else showAssignSeatModal(tableId, seat);
+  }));
+  modal.dataset.tableId = tableId;
+  modal.style.display = 'flex';
+}
+
 function showAssignSeatModal(tableId, seatIndex) {
   const modal = document.getElementById('modal-assign-seat');
   const table = state.tables.find(t => t.id === tableId);
@@ -1487,6 +1550,11 @@ function setupRasporedEvents() {
   document.getElementById('btn-arrange').addEventListener('click', () => {
     setArranging(!arrangingTables);
     renderUnassignedPanel();
+  });
+  document.getElementById('btn-table-guests-edit').addEventListener('click', () => {
+    const modal = document.getElementById('modal-table-guests');
+    modal.style.display = 'none';
+    openTableModal(modal.dataset.tableId);
   });
   document.getElementById('btn-zoom-in-assign').addEventListener('click', () => floorPlanAssign && floorPlanAssign.zoomIn());
   document.getElementById('btn-zoom-out-assign').addEventListener('click', () => floorPlanAssign && floorPlanAssign.zoomOut());
