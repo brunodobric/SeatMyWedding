@@ -848,8 +848,7 @@ function renderGosti() {
 function renderCategoryChips() {
   const container = document.getElementById('category-filter-chips');
   if (!container) return;
-  // The wedding party is not on the guest list, so it is not counted here.
-  const unseated = unseatedGuests().filter(g => !isWeddingParty(g)).length;
+  const unseated = unseatedGuests().length;
   if (!unseated) guestUnseatedFilter = false;
   container.innerHTML = `<button class="chip${!guestCategoryFilter ? ' active' : ''}" data-cat="">Svi</button>` +
     (unseated ? `<button class="chip chip-unseated${guestUnseatedFilter ? ' active' : ''}" id="chip-unseated">Bez mjesta (${unseated})</button>` : '') +
@@ -1169,7 +1168,7 @@ class PeoplePicker {
   renderSuggest() {
     const q = this.input.value.trim().toLowerCase();
     const skip = new Set([...this.value, ...this.exclude()]);
-    const matches = state.guests
+    const matches = invitedGuests()
       .filter(g => !skip.has(g.id) && (!q || g.name.toLowerCase().includes(q)))
       .sort((a, b) => a.name.localeCompare(b.name))
       .slice(0, 6);
@@ -1220,6 +1219,7 @@ function fillFixedSeatOptions(tableId, selected) {
 
 function openGuestModal(id) {
   const guest = id ? state.guests.find(g => g.id === id) : null;
+  if (isWeddingParty(guest)) { openPartyModal(); return; }
   const modal = document.getElementById('modal-guest');
   document.getElementById('modal-guest-title').textContent = guest ? 'Uredi gosta' : 'Dodaj gosta';
   document.getElementById('guest-edit-name').value = (guest ? guest.name : undefined) || '';
@@ -1388,7 +1388,7 @@ function renderSeatingProgress() {
 }
 
 function unseatedGuests() {
-  return state.guests.filter(g => g.status !== 'assigned' && g.status !== 'maybe');
+  return invitedGuests().filter(g => g.status !== 'assigned' && g.status !== 'maybe');
 }
 
 function renderUnassignedPanel() {
@@ -1607,6 +1607,11 @@ function showSeatOptionsModal(tableId, seatIndex, guest) {
   const table = state.tables.find(t => t.id === tableId);
   document.getElementById('seat-options-label').textContent = `${guest.name} — ${(table ? table.name : undefined) || 'Stol'}, Mj. ${seatIndex + 1}`;
   document.getElementById('btn-seat-lock').innerHTML = guest.locked ? `${icon('unlock')} Otključaj` : `${icon('lock')} Zaključaj`;
+  // The wedding party always keeps its seat and is edited in "Mladenci i kumovi".
+  const party = isWeddingParty(guest);
+  document.getElementById('btn-seat-unassign').style.display = party ? 'none' : '';
+  document.getElementById('btn-seat-lock').style.display = party ? 'none' : '';
+  document.getElementById('btn-seat-edit-guest').innerHTML = party ? `${icon('rings')} Mladenci i kumovi` : `${icon('edit')} Uredi gosta`;
   modal.dataset.guestId = guest.id;
   modal.style.display = 'flex';
 }
@@ -1636,7 +1641,8 @@ function setupSeatOptionsModal() {
   document.getElementById('btn-seat-edit-guest').addEventListener('click', () => {
     const modal = document.getElementById('modal-seat-options');
     modal.style.display = 'none';
-    openGuestModal(modal.dataset.guestId);
+    const g = state.guests.find(x => x.id === modal.dataset.guestId);
+    if (isWeddingParty(g)) openPartyModal(); else openGuestModal(modal.dataset.guestId);
   });
 }
 

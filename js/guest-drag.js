@@ -140,7 +140,7 @@ const guestDrag = {
 
 async function dropGuest(guestId, target) {
   const guest = state.guests.find(g => g.id === guestId);
-  if (!guest) return;
+  if (!guest || !partyStaysAtHead(guest, target.kind === 'unseat' ? null : target.tableId)) return;
   if (target.kind === 'unseat') {
     if (guest.tableId) await unassignGuest(guestId);
     return;

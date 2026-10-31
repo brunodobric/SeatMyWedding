@@ -476,9 +476,19 @@ async function deleteGuest(id) {
   emit('rules');
 }
 
+// The wedding party sits only at the bridal table (they are changed in
+// "Mladenci i kumovi", not seated like guests).
+function partyStaysAtHead(guest, tableId) {
+  if (!isWeddingParty(guest)) return true;
+  const table = tableId && state.tables.find(t => t.id === tableId);
+  if (table && isHeadTable(table)) return true;
+  if (typeof showToast === 'function') showToast(`${guest.name} sjedi za stolom mladenaca`, true);
+  return false;
+}
+
 async function assignGuest(guestId, tableId, seatIndex) {
   const guest = state.guests.find(g => g.id === guestId);
-  if (!guest) return;
+  if (!guest || !partyStaysAtHead(guest, tableId)) return;
   // Free previous seat if moving
   guest.tableId = tableId;
   guest.seatIndex = seatIndex;
