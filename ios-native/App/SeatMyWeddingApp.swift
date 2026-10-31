@@ -4,6 +4,10 @@ import SwiftUI
 struct SeatMyWeddingApp: App {
     @State private var store = WeddingStore()
 
+    init() {
+        Theme.applyAppearance()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

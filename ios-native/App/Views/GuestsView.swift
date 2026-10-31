@@ -27,9 +27,10 @@ struct GuestsView: View {
                     List(sortedGuests, id: \.id) { guest in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(guest.string("name") ?? "")
+                                .font(Theme.ui(17))
                                 .foregroundStyle(Theme.ink)
                             Text(store.tableName(guest.string("tableId")) ?? "bez mjesta")
-                                .font(.footnote)
+                                .font(Theme.ui(13))
                                 .foregroundStyle(Theme.muted)
                         }
                     }

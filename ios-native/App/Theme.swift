@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Boje iz web aplikacije (css/app.css, "Design tokens").
 enum Theme {
@@ -12,9 +13,35 @@ enum Theme {
     static let ink = Color(hex: 0x2B2622)
     static let muted = Color(hex: 0x8A7F70)
 
-    /// Naslovi: serifni font. Cormorant se ugrađuje kasnije; do tada sustavni serif.
-    static func title(_ size: CGFloat = 28) -> Font {
-        .system(size: size, weight: .semibold, design: .serif)
+    /// Fontovi iz web aplikacije (OFL licenca, mapa App/Fonts): Cormorant Garamond
+    /// za naslove, Jost za sučelje, Pinyon Script za monogram.
+    static let serifRegular = "CormorantGaramond-Regular"
+    static let serifSemiBold = "CormorantGaramond-SemiBold"
+    static let uiRegular = "Jost-Regular"
+    static let uiMedium = "Jost-Medium"
+    static let uiSemiBold = "Jost-SemiBold"
+    static let scriptName = "PinyonScript-Regular"
+
+    static func title(_ size: CGFloat = 28) -> Font { .custom(serifSemiBold, size: size) }
+    static func ui(_ size: CGFloat = 16) -> Font { .custom(uiRegular, size: size) }
+    static func uiBold(_ size: CGFloat = 16) -> Font { .custom(uiSemiBold, size: size) }
+    static func script(_ size: CGFloat = 36) -> Font { .custom(scriptName, size: size) }
+
+    /// Naslovi navigacije i boja trake kao u web aplikaciji.
+    static func applyAppearance() {
+        let nav = UINavigationBarAppearance()
+        nav.configureWithOpaqueBackground()
+        nav.backgroundColor = UIColor(background)
+        nav.titleTextAttributes = [
+            .font: UIFont(name: serifSemiBold, size: 20) ?? .systemFont(ofSize: 20, weight: .semibold),
+            .foregroundColor: UIColor(ink)
+        ]
+        nav.largeTitleTextAttributes = [
+            .font: UIFont(name: serifSemiBold, size: 34) ?? .systemFont(ofSize: 34, weight: .semibold),
+            .foregroundColor: UIColor(ink)
+        ]
+        UINavigationBar.appearance().standardAppearance = nav
+        UINavigationBar.appearance().scrollEdgeAppearance = nav
     }
 }
 

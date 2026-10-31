@@ -29,6 +29,14 @@ targets:
         CFBundleVersion: "1"
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
+        UIAppFonts:
+          - CormorantGaramond-Regular.ttf
+          - CormorantGaramond-SemiBold.ttf
+          - CormorantGaramond-Italic.ttf
+          - Jost-Regular.ttf
+          - Jost-Medium.ttf
+          - Jost-SemiBold.ttf
+          - PinyonScript-Regular.ttf
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIRequiredDeviceCapabilities:
