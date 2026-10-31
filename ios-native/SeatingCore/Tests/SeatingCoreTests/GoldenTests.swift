@@ -249,6 +249,53 @@ final class GoldenTests: XCTestCase {
         }
     }
 
+    func testPlanHall() throws {
+        let cases = try load("planHall")
+        XCTAssertGreaterThan(cases.count, 50)
+        for c in cases {
+            let input = try XCTUnwrap(c.input.objectValue)
+            let data = ruleWorld(input)
+            let form = try XCTUnwrap(input["form"]?.objectValue)
+            let plan = data.planHall(
+                template: HallTemplate(rawValue: form["template"]?.stringValue ?? "") ?? .round,
+                guestCount: Int(form["guestCount"]?.numberValue ?? 0),
+                perTable: Int(form["perTable"]?.numberValue ?? 0),
+                mode: HallMode(rawValue: form["mode"]?.stringValue ?? "") ?? .add,
+                makeID: counter()
+            )
+            let expected = try XCTUnwrap(c.expected.objectValue)
+            XCTAssertEqual(plan.create.map { $0.json }, expected["create"]?.arrayValue, "planHall stolovi: \(c.name)")
+            XCTAssertEqual(plan.remove, ids(expected["remove"]), "planHall uklonjeni: \(c.name)")
+            XCTAssertEqual(Double(plan.count), expected["count"]?.numberValue, "planHall broj: \(c.name)")
+            XCTAssertEqual(Double(plan.perTable), expected["perTable"]?.numberValue, "planHall po stolu: \(c.name)")
+        }
+    }
+
+    func testPlaceNewTable() throws {
+        let cases = try load("placeTable")
+        for c in cases {
+            let input = try XCTUnwrap(c.input.objectValue)
+            let data = ruleWorld(input)
+            let table = Record(try XCTUnwrap(input["table"]?.objectValue))
+            XCTAssertEqual(data.placeNewTable(table, makeID: counter()).json, c.expected, "placeNewTable: \(c.name)")
+        }
+    }
+
+    func testReseatOverflow() throws {
+        let cases = try load("reseat")
+        for c in cases {
+            let input = try XCTUnwrap(c.input.objectValue)
+            var data = WeddingData(
+                tables: [Record(try XCTUnwrap(input["table"]?.objectValue))],
+                guests: records(input["guests"]))
+            let moved = data.reseatOverflowGuests(table: data.tables[0])
+            for g in moved { if let i = data.guests.firstIndex(where: { $0.id == g.id }) { data.guests[i] = g } }
+            let expected = try XCTUnwrap(c.expected.objectValue)
+            XCTAssertEqual(moved.compactMap { $0.id }, ids(expected["moved"]), "reseat promijenjeni: \(c.name)")
+            XCTAssertEqual(data.guests.map { $0.json }, expected["guests"]?.arrayValue, "reseat gosti: \(c.name)")
+        }
+    }
+
     func testCloudDoc() throws {
         let cases = try load("cloudDoc")
         for c in cases {
