@@ -81,7 +81,7 @@ function fuzzRecord(kind) {
 const list = (kind, n) => Array.from({ length: n }, () => fuzzRecord(kind));
 
 // ── Slučajevi ────────────────────────────────────────────────────────────────
-const out = { cleanData: [], migrateTables: [], repairSeating: [], mergeSyncStates: [], cloudDoc: [], floorGeometry: [], dropGuest: [], suggestSeating: [], normalizeRules: [], setRelations: [], ruleStatus: [], categoryRules: [], planHall: [], placeTable: [], reseat: [] };
+const out = { cleanData: [], migrateTables: [], repairSeating: [], mergeSyncStates: [], cloudDoc: [], floorGeometry: [], dropGuest: [], suggestSeating: [], normalizeRules: [], setRelations: [], ruleStatus: [], categoryRules: [], planHall: [], placeTable: [], reseat: [], guestImport: [] };
 
 // cleanData
 const cleanInputs = [
@@ -405,6 +405,51 @@ for (let i = 0; i < 80; i++) {
   ctx.state = { settings: {}, tables: [clone(table)], categories: [], guests: clone(guests), rules: [] };
   const moved = clone(run(`reseatOverflowGuests(state.tables[0])`)).map(g => g.id);
   out.reseat.push({ name: 'nasumično ' + i, input: { table, guests }, expected: { guests: clone(ctx.state.guests), moved } });
+}
+
+
+// Uvoz gostiju iz teksta (js/guest-import.js)
+vm.runInContext(fs.readFileSync(path.join(root, 'js', 'guest-import.js'), 'utf8'), ctx, { filename: 'guest-import.js' });
+const FIRST = ['Ana', 'Marko', 'Ivo', 'Mia', 'Lea', 'Petar', 'Šime', 'Đurđica', 'Josip', 'Maja'];
+const LAST = ['Horvat', 'Kovač', 'Marić', 'Babić Perić', 'Novak', 'Čović'];
+const CATS = ['Prijatelji', 'Obitelj', 'obitelj', 'Mladenkina strana', ''];
+function importLine() {
+  const f = () => pick(FIRST), l = () => pick(LAST);
+  const cat = () => (chance(0.3) ? pick([';', '\t']) + pick(CATS) : '');
+  switch (int(0, 11)) {
+    case 0: return f() + ' ' + l() + cat();
+    case 1: return f() + cat();
+    case 2: return f() + ' i ' + f() + ' ' + l() + cat();
+    case 3: return f() + ', ' + f() + ', ' + f() + ' ' + l() + cat();
+    case 4: return f() + ' ' + l() + ' +' + int(0, 12) + cat();
+    case 5: return l() + ' ' + f() + cat();
+    case 6: return l().split(' ')[0] + ', ' + f() + cat();
+    case 7: return l().split(' ')[0] + ' ' + f() + ' i ' + f() + cat();
+    case 8: return '  ' + f() + '  ' + l() + '  ';
+    case 9: return '"' + f() + ' ' + l() + '"' + cat();
+    case 10: return f() + ' & ' + f() + ' ' + l();
+    default: return '';
+  }
+}
+function importText() {
+  const lines = [];
+  if (chance(0.35)) lines.push(pick(['Ime i prezime;Kategorija', 'Prezime i ime', 'Ime\tPrezime\tKategorija', 'Prezime\tIme', 'Gosti', 'Ime;Grupa', 'Name']));
+  for (let k = int(0, 8); k > 0; k--) {
+    const header = lines.length && /^(Ime\tPrezime|Prezime\tIme)/.test(lines[0]);
+    lines.push(header ? pick(FIRST) + '\t' + pick(LAST) + (chance(0.5) ? '\t' + pick(CATS) : '') : importLine());
+  }
+  return lines.join(chance(0.2) ? '\r\n' : '\n');
+}
+for (let i = 0; i < 150; i++) {
+  const text = importText();
+  const existing = Array.from({ length: int(0, 3) }, () => pick(FIRST) + ' ' + pick(LAST));
+  ctx.state = { settings: {}, tables: [], categories: [], guests: existing.map((name, k) => ({ id: 'g-' + k, name })), rules: [] };
+  const surnameFirst = run(`detectSurnameFirst(${JSON.stringify(text)})`);
+  const rows = clone(run(`parseGuestText(${JSON.stringify(text)}, { surnameFirst: ${surnameFirst} })`));
+  const rowsSF = clone(run(`parseGuestText(${JSON.stringify(text)}, { surnameFirst: true })`));
+  const preview = clone(run(`previewGuestImport(parseGuestText(${JSON.stringify(text)}, { surnameFirst: ${surnameFirst} }), {})`));
+  const previewAll = clone(run(`previewGuestImport(parseGuestText(${JSON.stringify(text)}, { surnameFirst: ${surnameFirst} }), { includeExisting: true })`));
+  out.guestImport.push({ name: 'nasumično ' + i, input: { text, existing }, expected: { surnameFirst, rows, rowsSF, preview, previewAll } });
 }
 
 // ── Zapis ────────────────────────────────────────────────────────────────────
