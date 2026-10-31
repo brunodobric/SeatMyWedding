@@ -12,6 +12,10 @@ Nativna Swift verzija aplikacije. Plan: https://claude.ai/artifact/SotoqrU2oQsWr
 - Format dokumenta u oblaku (`users/{uid}/data/wedding`, `syncVersion 2`) ostaje
   isti kao na webu.
 
+- `App/` i `project.yml`: SwiftUI aplikacija (kostur: Gosti, Sala, Raspored, tema,
+  lokalno spremanje, uvoz JSON kopije s weba). Xcode projekt se generira alatom
+  XcodeGen: `brew install xcodegen && cd ios-native && xcodegen generate && open SeatMyWedding.xcodeproj`.
+
 ## Je li Swift isti kao JavaScript
 
 `tools/golden/generate-golden.mjs` pokreće postojeći JavaScript (`js/state.js`,

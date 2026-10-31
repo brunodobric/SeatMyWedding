@@ -29,6 +29,24 @@ jobs:
         working-directory: ios-native/SeatingCore
         run: swift test
 
+  app-build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate the Xcode project
+        working-directory: ios-native
+        run: xcodegen generate
+      - name: Build the app for the simulator
+        working-directory: ios-native
+        run: >
+          xcodebuild build
+          -project SeatMyWedding.xcodeproj
+          -scheme SeatMyWedding
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+
   golden-fresh:
     runs-on: ubuntu-latest
     steps:
