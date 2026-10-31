@@ -1,0 +1,40 @@
+name: Swift core
+
+on:
+  push:
+    paths:
+      - 'ios-native/**'
+      - 'tools/golden/**'
+      - 'js/state.js'
+      - 'js/sync.js'
+      - 'js/db.js'
+      - '.github/workflows/swift-core.yml'
+  pull_request:
+    paths:
+      - 'ios-native/**'
+      - 'tools/golden/**'
+      - 'js/state.js'
+      - 'js/sync.js'
+      - 'js/db.js'
+      - '.github/workflows/swift-core.yml'
+
+jobs:
+  swift-test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift version
+        run: swift --version
+      - name: Build and test SeatingCore
+        working-directory: ios-native/SeatingCore
+        run: swift test
+
+  golden-fresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: golden.json must match the current JavaScript
+        run: node tools/golden/generate-golden.mjs --check
