@@ -179,3 +179,53 @@ public struct SyncState: Equatable, Sendable {
         return doc.sanitized()
     }
 }
+
+// MARK: - Lokalne izmjene (kao js/db.js)
+
+extension SyncState {
+    /// Zapisi se spremaju s novim `updatedAt`, a nadgrobni zapis (ako ga je bilo)
+    /// nestaje, npr. kad se brisanje poništi. Isto kao dbPutAll na webu.
+    public mutating func put(_ store: String, _ items: [Record], now: Double) {
+        for item in items {
+            guard let id = item.id else { continue }
+            var rec = item
+            rec["updatedAt"] = .number(now)
+            var list = records[store] ?? []
+            if let i = list.firstIndex(where: { $0.id == id }) {
+                list[i] = rec
+            } else {
+                list.append(rec)
+            }
+            records[store] = list
+            deleted[store]?[id] = nil
+        }
+    }
+
+    /// Briše zapise i ostavlja nadgrobne zapise, da ih drugi uređaj ne vrati.
+    public mutating func remove(_ store: String, ids: [String], now: Double) {
+        let gone = Set(ids)
+        records[store] = (records[store] ?? []).filter { !gone.contains($0.id ?? "") }
+        for id in ids { deleted[store, default: [:]][id] = now }
+    }
+
+    /// Cijelo vjenčanje kao što ga vide ekrani.
+    public var wedding: WeddingData {
+        WeddingData(
+            settings: records["settings"]?.first ?? WeddingData().settings,
+            tables: records["tables"] ?? [],
+            categories: records["categories"] ?? [],
+            guests: records["guests"] ?? [],
+            rules: records["rules"] ?? []
+        )
+    }
+
+    /// Stanje iz čistih podataka (npr. uvezena kopija): svaki zapis dobiva `updatedAt`.
+    public init(wedding: WeddingData, now: Double) {
+        self.init()
+        put("settings", [wedding.settings], now: now)
+        put("tables", wedding.tables, now: now)
+        put("categories", wedding.categories, now: now)
+        put("guests", wedding.guests, now: now)
+        put("rules", wedding.rules, now: now)
+    }
+}

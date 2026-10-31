@@ -56,3 +56,14 @@ extension Color {
         )
     }
 }
+
+extension Color {
+    /// Boja kategorije iz podataka (#RGB, #RRGGBB ili #RRGGBBAA); inače zlatna.
+    init(cssHex: String?) {
+        guard var h = cssHex, h.hasPrefix("#") else { self = Theme.gold; return }
+        h.removeFirst()
+        if h.count == 3 { h = h.map { "\($0)\($0)" }.joined() }
+        guard h.count == 6 || h.count == 8, let v = UInt32(h.prefix(6), radix: 16) else { self = Theme.gold; return }
+        self.init(hex: v)
+    }
+}
