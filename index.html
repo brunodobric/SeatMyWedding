@@ -708,7 +708,23 @@
     </div>
     <ol id="table-guests-list" class="table-guests-list"></ol>
     <div class="modal-footer">
+      <button class="btn-secondary" id="btn-table-guests-party" style="display:none"><svg class="ic" aria-hidden="true"><use href="#i-rings"/></svg> Mladenci i kumovi</button>
       <button class="btn-secondary" id="btn-table-guests-edit"><svg class="ic" aria-hidden="true"><use href="#i-edit"/></svg> Uredi stol</button>
+    </div>
+  </div>
+</div>
+
+<!-- The wedding party: the couple, the kumovi and their partners -->
+<div id="modal-party" class="modal-backdrop" style="display:none">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h3 class="modal-title">Mladenci i kumovi</h3>
+      <button class="modal-close" aria-label="Zatvori"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button>
+    </div>
+    <p class="modal-lead">Sjede za stolom mladenaca i ne broje se među goste. Obriši ime da makneš osobu.</p>
+    <div id="party-fields"></div>
+    <div class="modal-footer">
+      <button class="btn-primary" id="btn-save-party">Spremi</button>
     </div>
   </div>
 </div>

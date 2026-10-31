@@ -180,6 +180,7 @@ function closeOptions() {
 
 const SCREEN_OPTIONS = {
   sala: () => [
+    { id: 'party', icon: 'rings', label: 'Mladenci i kumovi', run: openPartyModal },
     { id: 'hall', icon: 'sparkles', label: 'Složi salu', run: () => openHallModal(null) },
     { id: 'add-table', icon: 'plus', label: 'Dodaj stol', run: () => openTableModal(null) },
     { id: 'unseat-all', icon: 'user-x', label: 'Makni sve goste sa stolova', danger: true,
@@ -398,7 +399,7 @@ function showOnboarding() {
         perTable: Math.max(2, parseInt(document.getElementById('ob-seats').value) || 8),
         mode: 'rebuild'
       }));
-      await seatWeddingParty();
+      await saveWeddingParty('ob');
       const rows = parseGuestText(listEl.value, { surnameFirst: detectSurnameFirst(listEl.value) });
       if (rows.length) await importGuestRows(rows, null);
       modal.style.display = 'none';
@@ -422,31 +423,87 @@ const DEFAULT_CATEGORIES = [
 // The bridal table, left to right: the kuma's partner, kuma, bride, groom, kum,
 // the kum's partner (on the default six-seat table the four sit in the middle).
 const OB_PARTY_FIELDS = [
-  { id: 'ob-kuma-plus', seat: 0 },
-  { id: 'ob-kuma', seat: 1 },
-  { id: 'ob-bride', seat: 2, couple: true },
-  { id: 'ob-groom', seat: 3, couple: true },
-  { id: 'ob-kum', seat: 4 },
-  { id: 'ob-kum-plus', seat: 5 }
+  { id: 'ob-kuma-plus', slot: 'kuma-plus', seat: 0 },
+  { id: 'ob-kuma', slot: 'kuma', seat: 1 },
+  { id: 'ob-bride', slot: 'bride', seat: 2, couple: true },
+  { id: 'ob-groom', slot: 'groom', seat: 3, couple: true },
+  { id: 'ob-kum', slot: 'kum', seat: 4 },
+  { id: 'ob-kum-plus', slot: 'kum-plus', seat: 5 }
 ];
 
-// The couple, the kumovi and their partners sit at the bridal table from the
-// start. They are marked as the wedding party, so they are not counted or
-// listed as guests.
-async function seatWeddingParty() {
-  const head = state.tables.find(isHeadTable);
-  if (!head) return;
-  const people = OB_PARTY_FIELDS
-    .map(f => ({ ...f, name: document.getElementById(f.id).value.trim() }))
-    .filter(f => f.name);
-  if (!people.length) return;
-  for (const p of people) {
-    const seat = Math.min(head.seats - 1, p.seat);
-    await saveGuest({
-      id: crypto.randomUUID(), name: p.name, categoryId: null,
-      status: 'assigned', tableId: head.id, seatIndex: seat, locked: true, notes: '', party: p.couple ? 'couple' : 'kumovi'
-    });
+// The person of the wedding party in a slot (older records have no slot: they
+// are found by their seat at the bridal table).
+function partyMember(slot, head) {
+  return state.guests.find(g => isWeddingParty(g) && g.partySlot === slot.slot) ||
+    (head && state.guests.find(g => isWeddingParty(g) && !g.partySlot && g.tableId === head.id && g.seatIndex === slot.seat));
+}
+
+// The couple, the kumovi and their partners sit at the bridal table. They are
+// marked as the wedding party, so they are not counted or listed as guests.
+// Saves the names from the fields with the given prefix ('ob' in the
+// onboarding, 'pt' in "Mladenci i kumovi"): a new name adds the person (or
+// turns a guest with that name into the wedding party), a changed one renames
+// them, an emptied one removes them.
+async function saveWeddingParty(prefix) {
+  let head = state.tables.find(isHeadTable);
+  const names = OB_PARTY_FIELDS.map(f => document.getElementById(f.id.replace(/^ob-/, prefix + '-')).value.trim());
+  if (!head) {
+    if (!names.some(Boolean)) return;
+    head = makeHeadTable();
+    await saveTable(head);
   }
+  for (const [i, f] of OB_PARTY_FIELDS.entries()) {
+    const name = names[i];
+    const current = partyMember(f, head);
+    if (!name) {
+      if (current) await deleteGuest(current.id);
+      continue;
+    }
+    if (current) {
+      if (current.name !== name) await saveGuest({ ...current, name });
+      continue;
+    }
+    // A guest already on the list with this name becomes part of the wedding party.
+    const listed = invitedGuests().find(g => g.name.trim().toLowerCase() === name.toLowerCase());
+    let seat = Math.min(head.seats - 1, f.seat);
+    const occupant = state.guests.find(g => g.tableId === head.id && g.seatIndex === seat && (!listed || g.id !== listed.id));
+    if (occupant && isWeddingParty(occupant)) seat = firstFreeSeat(head);
+    else if (occupant) await unassignGuest(occupant.id);
+    const person = listed ? { ...listed } : { id: crypto.randomUUID(), name, categoryId: null, notes: '' };
+    Object.assign(person, {
+      party: f.couple ? 'couple' : 'kumovi', partySlot: f.slot, locked: true,
+      ...(seat >= 0 ? { status: 'assigned', tableId: head.id, seatIndex: seat } : { status: 'unassigned', tableId: null, seatIndex: null })
+    });
+    await saveGuest(person);
+  }
+}
+
+function openPartyModal() {
+  const modal = document.getElementById('modal-party');
+  const box = document.getElementById('party-fields');
+  if (!box.firstChild) {
+    // Same fields as in the onboarding.
+    const fields = document.querySelector('#modal-onboarding .ob-party').cloneNode(true);
+    fields.querySelectorAll('input').forEach(input => { input.id = input.id.replace(/^ob-/, 'pt-'); input.value = ''; });
+    box.appendChild(fields);
+  }
+  const head = state.tables.find(isHeadTable);
+  for (const f of OB_PARTY_FIELDS) {
+    const g = partyMember(f, head);
+    document.getElementById(f.id.replace(/^ob-/, 'pt-')).value = g ? g.name : '';
+  }
+  modal.style.display = 'flex';
+}
+
+function setupPartyModal() {
+  document.getElementById('btn-save-party').addEventListener('click', async () => {
+    document.getElementById('modal-party').style.display = 'none';
+    await withUndo('Mladenci i kumovi su spremljeni', () => saveWeddingParty('pt'));
+  });
+  document.getElementById('btn-table-guests-party').addEventListener('click', () => {
+    document.getElementById('modal-table-guests').style.display = 'none';
+    openPartyModal();
+  });
 }
 
 function showOnboardingStep(step) {
@@ -1498,6 +1555,7 @@ function openTableGuests(tableId) {
     const g = btn.dataset.guest && state.guests.find(x => x.id === btn.dataset.guest);
     if (g) showSeatOptionsModal(tableId, seat, g); else showAssignSeatModal(tableId, seat);
   }));
+  document.getElementById('btn-table-guests-party').style.display = isHeadTable(table) ? '' : 'none';
   modal.dataset.tableId = tableId;
   modal.style.display = 'flex';
 }
@@ -1822,6 +1880,7 @@ async function _appMain() {
   setupRasporedEvents();
   setupAssignSeatModal();
   setupSeatOptionsModal();
+  setupPartyModal();
   setupAutoSeating();
   setupSeatingResultModal();
   setupOptions();
