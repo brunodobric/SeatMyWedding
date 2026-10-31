@@ -188,7 +188,7 @@ const SCREEN_OPTIONS = {
   ],
   gosti: () => [
     { id: 'categories', icon: 'palette', label: 'Kategorije', run: openCategoryManager },
-    { id: 'delete-guests', icon: 'trash', label: 'Obriši sve goste', danger: true, disabled: !state.guests.length, run: deleteAllGuestsConfirmed }
+    { id: 'delete-guests', icon: 'trash', label: 'Obriši sve goste', danger: true, disabled: !invitedGuests().length, run: deleteAllGuestsConfirmed }
   ],
 };
 const SCREEN_NAMES = { sala: 'Sala', gosti: 'Gosti' };
@@ -257,7 +257,7 @@ function openCategoryManager() {
 const guestCountLabel = n => `${n} ${n % 10 === 1 && n % 100 !== 11 ? 'gost' : 'gostiju'}`;
 
 async function deleteAllGuestsConfirmed() {
-  const n = state.guests.length;
+  const n = invitedGuests().length;
   if (!n || !confirm(`Obrisati sve goste (${guestCountLabel(n)})? Brišu se i njihova mjesta i želje. Stolovi i kategorije ostaju.`)) return;
   await withUndo(`Obrisano: ${guestCountLabel(n)}`, () => deleteAllGuests());
 }
@@ -346,7 +346,7 @@ function showOnboarding() {
   resetOnboarding = () => {
     step = 1;
     template = 'round';
-    ['ob-title', 'ob-monogram', 'ob-guest-list'].forEach(id => { document.getElementById(id).value = ''; });
+    ['ob-title', 'ob-monogram', 'ob-guest-list', ...OB_PARTY_FIELDS.map(f => f.id)].forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('ob-guests').value = 100;
     document.getElementById('ob-seats').value = HALL_TEMPLATES.round.defaultSeats;
     document.getElementById('ob-guest-preview').innerHTML = '';
@@ -368,16 +368,24 @@ function showOnboarding() {
       step = 2;
       showOnboardingStep(step);
     } else if (step === 2) {
+      step = 3;
+      showOnboardingStep(step);
+    } else if (step === 3) {
       // Default bridal-party categories — auto-seated at the bridal table.
-      await saveCategory({ id: crypto.randomUUID(), name: 'Mladenci', color: '#7A8FA6', atHeadTable: true });
-      await saveCategory({ id: crypto.randomUUID(), name: 'Kumovi', color: '#B07B72', atHeadTable: true });
+      const cats = {
+        mladenci: { id: crypto.randomUUID(), name: 'Mladenci', color: '#7A8FA6', atHeadTable: true },
+        kumovi: { id: crypto.randomUUID(), name: 'Kumovi', color: '#B07B72', atHeadTable: true }
+      };
+      await saveCategory(cats.mladenci);
+      await saveCategory(cats.kumovi);
       await applyHallPlan(planHall({
         template,
         guestCount: parseInt(document.getElementById('ob-guests').value) || 0,
         perTable: Math.max(2, parseInt(document.getElementById('ob-seats').value) || 8),
         mode: 'rebuild'
       }));
-      step = 3;
+      await seatWeddingParty(cats);
+      step = 4;
       showOnboardingStep(step);
     } else {
       const rows = skip ? [] : parseGuestText(listEl.value, { surnameFirst: detectSurnameFirst(listEl.value) });
@@ -389,14 +397,44 @@ function showOnboarding() {
   }
 }
 
+// The bridal table, left to right: the kuma's partner, kuma, bride, groom, kum,
+// the kum's partner (on the default six-seat table the four sit in the middle).
+const OB_PARTY_FIELDS = [
+  { id: 'ob-kuma-plus', cat: 'kumovi', seat: 0, plus: true },
+  { id: 'ob-kuma', cat: 'kumovi', seat: 1 },
+  { id: 'ob-bride', cat: 'mladenci', seat: 2 },
+  { id: 'ob-groom', cat: 'mladenci', seat: 3 },
+  { id: 'ob-kum', cat: 'kumovi', seat: 4 },
+  { id: 'ob-kum-plus', cat: 'kumovi', seat: 5, plus: true }
+];
+
+// The couple, the kumovi and their partners sit at the bridal table from the
+// start. They are marked as the wedding party, so they are not counted or
+// listed as guests.
+async function seatWeddingParty(cats) {
+  const head = state.tables.find(isHeadTable);
+  if (!head) return;
+  const people = OB_PARTY_FIELDS
+    .map(f => ({ ...f, name: document.getElementById(f.id).value.trim() }))
+    .filter(f => f.name);
+  if (!people.length) return;
+  for (const p of people) {
+    const seat = Math.min(head.seats - 1, p.seat);
+    await saveGuest({
+      id: crypto.randomUUID(), name: p.name, categoryId: cats[p.cat].id,
+      status: 'assigned', tableId: head.id, seatIndex: seat, locked: true, notes: '', party: true
+    });
+  }
+}
+
 function showOnboardingStep(step) {
   document.querySelectorAll('.ob-step').forEach(el => {
     el.style.display = parseInt(el.dataset.step) === step ? 'block' : 'none';
   });
   document.querySelectorAll('.ob-dots [data-dot]').forEach(d => d.classList.toggle('active', parseInt(d.dataset.dot) <= step));
   document.querySelector('.modal-onboarding').classList.toggle('wide', step > 1);
-  document.getElementById('onboarding-next').textContent = step === 3 ? 'Počni' : 'Dalje →';
-  document.getElementById('onboarding-skip').style.display = step === 3 ? '' : 'none';
+  document.getElementById('onboarding-next').textContent = step === 4 ? 'Počni' : 'Dalje →';
+  document.getElementById('onboarding-skip').style.display = step === 4 ? '' : 'none';
 }
 
 // ── First steps guide ──────────────────────────────────────────────────────────
@@ -404,7 +442,7 @@ function showOnboardingStep(step) {
 function guideSteps() {
   return [
     { nav: 'sala', label: 'Složi salu', done: state.tables.some(t => !isHeadTable(t)) },
-    { nav: 'gosti', label: 'Dodaj goste', done: state.guests.length > 0 },
+    { nav: 'gosti', label: 'Dodaj goste', done: invitedGuests().length > 0 },
     { nav: 'sala', label: 'Predloži raspored', done: state.guests.some(g => g.status === 'assigned') }
   ];
 }
@@ -705,7 +743,7 @@ function guestRelationLine(g) {
 function renderGosti() {
   renderCategoryChips();
   renderGuestList();
-  document.getElementById('guest-count').textContent = `${state.guests.length} gostiju`;
+  document.getElementById('guest-count').textContent = guestCountLabel(invitedGuests().length);
   const violated = state.guests.filter(guestHasViolation).length;
   if (!violated) guestViolationFilter = false;
   const vBtn = document.getElementById('btn-filter-violated');
@@ -738,7 +776,7 @@ function renderCategoryChips() {
 function renderGuestList() {
   const list = document.getElementById('guest-list');
   if (!list) return;
-  let guests = [...state.guests];
+  let guests = invitedGuests();
   if (guestSearchQuery) {
     const q = guestSearchQuery.toLowerCase();
     guests = guests.filter(g => g.name.toLowerCase().includes(q));
@@ -754,7 +792,7 @@ function renderGuestList() {
     guests = guests.filter(g => ids.has(g.id));
   }
   guests.sort((a, b) => a.name.localeCompare(b.name));
-  if (state.guests.length === 0) {
+  if (invitedGuests().length === 0) {
     list.innerHTML = `<div class="empty-state">
       <p><strong>Još nema gostiju.</strong><br>Upiši ime gore ili zalijepi cijeli popis odjednom.<br>Parovi i obitelji u istom redu sjedit će zajedno.</p>
       <button class="btn-primary" id="btn-empty-import">${icon('import')} Zalijepi popis gostiju</button>

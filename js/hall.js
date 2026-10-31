@@ -20,18 +20,21 @@ function isHeadTable(t) {
 // regular tables (bridal-party categories, capped by the bridal table's seats).
 function headPartyCount(headSeats) {
   const headCats = new Set(state.categories.filter(c => c.atHeadTable).map(c => c.id));
-  const party = state.guests.filter(g => g.status !== 'maybe' && g.categoryId && headCats.has(g.categoryId)).length;
+  const party = invitedGuests().filter(g => g.status !== 'maybe' && g.categoryId && headCats.has(g.categoryId)).length;
   return Math.min(party, headSeats);
 }
 
+// Bridal-table seats still open to guests (the wedding party already sits there).
 function headSeatsTotal() {
-  return state.tables.filter(isHeadTable).reduce((n, t) => n + t.seats, 0);
+  const seats = state.tables.filter(isHeadTable).reduce((n, t) => n + t.seats, 0);
+  return Math.max(0, seats - state.guests.filter(isWeddingParty).length);
 }
 
 // Seats vs confirmed guests, split into the bridal table and the rest.
 function capacityInfo() {
-  const guests = state.guests.filter(g => g.status !== 'maybe').length;
-  const seats = state.tables.reduce((n, t) => n + t.seats, 0);
+  const guests = invitedGuests().filter(g => g.status !== 'maybe').length;
+  const party = state.guests.filter(isWeddingParty).length;
+  const seats = state.tables.reduce((n, t) => n + t.seats, 0) - party;
   const headSeats = headSeatsTotal();
   const regularSeats = seats - headSeats;
   const regularGuests = guests - headPartyCount(headSeats);

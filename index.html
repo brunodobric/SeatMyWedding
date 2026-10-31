@@ -367,10 +367,10 @@
   <div class="modal modal-onboarding">
     <div class="onboarding-icon"><svg class="ic" aria-hidden="true"><use href="#i-rings"/></svg></div>
     <div class="onboarding-title">Raspored Sjedenja</div>
-    <div class="ob-dots" aria-hidden="true"><span data-dot="1"></span><span data-dot="2"></span><span data-dot="3"></span></div>
+    <div class="ob-dots" aria-hidden="true"><span data-dot="1"></span><span data-dot="2"></span><span data-dot="3"></span><span data-dot="4"></span></div>
 
     <div class="ob-step" data-step="1">
-      <p class="onboarding-subtitle">Dobrodošli! Za tri koraka imate salu, goste i prijedlog rasporeda.</p>
+      <p class="onboarding-subtitle">Dobrodošli! Za nekoliko koraka imate salu, goste i prijedlog rasporeda.</p>
       <div class="ob-fields">
         <div class="form-group">
           <label for="ob-title">Naslov vjenčanja</label>
@@ -384,6 +384,27 @@
     </div>
 
     <div class="ob-step" data-step="2" style="display:none">
+      <p class="onboarding-subtitle">Tko sjedi za stolom mladenaca? Oni odmah dobivaju mjesto i ne broje se među goste.</p>
+      <div class="ob-party">
+        <div class="ob-party-label">Mladenci</div>
+        <div class="form-row ob-fields">
+          <input id="ob-bride" class="form-control" type="text" placeholder="Mladenka" autocomplete="off">
+          <input id="ob-groom" class="form-control" type="text" placeholder="Mladoženja" autocomplete="off">
+        </div>
+        <div class="ob-party-label">Kumovi</div>
+        <div class="form-row ob-fields">
+          <input id="ob-kuma" class="form-control" type="text" placeholder="Kuma" autocomplete="off">
+          <input id="ob-kum" class="form-control" type="text" placeholder="Kum" autocomplete="off">
+        </div>
+        <div class="ob-party-label">Pratnja kumova <span class="ob-optional">(nije obavezno)</span></div>
+        <div class="form-row ob-fields">
+          <input id="ob-kuma-plus" class="form-control" type="text" placeholder="Pratnja kume" autocomplete="off">
+          <input id="ob-kum-plus" class="form-control" type="text" placeholder="Pratnja kuma" autocomplete="off">
+        </div>
+      </div>
+    </div>
+
+    <div class="ob-step" data-step="3" style="display:none">
       <p class="onboarding-subtitle">Kakvi su stolovi u sali? Broj stolova izračunat ćemo iz broja gostiju.</p>
       <div class="template-grid" id="ob-templates"></div>
       <div class="form-row ob-fields" style="margin-top:14px">
@@ -399,7 +420,7 @@
       <div class="hall-summary" id="ob-summary"></div>
     </div>
 
-    <div class="ob-step" data-step="3" style="display:none">
+    <div class="ob-step" data-step="4" style="display:none">
       <p class="onboarding-subtitle">Zalijepi popis gostiju, jedan red po gostu ili obitelji. Može i kasnije.</p>
       <textarea id="ob-guest-list" class="form-control" rows="6" placeholder="Ana i Marko Horvat&#10;Ivo, Mia, Lea Kovač&#10;Petar Marić +1"></textarea>
       <div class="import-preview" id="ob-guest-preview"></div>

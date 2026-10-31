@@ -1072,6 +1072,11 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
 .ob-step .onboarding-subtitle { text-align: center; }
 .ob-fields { display: flex; flex-direction: column; gap: 12px; text-align: left; }
 .ob-fields.form-row { flex-direction: row; }
+.ob-party { display: flex; flex-direction: column; gap: 6px; }
+.ob-party-label { font-size: 0.8rem; font-weight: 600; color: var(--color-gold-bronze); margin-top: 6px; }
+.ob-optional { font-weight: 400; color: var(--color-muted); }
+.ob-party .form-row { gap: 8px; }
+.ob-party .form-row .form-control { flex: 1; min-width: 0; }
 .ob-buttons { display: flex; align-items: center; gap: 10px; margin-top: 20px; }
 #onboarding-next {
   flex: 1;
