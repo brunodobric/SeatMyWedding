@@ -389,13 +389,14 @@ function showOnboarding() {
         monogram: names.length ? names.map(n => n[0].toUpperCase()).join('&') : '♡'
       });
       for (const c of DEFAULT_CATEGORIES) await saveCategory({ id: crypto.randomUUID(), ...c });
+      // The bridal table first, with a seat for everyone entered above.
+      await saveWeddingParty('ob');
       await applyHallPlan(planHall({
         template,
         guestCount: guestCount(),
         perTable: Math.max(2, parseInt(document.getElementById('ob-seats').value) || 8),
         mode: 'rebuild'
       }));
-      await saveWeddingParty('ob');
       const rows = parseGuestText(listEl.value, { surnameFirst: detectSurnameFirst(listEl.value) });
       if (rows.length) await importGuestRows(rows, null);
       modal.style.display = 'none';
@@ -427,6 +428,17 @@ const OB_PARTY_FIELDS = [
   { id: 'ob-kum-plus', slot: 'kum-plus', seat: 5 }
 ];
 
+// What someone of the wedding party is, for the export and the printouts
+// ('' for guests). Older records have no slot, only couple / kumovi.
+const PARTY_ROLES = {
+  bride: 'Mladenka', groom: 'Mladoženja', kuma: 'Kuma', kum: 'Kum',
+  'kuma-plus': 'Pratnja kume', 'kum-plus': 'Pratnja kuma'
+};
+function partyRole(g) {
+  if (!isWeddingParty(g)) return '';
+  return PARTY_ROLES[g.partySlot] || (g.party === 'couple' ? 'Mladenci' : 'Kumovi');
+}
+
 // The person of the wedding party in a slot (older records have no slot: they
 // are found by their seat at the bridal table).
 function partyMember(slot, head) {
@@ -440,38 +452,55 @@ function partyMember(slot, head) {
 // onboarding, 'pt' in "Mladenci i kumovi"): a new name adds the person (or
 // turns a guest with that name into the wedding party), a changed one renames
 // them, an emptied one removes them.
+// The bridal table has as many seats as the people at it: someone removed takes
+// their seat away, someone added gets a new one (unless a seat is free).
 async function saveWeddingParty(prefix) {
   let head = state.tables.find(isHeadTable);
   const names = OB_PARTY_FIELDS.map(f => document.getElementById(f.id.replace(/^ob-/, prefix + '-')).value.trim());
+  const filled = names.filter(Boolean).length;
   if (!head) {
-    if (!names.some(Boolean)) return;
-    head = makeHeadTable();
+    if (!filled) return;
+    head = makeHeadTable(filled);
     await saveTable(head);
   }
+  let removed = 0;
+  const party = [];
   for (const [i, f] of OB_PARTY_FIELDS.entries()) {
     const name = names[i];
     const current = partyMember(f, head);
     if (!name) {
-      if (current) await deleteGuest(current.id);
+      if (current) { await deleteGuest(current.id); removed++; }
       continue;
     }
     if (current) {
       if (current.name !== name) await saveGuest({ ...current, name });
+      party.push(current.id);
       continue;
     }
     // A guest already on the list with this name becomes part of the wedding party.
     const listed = invitedGuests().find(g => g.name.trim().toLowerCase() === name.toLowerCase());
-    let seat = Math.min(head.seats - 1, f.seat);
-    const occupant = state.guests.find(g => g.tableId === head.id && g.seatIndex === seat && (!listed || g.id !== listed.id));
-    if (occupant && isWeddingParty(occupant)) seat = firstFreeSeat(head);
-    else if (occupant) await unassignGuest(occupant.id);
-    const person = listed ? { ...listed } : { id: crypto.randomUUID(), name, categoryId: null, notes: '' };
-    Object.assign(person, {
-      party: f.couple ? 'couple' : 'kumovi', partySlot: f.slot, locked: true,
-      ...(seat >= 0 ? { status: 'assigned', tableId: head.id, seatIndex: seat } : { status: 'unassigned', tableId: null, seatIndex: null })
-    });
+    const person = listed ? { ...listed } : { id: crypto.randomUUID(), name, categoryId: null, notes: '', status: 'unassigned', tableId: null, seatIndex: null };
+    Object.assign(person, { party: f.couple ? 'couple' : 'kumovi', partySlot: f.slot, locked: true });
     await saveGuest(person);
+    party.push(person.id);
   }
+  // Left to right: the wedding party in its order, then anyone else seated there.
+  const partyIds = new Set(party);
+  const others = state.guests
+    .filter(g => g.tableId === head.id && !partyIds.has(g.id))
+    .sort((a, b) => (a.seatIndex || 0) - (b.seatIndex || 0));
+  const order = [...party, ...others.map(g => g.id)];
+  const seats = Math.max(1, order.length, head.seats - removed);
+  if (seats > head.seats) await saveTable(withHeadSeats(head, seats));
+  await placeGuests(order.map((id, seatIndex) => ({ id, tableId: head.id, seatIndex })));
+  if (seats < head.seats) await saveTable(withHeadSeats(state.tables.find(t => t.id === head.id), seats));
+}
+
+// The bridal table with another number of seats (the ends keep theirs while
+// the front has room).
+function withHeadSeats(head, seats) {
+  const seatsEnd = 2 * (head.seatsEnd || 0) < seats ? (head.seatsEnd || 0) : 0;
+  return { ...head, seats, seatsEnd, seatsLong: seats - 2 * seatsEnd };
 }
 
 function openPartyModal() {
@@ -679,7 +708,7 @@ function openTableModal(id) {
     const perSide = (table ? table.seatsLong : undefined) || Math.round(((table ? table.seats : undefined) || 8) / 4) || 2;
     document.getElementById('table-seats-long').value = perSide;
   } else if (shape === 'head') {
-    document.getElementById('table-seats-long').value = (table ? table.seatsLong : undefined) || 8;
+    document.getElementById('table-seats-long').value = table && Number.isInteger(table.seatsLong) ? table.seatsLong : HEAD_TABLE_FRONT_SEATS;
     document.getElementById('table-seats-end').value = table && Number.isInteger(table.seatsEnd) ? table.seatsEnd : 0;
   } else {
     document.getElementById('table-seats-long').value = (table ? table.seatsLong : undefined) || 4;
@@ -689,8 +718,13 @@ function openTableModal(id) {
   updateSeatsUI(shape);
   document.getElementById('table-rotated').checked = !!(table && table.rotation);
 
-  document.getElementById('btn-delete-table').style.display = table ? '' : 'none';
-  document.getElementById('btn-duplicate-table').style.display = table ? '' : 'none';
+  // There is one bridal table: it can't be removed, copied or turned into
+  // another shape, and no second one can be added.
+  const head = !!table && isHeadTable(table);
+  document.getElementById('table-shape-group').style.display = head ? 'none' : '';
+  document.querySelector('.shape-btn[data-shape="head"]').style.display = state.tables.some(isHeadTable) ? 'none' : '';
+  document.getElementById('btn-delete-table').style.display = table && !head ? '' : 'none';
+  document.getElementById('btn-duplicate-table').style.display = table && !head ? '' : 'none';
 
   modal.dataset.editId = id || '';
   modal.style.display = 'flex';
@@ -726,8 +760,9 @@ function setupTableModal() {
       seatsEnd = seatsLong;
       seats = seatsLong * 4;
     } else if (shape === 'head') {
-      seatsLong = parseInt(document.getElementById('table-seats-long').value) || 8;
-      seatsEnd = parseInt(document.getElementById('table-seats-end').value) || 0;
+      seatsLong = Math.max(0, parseInt(document.getElementById('table-seats-long').value) || 0);
+      seatsEnd = Math.max(0, parseInt(document.getElementById('table-seats-end').value) || 0);
+      if (seatsLong + seatsEnd * 2 < 1) seatsLong = 1;
       seats = seatsLong + seatsEnd * 2;
     } else {
       seatsLong = parseInt(document.getElementById('table-seats-long').value) || 4;
@@ -755,7 +790,7 @@ function setupTableModal() {
     const modal = document.getElementById('modal-table');
     const id = modal.dataset.editId;
     const table = state.tables.find(t => t.id === id);
-    if (table) {
+    if (table && !isHeadTable(table)) {
       await withUndo(`Obrisano: ${table.name}`, () => deleteTable(id));
       modal.style.display = 'none';
       renderSala();
@@ -1144,7 +1179,7 @@ class PeoplePicker {
   renderSuggest() {
     const q = this.input.value.trim().toLowerCase();
     const skip = new Set([...this.value, ...this.exclude()]);
-    const matches = state.guests
+    const matches = invitedGuests()
       .filter(g => !skip.has(g.id) && (!q || g.name.toLowerCase().includes(q)))
       .sort((a, b) => a.name.localeCompare(b.name))
       .slice(0, 6);
@@ -1195,6 +1230,7 @@ function fillFixedSeatOptions(tableId, selected) {
 
 function openGuestModal(id) {
   const guest = id ? state.guests.find(g => g.id === id) : null;
+  if (isWeddingParty(guest)) { openPartyModal(); return; }
   const modal = document.getElementById('modal-guest');
   document.getElementById('modal-guest-title').textContent = guest ? 'Uredi gosta' : 'Dodaj gosta';
   document.getElementById('guest-edit-name').value = (guest ? guest.name : undefined) || '';
@@ -1242,7 +1278,10 @@ function setupGuestModal() {
     const maybe = document.getElementById('guest-edit-maybe').checked;
     const locked = document.getElementById('guest-edit-locked').checked;
     const notes = document.getElementById('guest-edit-notes').value.trim();
+    // Spread the existing record so fields the form doesn't show (the wedding
+    // party's role and slot) survive an edit.
     const guest = {
+      ...existing,
       id, name, categoryId: catId,
       tableId: (existing && existing.tableId) || null,
       seatIndex: (existing && existing.seatIndex != null) ? existing.seatIndex : null,
@@ -1360,7 +1399,7 @@ function renderSeatingProgress() {
 }
 
 function unseatedGuests() {
-  return state.guests.filter(g => g.status !== 'assigned' && g.status !== 'maybe');
+  return invitedGuests().filter(g => g.status !== 'assigned' && g.status !== 'maybe');
 }
 
 function renderUnassignedPanel() {
@@ -1579,6 +1618,11 @@ function showSeatOptionsModal(tableId, seatIndex, guest) {
   const table = state.tables.find(t => t.id === tableId);
   document.getElementById('seat-options-label').textContent = `${guest.name} — ${(table ? table.name : undefined) || 'Stol'}, Mj. ${seatIndex + 1}`;
   document.getElementById('btn-seat-lock').innerHTML = guest.locked ? `${icon('unlock')} Otključaj` : `${icon('lock')} Zaključaj`;
+  // The wedding party always keeps its seat and is edited in "Mladenci i kumovi".
+  const party = isWeddingParty(guest);
+  document.getElementById('btn-seat-unassign').style.display = party ? 'none' : '';
+  document.getElementById('btn-seat-lock').style.display = party ? 'none' : '';
+  document.getElementById('btn-seat-edit-guest').innerHTML = party ? `${icon('rings')} Mladenci i kumovi` : `${icon('edit')} Uredi gosta`;
   modal.dataset.guestId = guest.id;
   modal.style.display = 'flex';
 }
@@ -1608,7 +1652,8 @@ function setupSeatOptionsModal() {
   document.getElementById('btn-seat-edit-guest').addEventListener('click', () => {
     const modal = document.getElementById('modal-seat-options');
     modal.style.display = 'none';
-    openGuestModal(modal.dataset.guestId);
+    const g = state.guests.find(x => x.id === modal.dataset.guestId);
+    if (isWeddingParty(g)) openPartyModal(); else openGuestModal(modal.dataset.guestId);
   });
 }
 
@@ -1695,14 +1740,14 @@ function setupRasporedEvents() {
   document.getElementById('btn-share').addEventListener('click', shareSeatingList);
 
   document.getElementById('btn-export-csv').addEventListener('click', () => {
-    const rows = [['Ime', 'Kategorija', 'Stol', 'Mjesto', 'Status', 'Bilješka']];
+    const rows = [['Ime', 'Uloga', 'Kategorija', 'Stol', 'Mjesto', 'Status', 'Bilješka']];
     const statusLabels = { assigned: 'Dodijeljen', unassigned: 'Nedodijeljen', maybe: 'Možda' };
     [...state.guests].sort((a, b) => a.name.localeCompare(b.name)).forEach(g => {
       const catObj = state.categories.find(c => c.id === g.categoryId);
       const cat = catObj ? catObj.name : '';
       const tableObj = g.tableId ? state.tables.find(t => t.id === g.tableId) : null;
       const table = tableObj ? tableObj.name : '';
-      rows.push([g.name, cat, table, g.tableId && g.seatIndex != null ? g.seatIndex + 1 : '', statusLabels[g.status] || g.status || '', g.notes || '']);
+      rows.push([g.name, partyRole(g), cat, table, g.tableId && g.seatIndex != null ? g.seatIndex + 1 : '', statusLabels[g.status] || g.status || '', g.notes || '']);
     });
     // A cell starting with = + - @ would run as a formula in Excel.
     const cell = c => { const v = String(c); return /^[=+\-@\t\r]/.test(v) ? "'" + v : v; };
@@ -1748,6 +1793,12 @@ function seatedGuestsSorted() {
     .sort((a, b) => a.name.localeCompare(b.name, 'hr'));
 }
 
+// " · Mladenka" after a name of the wedding party in the printouts.
+function roleNote(g) {
+  const role = partyRole(g);
+  return role ? ` <span class="print-role">· ${esc(role)}</span>` : '';
+}
+
 function buildPrintArea(parts) {
   const area = document.getElementById('print-area');
   const title = esc(state.settings.weddingTitle || 'Moje Vjenčanje');
@@ -1763,7 +1814,7 @@ function buildPrintArea(parts) {
         const guests = state.guests.filter(g => g.tableId === t.id).sort((a, b) => (a.seatIndex || 0) - (b.seatIndex || 0));
         return `<div class="print-table">
           <h3>${esc(t.name)}</h3>
-          <ol>${guests.map(g => `<li>${esc(g.name)}</li>`).join('') || '<li class="muted">—</li>'}</ol>
+          <ol>${guests.map(g => `<li>${esc(g.name)}${roleNote(g)}</li>`).join('') || '<li class="muted">—</li>'}</ol>
         </div>`;
       }).join('')}</div>
     </section>`);
@@ -1772,7 +1823,7 @@ function buildPrintArea(parts) {
     const tableName = id => (state.tables.find(t => t.id === id) || {}).name || '';
     pages.push(`<section class="print-page">${header('Gdje sjedim')}
       <div class="print-alpha">${seatedGuestsSorted().map(g =>
-        `<div class="print-alpha-row"><span>${esc(g.name)}</span><span class="print-dots"></span><strong>${esc(tableName(g.tableId))}</strong></div>`
+        `<div class="print-alpha-row"><span>${esc(g.name)}${roleNote(g)}</span><span class="print-dots"></span><strong>${esc(tableName(g.tableId))}</strong></div>`
       ).join('')}</div>
     </section>`);
   }
@@ -1781,7 +1832,7 @@ function buildPrintArea(parts) {
 
 async function shareSeatingList() {
   const tableName = id => (state.tables.find(t => t.id === id) || {}).name || '';
-  const lines = seatedGuestsSorted().map(g => `${g.name} – ${tableName(g.tableId)}`);
+  const lines = seatedGuestsSorted().map(g => `${g.name}${partyRole(g) ? ` (${partyRole(g)})` : ''} – ${tableName(g.tableId)}`);
   if (!lines.length) { showToast('Još nitko nema mjesto'); return; }
   const title = `${state.settings.weddingTitle || 'Vjenčanje'} – gdje sjedim`;
   const text = `${title}\n\n${lines.join('\n')}`;

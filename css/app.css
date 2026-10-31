@@ -1265,6 +1265,7 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
   .print-alpha-row { display: flex; align-items: baseline; gap: 2mm; break-inside: avoid; line-height: 1.7; }
   .print-alpha-row strong { font-family: var(--font-serif); font-size: 12pt; color: #A17C33; white-space: nowrap; }
   .print-dots { flex: 1; border-bottom: 0.3mm dotted #C9A24B; transform: translateY(-1mm); }
+  .print-role { font-style: italic; color: #A17C33; font-size: 0.9em; }
   @page { margin: 15mm; }
 }
 

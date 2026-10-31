@@ -52,10 +52,10 @@ function makeHallTable(template, perTable, name, x, y, rotation) {
   return { ...base, shape: 'royal', seats: seatsLong * 2, seatsLong, seatsEnd: 0 };
 }
 
-function makeHeadTable() {
+function makeHeadTable(seats = HEAD_TABLE_FRONT_SEATS) {
   return {
     id: crypto.randomUUID(), name: 'Stol mladenaca', shape: 'head',
-    seats: HEAD_TABLE_FRONT_SEATS, seatsLong: HEAD_TABLE_FRONT_SEATS, seatsEnd: 0,
+    seats, seatsLong: seats, seatsEnd: 0,
     x: 500, y: 60, rotation: 0
   };
 }
