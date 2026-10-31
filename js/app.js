@@ -195,9 +195,6 @@ const SCREEN_OPTIONS = {
 const SCREEN_NAMES = { sala: 'Sala', gosti: 'Gosti' };
 
 function renderOptions() {
-  const names = document.getElementById('opt-full-names');
-  if (!names) return;
-  names.setAttribute('aria-checked', String(!!state.settings.showFullNames));
   document.getElementById('opt-guide').hidden = !state.settings.guideDismissed;
   const items = (SCREEN_OPTIONS[currentSection] || (() => []))();
   const box = document.getElementById('options-screen');
@@ -226,7 +223,6 @@ function setupOptions() {
   ['btn-login', 'btn-export-json', 'btn-export-csv'].forEach(id =>
     document.getElementById(id).addEventListener('click', closeOptions));
 
-  document.getElementById('opt-full-names').addEventListener('click', () => toggleFullNames());
   document.getElementById('opt-guide').addEventListener('click', async () => {
     closeOptions();
     await saveSettings({ guideDismissed: false });
@@ -788,12 +784,6 @@ function setupTableModal() {
   });
 }
 
-async function toggleFullNames() {
-  const next = !state.settings.showFullNames;
-  await saveSettings({ showFullNames: next });
-  if (floorPlanAssign) floorPlanAssign.setShowFullNames(next);
-  renderOptions();
-}
 
 // ── GOSTI ──────────────────────────────────────────────────────────────────────
 
@@ -1304,6 +1294,7 @@ function setArranging(on) {
   btn.setAttribute('aria-pressed', String(arrangingTables));
   if (floorPlanAssign) {
     floorPlanAssign.selectedTableId = null;
+    if (arrangingTables) floorPlanAssign.setNamesView(false);
     floorPlanAssign.setMode(arrangingTables ? 'edit' : 'assign');
   }
 }
@@ -1320,7 +1311,7 @@ function renderRaspored() {
       const svg = document.getElementById('fp-assign-svg');
       floorPlanAssign = new FloorPlan(svg, {
         mode: arrangingTables ? 'edit' : 'assign',
-        showFullNames: !!state.settings.showFullNames,
+        onNamesViewChange: (on) => document.querySelector('.raspored-canvas').classList.toggle('names-view', on),
         onTableMove: async (table) => { await saveTable(table); },
         onTableClick: (id) => { openTableModal(id); floorPlanAssign.selectTable(id); },
         onTableOpen: (id) => handleTableOpen(id),
@@ -1328,7 +1319,6 @@ function renderRaspored() {
         onSeatPress: (e, tableId, seatIndex, guest) => armGuestDrag(e, guest.id, false)
       });
     }
-    floorPlanAssign.setShowFullNames(!!state.settings.showFullNames);
     floorPlanAssign.update(state.tables, state.guests, state.categories, getViolatedTableIds());
   } else if (rasporedView === 'tables') {
     renderTablesView();
@@ -1525,6 +1515,8 @@ async function handleTableOpen(tableId) {
     renderUnassignedPanel();
     return;
   }
+  // First tap: every table shows who sits there; a tap on a card opens that table.
+  if (floorPlanAssign && !floorPlanAssign.namesView) { floorPlanAssign.setNamesView(true, tableId); return; }
   openTableGuests(tableId);
 }
 
@@ -1672,6 +1664,7 @@ function setupRasporedEvents() {
     setArranging(!arrangingTables);
     renderUnassignedPanel();
   });
+  document.getElementById('btn-show-seats').addEventListener('click', () => floorPlanAssign && floorPlanAssign.setNamesView(false));
   document.getElementById('btn-table-guests-edit').addEventListener('click', () => {
     const modal = document.getElementById('modal-table-guests');
     modal.style.display = 'none';

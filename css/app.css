@@ -513,6 +513,9 @@ select.form-control { cursor: pointer; }
 /* Raspored: tlocrt se prebacuje u slaganje stolova prekidačem „Premjesti stolove” */
 .fp-arrange-bar .arrange-only { display: none; }
 .raspored-layout.arranging .fp-arrange-bar .arrange-only { display: inline-flex; }
+/* Names view: tables shown as cards with their guests */
+.btn-show-seats { display: none; position: absolute; top: 10px; left: 10px; z-index: 2; font-size: 0.82rem; padding: 5px 10px; box-shadow: var(--shadow-card); }
+.raspored-canvas.names-view .btn-show-seats { display: inline-flex; }
 .fp-arrange-hint { font-size: 0.78rem; color: var(--color-muted); align-items: center; }
 .raspored-layout.arranging[data-view="floor"] .unassigned-panel { display: none; }
 .floor-plan-toolbar .btn-secondary.active {
