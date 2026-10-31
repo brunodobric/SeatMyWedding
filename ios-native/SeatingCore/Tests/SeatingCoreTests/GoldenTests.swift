@@ -183,6 +183,72 @@ final class GoldenTests: XCTestCase {
         }
     }
 
+    private func ruleWorld(_ input: [String: JSONValue]) -> WeddingData {
+        WeddingData(
+            tables: records(input["tables"]), categories: records(input["categories"]),
+            guests: records(input["guests"]), rules: records(input["rules"])
+        )
+    }
+
+    private func counter() -> IDMaker {
+        var n = 0
+        return { n += 1; return "u-\(n)" }
+    }
+
+    private func stripped(_ rules: [Record]) -> [JSONValue] {
+        rules.map { r in var c = r; c["satisfied"] = nil; return c.json }
+    }
+
+    func testNormalizeRules() throws {
+        let cases = try load("normalizeRules")
+        XCTAssertGreaterThan(cases.count, 50)
+        for c in cases {
+            let data = ruleWorld(try XCTUnwrap(c.input.objectValue))
+            let got = data.normalizeRules(data.rules, makeID: counter()).map { $0.json }
+            XCTAssertEqual(got, c.expected.arrayValue, "normalizeRules: \(c.name)")
+        }
+    }
+
+    func testRuleStatus() throws {
+        let cases = try load("ruleStatus")
+        for c in cases {
+            let data = ruleWorld(try XCTUnwrap(c.input.objectValue))
+            let got: [JSONValue] = data.rules.map { r in data.isSatisfied(r).map { .bool($0) } ?? .null }
+            XCTAssertEqual(got, c.expected.arrayValue, "isSatisfied: \(c.name)")
+        }
+    }
+
+    func testSetRelations() throws {
+        let cases = try load("setRelations")
+        for c in cases {
+            let input = try XCTUnwrap(c.input.objectValue)
+            let data = ruleWorld(input)
+            let rel = try XCTUnwrap(input["rel"]?.objectValue)
+            let got = data.rulesAfterSettingRelations(
+                guestId: input["guestId"]?.stringValue ?? "",
+                together: ids(rel["together"]), apart: ids(rel["apart"]),
+                fixedTableId: rel["fixedTableId"]?.stringValue, fixedSeat: rel["fixedSeat"]?.numberValue,
+                makeID: counter()
+            )
+            XCTAssertEqual(stripped(got), c.expected.arrayValue, "setGuestRelations: \(c.name)")
+        }
+    }
+
+    func testCategoryAndGroupRules() throws {
+        let cases = try load("categoryRules")
+        for c in cases {
+            let input = try XCTUnwrap(c.input.objectValue)
+            let data = ruleWorld(input)
+            let expected = try XCTUnwrap(c.expected.objectValue)
+            let cat = data.rulesAfterSettingCategoryTogether(
+                input["categoryId"]?.stringValue ?? "", on: input["on"]?.isTruthy ?? false, makeID: counter())
+            XCTAssertEqual(stripped(cat), expected["category"]?.arrayValue, "setCategoryTogether: \(c.name)")
+            let groups = (input["groups"]?.arrayValue ?? []).map { ids($0) }
+            let added = data.rulesAfterAddingTogether(groups, makeID: counter())
+            XCTAssertEqual(stripped(added), expected["groups"]?.arrayValue, "addTogetherGroups: \(c.name)")
+        }
+    }
+
     func testCloudDoc() throws {
         let cases = try load("cloudDoc")
         for c in cases {
