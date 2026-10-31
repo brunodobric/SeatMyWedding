@@ -455,12 +455,14 @@ async function saveWeddingParty(prefix) {
       if (current) await deleteGuest(current.id);
       continue;
     }
-    if (current) {
+    if (current && current.tableId) {
       if (current.name !== name) await saveGuest({ ...current, name });
       continue;
     }
-    // A guest already on the list with this name becomes part of the wedding party.
-    const listed = invitedGuests().find(g => g.name.trim().toLowerCase() === name.toLowerCase());
+    // Someone of the wedding party without a seat (e.g. the bridal table was
+    // removed) is seated again; a guest already on the list with this name
+    // becomes part of the wedding party.
+    const listed = current ? { ...current, name } : invitedGuests().find(g => g.name.trim().toLowerCase() === name.toLowerCase());
     let seat = Math.min(head.seats - 1, f.seat);
     const occupant = state.guests.find(g => g.tableId === head.id && g.seatIndex === seat && (!listed || g.id !== listed.id));
     if (occupant && isWeddingParty(occupant)) seat = firstFreeSeat(head);
@@ -824,7 +826,8 @@ function renderGosti() {
 function renderCategoryChips() {
   const container = document.getElementById('category-filter-chips');
   if (!container) return;
-  const unseated = unseatedGuests().length;
+  // The wedding party is not on the guest list, so it is not counted here.
+  const unseated = unseatedGuests().filter(g => !isWeddingParty(g)).length;
   if (!unseated) guestUnseatedFilter = false;
   container.innerHTML = `<button class="chip${!guestCategoryFilter ? ' active' : ''}" data-cat="">Svi</button>` +
     (unseated ? `<button class="chip chip-unseated${guestUnseatedFilter ? ' active' : ''}" id="chip-unseated">Bez mjesta (${unseated})</button>` : '') +
@@ -1242,7 +1245,10 @@ function setupGuestModal() {
     const maybe = document.getElementById('guest-edit-maybe').checked;
     const locked = document.getElementById('guest-edit-locked').checked;
     const notes = document.getElementById('guest-edit-notes').value.trim();
+    // Spread the existing record so fields the form doesn't show (the wedding
+    // party's role and slot) survive an edit.
     const guest = {
+      ...existing,
       id, name, categoryId: catId,
       tableId: (existing && existing.tableId) || null,
       seatIndex: (existing && existing.seatIndex != null) ? existing.seatIndex : null,
