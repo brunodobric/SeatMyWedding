@@ -81,7 +81,7 @@ function fuzzRecord(kind) {
 const list = (kind, n) => Array.from({ length: n }, () => fuzzRecord(kind));
 
 // ── Slučajevi ────────────────────────────────────────────────────────────────
-const out = { cleanData: [], migrateTables: [], repairSeating: [], mergeSyncStates: [], cloudDoc: [] };
+const out = { cleanData: [], migrateTables: [], repairSeating: [], mergeSyncStates: [], cloudDoc: [], floorGeometry: [] };
 
 // cleanData
 const cleanInputs = [
@@ -190,6 +190,40 @@ for (const [name, doc] of docs) {
   const toCloud = clone(run(`toCloudDoc(${JSON.stringify(fromCloud)})`));
   out.cloudDoc.push({ name, input: doc, now: NOW, expected: { fromCloud, toCloud } });
 }
+
+// floorGeometry: metode FloorPlan (js/floor-plan.js) pozvane bez DOM-a
+vm.runInContext('var window = globalThis;', ctx);
+vm.runInContext(fs.readFileSync(path.join(root, 'js', 'floor-plan.js'), 'utf8'), ctx, { filename: 'floor-plan.js' });
+const FP = ctx.FloorPlan.prototype;
+const num = v => (Number.isFinite(v) ? v : null);
+function geometry(tables) {
+  const self = { _dims: FP._dims, tables };
+  return {
+    dims: tables.map(t => { const d = FP._dims.call(self, t); return { w: num(d.w ?? 90), h: num(d.h ?? 90) }; }),
+    seats: tables.map(t => FP._getSeatPositions.call(self, t).map(p => ({ x: num(p.x), y: num(p.y) }))),
+    bounds: tables.length ? clone(FP._contentBounds.call(self)) : null
+  };
+}
+const shapes = ['round', 'square', 'rectangular', 'royal', 'head', 'bogus'];
+const geoTables = [];
+for (const shape of shapes) {
+  for (const seats of [0, 1, 2, 6, 8, 12]) geoTables.push({ id: 'a' + geoTables.length, shape, seats, x: 100, y: 200, rotation: 0 });
+}
+for (const shape of ['rectangular', 'royal', 'head', 'square']) {
+  for (const [sl, se] of [[0, 0], [1, 1], [2, 0], [4, 1], [6, 2], [10, 3], [5, null]]) {
+    geoTables.push({ id: 'b' + geoTables.length, shape, seats: sl * 2 + se * 2, seatsLong: sl, seatsEnd: se, x: 300, y: 50, rotation: pick([0, 90, 180, 270, 45, -90]) });
+  }
+}
+for (let i = 0; i < 20; i++) {
+  const t = clean => clone(run(`cleanData(${JSON.stringify({ tables: [fuzzRecord('t')] })})`).tables)[0];
+  const rec = t();
+  if (rec) geoTables.push(rec);
+}
+for (let i = 0; i < geoTables.length; i += 5) {
+  const group = geoTables.slice(i, i + 5);
+  out.floorGeometry.push({ name: 'skupina ' + i, input: { tables: group }, expected: geometry(group) });
+}
+out.floorGeometry.push({ name: 'nema stolova', input: { tables: [] }, expected: geometry([]) });
 
 // ── Zapis ────────────────────────────────────────────────────────────────────
 const text = JSON.stringify(out, null, 1) + '\n';

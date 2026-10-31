@@ -84,6 +84,47 @@ final class GoldenTests: XCTestCase {
         }
     }
 
+    private func assertClose(_ a: Double?, _ b: Double?, _ message: String, file: StaticString = #filePath, line: UInt = #line) {
+        guard let a = a, let b = b else {
+            XCTAssertEqual(a, b, message, file: file, line: line)
+            return
+        }
+        XCTAssertEqual(a, b, accuracy: 1e-9, message, file: file, line: line)
+    }
+
+    func testFloorGeometry() throws {
+        let cases = try load("floorGeometry")
+        XCTAssertGreaterThan(cases.count, 5)
+        for c in cases {
+            let tables = records(c.input.objectValue?["tables"])
+            let expected = try XCTUnwrap(c.expected.objectValue)
+            let dims = try XCTUnwrap(expected["dims"]?.arrayValue)
+            let seats = try XCTUnwrap(expected["seats"]?.arrayValue)
+            XCTAssertEqual(dims.count, tables.count, c.name)
+            for (i, t) in tables.enumerated() {
+                let d = FloorGeometry.dims(t)
+                assertClose(d.w, dims[i].objectValue?["w"]?.numberValue, "\(c.name) dims w \(i)")
+                assertClose(d.h, dims[i].objectValue?["h"]?.numberValue, "\(c.name) dims h \(i)")
+                let got = FloorGeometry.seatPositions(t)
+                let want = seats[i].arrayValue ?? []
+                XCTAssertEqual(got.count, want.count, "\(c.name) broj mjesta \(i)")
+                for (k, p) in zip(got, want) {
+                    assertClose(k.x, p.objectValue?["x"]?.numberValue, "\(c.name) x \(i)")
+                    assertClose(k.y, p.objectValue?["y"]?.numberValue, "\(c.name) y \(i)")
+                }
+            }
+            let bounds = FloorGeometry.contentBounds(tables)
+            if case .object(let b)? = expected["bounds"] {
+                assertClose(bounds?.x1, b["x1"]?.numberValue, "\(c.name) x1")
+                assertClose(bounds?.y1, b["y1"]?.numberValue, "\(c.name) y1")
+                assertClose(bounds?.x2, b["x2"]?.numberValue, "\(c.name) x2")
+                assertClose(bounds?.y2, b["y2"]?.numberValue, "\(c.name) y2")
+            } else {
+                XCTAssertNil(bounds, "\(c.name) okvir")
+            }
+        }
+    }
+
     func testCloudDoc() throws {
         let cases = try load("cloudDoc")
         for c in cases {
