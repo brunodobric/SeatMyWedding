@@ -373,6 +373,9 @@ function reseatOverflowGuests(table) {
 }
 
 async function deleteTable(id) {
+  // The bridal table stays (the wedding party sits there).
+  const table = state.tables.find(t => t.id === id);
+  if (table && isHeadTable(table)) return;
   await dbDelete('tables', id);
   state.tables = state.tables.filter(t => t.id !== id);
   // Unassign guests at this table

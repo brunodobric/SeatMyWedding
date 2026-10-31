@@ -389,13 +389,14 @@ function showOnboarding() {
         monogram: names.length ? names.map(n => n[0].toUpperCase()).join('&') : '♡'
       });
       for (const c of DEFAULT_CATEGORIES) await saveCategory({ id: crypto.randomUUID(), ...c });
+      // The bridal table first, with a seat for everyone entered above.
+      await saveWeddingParty('ob');
       await applyHallPlan(planHall({
         template,
         guestCount: guestCount(),
         perTable: Math.max(2, parseInt(document.getElementById('ob-seats').value) || 8),
         mode: 'rebuild'
       }));
-      await saveWeddingParty('ob');
       const rows = parseGuestText(listEl.value, { surnameFirst: detectSurnameFirst(listEl.value) });
       if (rows.length) await importGuestRows(rows, null);
       modal.style.display = 'none';
@@ -440,40 +441,55 @@ function partyMember(slot, head) {
 // onboarding, 'pt' in "Mladenci i kumovi"): a new name adds the person (or
 // turns a guest with that name into the wedding party), a changed one renames
 // them, an emptied one removes them.
+// The bridal table has as many seats as the people at it: someone removed takes
+// their seat away, someone added gets a new one (unless a seat is free).
 async function saveWeddingParty(prefix) {
   let head = state.tables.find(isHeadTable);
   const names = OB_PARTY_FIELDS.map(f => document.getElementById(f.id.replace(/^ob-/, prefix + '-')).value.trim());
+  const filled = names.filter(Boolean).length;
   if (!head) {
-    if (!names.some(Boolean)) return;
-    head = makeHeadTable();
+    if (!filled) return;
+    head = makeHeadTable(filled);
     await saveTable(head);
   }
+  let removed = 0;
+  const party = [];
   for (const [i, f] of OB_PARTY_FIELDS.entries()) {
     const name = names[i];
     const current = partyMember(f, head);
     if (!name) {
-      if (current) await deleteGuest(current.id);
+      if (current) { await deleteGuest(current.id); removed++; }
       continue;
     }
-    if (current && current.tableId) {
+    if (current) {
       if (current.name !== name) await saveGuest({ ...current, name });
+      party.push(current.id);
       continue;
     }
-    // Someone of the wedding party without a seat (e.g. the bridal table was
-    // removed) is seated again; a guest already on the list with this name
-    // becomes part of the wedding party.
-    const listed = current ? { ...current, name } : invitedGuests().find(g => g.name.trim().toLowerCase() === name.toLowerCase());
-    let seat = Math.min(head.seats - 1, f.seat);
-    const occupant = state.guests.find(g => g.tableId === head.id && g.seatIndex === seat && (!listed || g.id !== listed.id));
-    if (occupant && isWeddingParty(occupant)) seat = firstFreeSeat(head);
-    else if (occupant) await unassignGuest(occupant.id);
-    const person = listed ? { ...listed } : { id: crypto.randomUUID(), name, categoryId: null, notes: '' };
-    Object.assign(person, {
-      party: f.couple ? 'couple' : 'kumovi', partySlot: f.slot, locked: true,
-      ...(seat >= 0 ? { status: 'assigned', tableId: head.id, seatIndex: seat } : { status: 'unassigned', tableId: null, seatIndex: null })
-    });
+    // A guest already on the list with this name becomes part of the wedding party.
+    const listed = invitedGuests().find(g => g.name.trim().toLowerCase() === name.toLowerCase());
+    const person = listed ? { ...listed } : { id: crypto.randomUUID(), name, categoryId: null, notes: '', status: 'unassigned', tableId: null, seatIndex: null };
+    Object.assign(person, { party: f.couple ? 'couple' : 'kumovi', partySlot: f.slot, locked: true });
     await saveGuest(person);
+    party.push(person.id);
   }
+  // Left to right: the wedding party in its order, then anyone else seated there.
+  const partyIds = new Set(party);
+  const others = state.guests
+    .filter(g => g.tableId === head.id && !partyIds.has(g.id))
+    .sort((a, b) => (a.seatIndex || 0) - (b.seatIndex || 0));
+  const order = [...party, ...others.map(g => g.id)];
+  const seats = Math.max(1, order.length, head.seats - removed);
+  if (seats > head.seats) await saveTable(withHeadSeats(head, seats));
+  await placeGuests(order.map((id, seatIndex) => ({ id, tableId: head.id, seatIndex })));
+  if (seats < head.seats) await saveTable(withHeadSeats(state.tables.find(t => t.id === head.id), seats));
+}
+
+// The bridal table with another number of seats (the ends keep theirs while
+// the front has room).
+function withHeadSeats(head, seats) {
+  const seatsEnd = 2 * (head.seatsEnd || 0) < seats ? (head.seatsEnd || 0) : 0;
+  return { ...head, seats, seatsEnd, seatsLong: seats - 2 * seatsEnd };
 }
 
 function openPartyModal() {
@@ -681,7 +697,7 @@ function openTableModal(id) {
     const perSide = (table ? table.seatsLong : undefined) || Math.round(((table ? table.seats : undefined) || 8) / 4) || 2;
     document.getElementById('table-seats-long').value = perSide;
   } else if (shape === 'head') {
-    document.getElementById('table-seats-long').value = (table ? table.seatsLong : undefined) || 8;
+    document.getElementById('table-seats-long').value = table && Number.isInteger(table.seatsLong) ? table.seatsLong : HEAD_TABLE_FRONT_SEATS;
     document.getElementById('table-seats-end').value = table && Number.isInteger(table.seatsEnd) ? table.seatsEnd : 0;
   } else {
     document.getElementById('table-seats-long').value = (table ? table.seatsLong : undefined) || 4;
@@ -691,8 +707,13 @@ function openTableModal(id) {
   updateSeatsUI(shape);
   document.getElementById('table-rotated').checked = !!(table && table.rotation);
 
-  document.getElementById('btn-delete-table').style.display = table ? '' : 'none';
-  document.getElementById('btn-duplicate-table').style.display = table ? '' : 'none';
+  // There is one bridal table: it can't be removed, copied or turned into
+  // another shape, and no second one can be added.
+  const head = !!table && isHeadTable(table);
+  document.getElementById('table-shape-group').style.display = head ? 'none' : '';
+  document.querySelector('.shape-btn[data-shape="head"]').style.display = state.tables.some(isHeadTable) ? 'none' : '';
+  document.getElementById('btn-delete-table').style.display = table && !head ? '' : 'none';
+  document.getElementById('btn-duplicate-table').style.display = table && !head ? '' : 'none';
 
   modal.dataset.editId = id || '';
   modal.style.display = 'flex';
@@ -728,8 +749,9 @@ function setupTableModal() {
       seatsEnd = seatsLong;
       seats = seatsLong * 4;
     } else if (shape === 'head') {
-      seatsLong = parseInt(document.getElementById('table-seats-long').value) || 8;
-      seatsEnd = parseInt(document.getElementById('table-seats-end').value) || 0;
+      seatsLong = Math.max(0, parseInt(document.getElementById('table-seats-long').value) || 0);
+      seatsEnd = Math.max(0, parseInt(document.getElementById('table-seats-end').value) || 0);
+      if (seatsLong + seatsEnd * 2 < 1) seatsLong = 1;
       seats = seatsLong + seatsEnd * 2;
     } else {
       seatsLong = parseInt(document.getElementById('table-seats-long').value) || 4;
@@ -757,7 +779,7 @@ function setupTableModal() {
     const modal = document.getElementById('modal-table');
     const id = modal.dataset.editId;
     const table = state.tables.find(t => t.id === id);
-    if (table) {
+    if (table && !isHeadTable(table)) {
       await withUndo(`Obrisano: ${table.name}`, () => deleteTable(id));
       modal.style.display = 'none';
       renderSala();
