@@ -11,7 +11,7 @@ final class WeddingStore {
     private(set) var loadError: String?
     private let fileURL: URL
 
-    static var defaultURL: URL {
+    nonisolated static var defaultURL: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return base.appendingPathComponent("wedding.json")
     }
