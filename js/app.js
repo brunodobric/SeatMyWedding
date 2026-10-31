@@ -424,8 +424,8 @@ const DEFAULT_CATEGORIES = [
 const OB_PARTY_FIELDS = [
   { id: 'ob-kuma-plus', seat: 0 },
   { id: 'ob-kuma', seat: 1 },
-  { id: 'ob-bride', seat: 2 },
-  { id: 'ob-groom', seat: 3 },
+  { id: 'ob-bride', seat: 2, couple: true },
+  { id: 'ob-groom', seat: 3, couple: true },
   { id: 'ob-kum', seat: 4 },
   { id: 'ob-kum-plus', seat: 5 }
 ];
@@ -444,7 +444,7 @@ async function seatWeddingParty() {
     const seat = Math.min(head.seats - 1, p.seat);
     await saveGuest({
       id: crypto.randomUUID(), name: p.name, categoryId: null,
-      status: 'assigned', tableId: head.id, seatIndex: seat, locked: true, notes: '', party: true
+      status: 'assigned', tableId: head.id, seatIndex: seat, locked: true, notes: '', party: p.couple ? 'couple' : 'kumovi'
     });
   }
 }
@@ -1400,7 +1400,7 @@ function renderTablesView() {
       </div>
       <ol class="table-card-guests">${guests.map(g => {
         const cat = state.categories.find(c => c.id === g.categoryId);
-        const dot = g.party ? WEDDING_PARTY_COLOR : cat && cat.color;
+        const dot = seatColor(g);
         return `<li data-guest="${g.id}" data-table="${t.id}" data-seat="${g.seatIndex}">
           <span class="seat-no">${(g.seatIndex || 0) + 1}</span>
           ${dot ? `<span class="chip-dot" style="background:${dot}"></span>` : ''}
@@ -1483,7 +1483,7 @@ function openTableGuests(tableId) {
   for (let i = 0; i < table.seats; i++) {
     const g = bySeat[i];
     const cat = g ? state.categories.find(c => c.id === g.categoryId) : null;
-    const dot = g && g.party ? WEDDING_PARTY_COLOR : cat && cat.color;
+    const dot = seatColor(g);
     rows.push(g
       ? `<li><button data-seat="${i}" data-guest="${g.id}"><span class="seat-no">${i + 1}</span>
           ${dot ? `<span class="chip-dot" style="background:${dot}"></span>` : ''}

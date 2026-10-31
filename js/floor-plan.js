@@ -14,7 +14,13 @@ const WORLD_W = 2400;
 const WORLD_H = 2400;
 const GRID_SIZE = 50;
 const SEAT_PITCH = 28;
-const WEDDING_PARTY_COLOR = '#8A5A7E';
+// Seat colours: the couple, the kumovi with their partners, everyone else.
+const SEAT_COLORS = { couple: '#8A5A7E', kumovi: '#5E7F99', guest: '#C9A24B' };
+function seatColor(guest) {
+  if (!guest) return null;
+  if (guest.party === 'couple') return SEAT_COLORS.couple;
+  return guest.party ? SEAT_COLORS.kumovi : SEAT_COLORS.guest;
+}
 
 const TABLE_DIMS = {
   round:       { rx: 45, ry: 45 },
@@ -378,9 +384,7 @@ class FloorPlan {
 
     seats.forEach((pos, idx) => {
       const guest = seatMap[idx];
-      const cat = guest ? this.categories.find(c => c.id === guest.categoryId) : null;
-      // The couple and kumovi (wedding party) have their own colour.
-      const color = guest ? (guest.party ? WEDDING_PARTY_COLOR : (cat && cat.color) || '#C9A24B') : null;
+      const color = seatColor(guest);
       const seatG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       seatG.setAttribute('class', 'seat-group');
       seatG.setAttribute('data-seat', idx);
@@ -802,5 +806,5 @@ class FloorPlan {
 
 
   window.FloorPlan = FloorPlan;
-  window.WEDDING_PARTY_COLOR = WEDDING_PARTY_COLOR;
+  window.seatColor = seatColor;
 })();
