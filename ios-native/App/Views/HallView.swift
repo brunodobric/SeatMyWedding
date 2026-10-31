@@ -183,11 +183,11 @@ struct HallView: View {
         }
         let labelY = isRound ? -10.0 : -7.0
         local.draw(
-            Text(verbatim: table.string("name") ?? "").font(Theme.title(13.5)).foregroundStyle(Theme.bronze),
+            Text(verbatim: table.string("name") ?? "").font(Theme.fixed(13.5, weight: .semibold)).foregroundStyle(Theme.bronze),
             at: upright(Point(x: 0, y: labelY)), anchor: .center)
         local.draw(
             Text(verbatim: "\(seated.count)/\(Int(seatsTotal))")
-                .font(Theme.ui(11)).foregroundStyle(full ? Theme.success : Theme.muted),
+                .font(Theme.fixed(11)).foregroundStyle(full ? Theme.success : Theme.muted),
             at: upright(Point(x: 0, y: labelY + 16)), anchor: .center)
 
         // Mjesta
@@ -202,7 +202,7 @@ struct HallView: View {
             local.stroke(circle, with: .color(color ?? Theme.border), lineWidth: 1.5)
             if let guest = guest {
                 local.draw(
-                    Text(verbatim: Self.initials(guest.string("name") ?? "")).font(Theme.uiBold(7)).foregroundStyle(.white),
+                    Text(verbatim: Self.initials(guest.string("name") ?? "")).font(Theme.fixed(7, weight: .semibold)).foregroundStyle(.white),
                     at: p, anchor: .center)
             }
         }

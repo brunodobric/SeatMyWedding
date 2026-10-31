@@ -13,31 +13,36 @@ enum Theme {
     static let ink = Color(hex: 0x2B2622)
     static let muted = Color(hex: 0x8A7F70)
 
-    /// Fontovi iz web aplikacije (OFL licenca, mapa App/Fonts): Cormorant Garamond
-    /// za naslove, Jost za sučelje, Pinyon Script za monogram.
-    static let serifRegular = "CormorantGaramond-Regular"
-    static let serifSemiBold = "CormorantGaramond-SemiBold"
-    static let uiRegular = "Jost-Regular"
-    static let uiMedium = "Jost-Medium"
-    static let uiSemiBold = "Jost-SemiBold"
-    static let scriptName = "PinyonScript-Regular"
+    /// Zadani iOS fontovi (San Francisco) sa sistemskim stilovima, pa se tekst
+    /// prilagođava postavci veličine teksta (Dynamic Type). Veličine iz dizajna
+    /// se preslikavaju na najbliži stil.
+    private static func style(for size: CGFloat) -> Font.TextStyle {
+        switch size {
+        case ..<12.5: return .caption
+        case ..<14.5: return .footnote
+        case ..<15.5: return .subheadline
+        case ..<16.5: return .callout
+        case ..<18: return .body
+        case ..<22: return .title3
+        case ..<28: return .title2
+        default: return .title
+        }
+    }
+    static func title(_ size: CGFloat = 28) -> Font { .system(style(for: size), weight: .semibold) }
+    static func ui(_ size: CGFloat = 16) -> Font { .system(style(for: size)) }
+    static func uiBold(_ size: CGFloat = 16) -> Font { .system(style(for: size), weight: .semibold) }
+    /// Nepromjenjiva veličina, za natpise unutar tlocrta (crtaju se u svijetu sale).
+    static func fixed(_ size: CGFloat, weight: Font.Weight = .regular) -> Font { .system(size: size, weight: weight) }
 
-    static func title(_ size: CGFloat = 28) -> Font { .custom(serifSemiBold, size: size) }
-    static func ui(_ size: CGFloat = 16) -> Font { .custom(uiRegular, size: size) }
-    static func uiBold(_ size: CGFloat = 16) -> Font { .custom(uiSemiBold, size: size) }
-    static func script(_ size: CGFloat = 36) -> Font { .custom(scriptName, size: size) }
-
-    /// Naslovi navigacije i boja trake kao u web aplikaciji.
+    /// Boja trake i naslova kao u web aplikaciji.
     static func applyAppearance() {
         let nav = UINavigationBarAppearance()
         nav.configureWithOpaqueBackground()
         nav.backgroundColor = UIColor(background)
         nav.titleTextAttributes = [
-            .font: UIFont(name: serifSemiBold, size: 20) ?? .systemFont(ofSize: 20, weight: .semibold),
             .foregroundColor: UIColor(ink)
         ]
         nav.largeTitleTextAttributes = [
-            .font: UIFont(name: serifSemiBold, size: 34) ?? .systemFont(ofSize: 34, weight: .semibold),
             .foregroundColor: UIColor(ink)
         ]
         UINavigationBar.appearance().standardAppearance = nav
