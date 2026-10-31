@@ -14,6 +14,7 @@ const WORLD_W = 2400;
 const WORLD_H = 2400;
 const GRID_SIZE = 50;
 const SEAT_PITCH = 28;
+const WEDDING_PARTY_COLOR = '#8A5A7E';
 
 const TABLE_DIMS = {
   round:       { rx: 45, ry: 45 },
@@ -378,6 +379,8 @@ class FloorPlan {
     seats.forEach((pos, idx) => {
       const guest = seatMap[idx];
       const cat = guest ? this.categories.find(c => c.id === guest.categoryId) : null;
+      // The couple and kumovi (wedding party) have their own colour.
+      const color = guest ? (guest.party ? WEDDING_PARTY_COLOR : (cat && cat.color) || '#C9A24B') : null;
       const seatG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       seatG.setAttribute('class', 'seat-group');
       seatG.setAttribute('data-seat', idx);
@@ -387,8 +390,8 @@ class FloorPlan {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', pos.x); circle.setAttribute('cy', pos.y);
       circle.setAttribute('r', '10');
-      circle.setAttribute('fill', guest ? ((cat ? cat.color : undefined) || '#C9A24B') : '#F5EBDD');
-      circle.setAttribute('stroke', guest ? ((cat ? cat.color : undefined) || '#C9A24B') : '#E8DCC8');
+      circle.setAttribute('fill', color || '#F5EBDD');
+      circle.setAttribute('stroke', color || '#E8DCC8');
       circle.setAttribute('stroke-width', '1.5');
       seatG.appendChild(circle);
 
@@ -799,4 +802,5 @@ class FloorPlan {
 
 
   window.FloorPlan = FloorPlan;
+  window.WEDDING_PARTY_COLOR = WEDDING_PARTY_COLOR;
 })();

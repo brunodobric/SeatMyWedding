@@ -84,16 +84,23 @@ function hallPositions(template, count, perTable, top) {
     const gap = (1000 - cols * len) / (cols + 1);
     for (let i = 0; i < count; i++) {
       const col = i % cols, row = Math.floor(i / cols);
-      out.push({ x: gap + len / 2 + col * (len + gap), y: top + 55 + row * 150, rotation: 0 });
+      out.push({ x: rowX(col, count, cols, len + gap), y: top + 55 + row * 150, rotation: 0 });
     }
     return out;
   }
   const cols = 5;
   for (let i = 0; i < count; i++) {
     const col = i % cols, row = Math.floor(i / cols);
-    out.push({ x: 120 + col * 190, y: top + 70 + row * 175, rotation: 0 });
+    out.push({ x: rowX(col, count, cols, 190), y: top + 70 + row * 175, rotation: 0 });
   }
   return out;
+}
+
+// x of a column in a row of tables. A hall that fits in one row is centred
+// under the bridal table (x 500); fuller halls use the whole width.
+function rowX(col, count, cols, step) {
+  const n = Math.min(count, cols);
+  return 500 + (col - (n - 1) / 2) * step;
 }
 
 function nextTableNumber() {
