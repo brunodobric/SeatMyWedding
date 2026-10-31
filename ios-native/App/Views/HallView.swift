@@ -1,17 +1,208 @@
 import SwiftUI
+import SeatingCore
 
+/// Tlocrt sale: stolovi i mjesta crtaju se u istim koordinatama kao na webu.
+/// Pomicanje jednim prstom, zumiranje štipanjem ili gumbima.
 struct HallView: View {
     @Environment(WeddingStore.self) private var store
 
+    @State private var scale: CGFloat = 1
+    @State private var origin: CGPoint = .zero
+    @State private var baseScale: CGFloat = 1
+    @State private var baseOrigin: CGPoint = .zero
+    @State private var magnifying = false
+    @State private var anchorWorld: CGPoint = .zero
+    @State private var viewSize: CGSize = .zero
+    @State private var fitted = false
+
     var body: some View {
         NavigationStack {
-            ContentUnavailableView {
-                Label("Sala", systemImage: "square.grid.3x3")
-            } description: {
-                Text("Stolova: \(store.tables.count). Tlocrt dolazi u sljedećoj fazi.")
+            GeometryReader { geo in
+                ZStack(alignment: .bottomTrailing) {
+                    if store.tables.isEmpty {
+                        ContentUnavailableView {
+                            Label("Još nema stolova", systemImage: "square.grid.3x3")
+                        } description: {
+                            Text("Uvezi sigurnosnu kopiju na kartici Gosti. Slaganje sale dolazi uskoro.")
+                        }
+                    } else {
+                        canvas
+                        controls(size: geo.size)
+                    }
+                }
+                .onAppear { viewSize = geo.size; fitIfNeeded() }
+                .onChange(of: geo.size) { _, new in viewSize = new; fitIfNeeded() }
+                .onChange(of: store.tables.count) { _, _ in fitted = false; fitIfNeeded() }
             }
             .background(Theme.background)
             .navigationTitle("Sala")
+            .navigationBarTitleDisplayMode(.inline)
         }
+    }
+
+    // MARK: Crtanje
+
+    private var canvas: some View {
+        let tables = store.tables
+        let guests = store.guests
+        return Canvas { ctx, _ in
+            var world = ctx
+            world.translateBy(x: origin.x, y: origin.y)
+            world.scaleBy(x: scale, y: scale)
+            for table in tables {
+                drawTable(table, guests: guests, in: world)
+            }
+        }
+        .gesture(
+            DragGesture(minimumDistance: 2)
+                .onChanged { v in
+                    guard !magnifying else { return }
+                    origin = CGPoint(x: baseOrigin.x + v.translation.width, y: baseOrigin.y + v.translation.height)
+                }
+                .onEnded { _ in
+                    if !magnifying { baseOrigin = origin }
+                }
+        )
+        .simultaneousGesture(
+            MagnifyGesture()
+                .onChanged { v in
+                    if !magnifying {
+                        magnifying = true
+                        anchorWorld = CGPoint(
+                            x: (v.startLocation.x - baseOrigin.x) / baseScale,
+                            y: (v.startLocation.y - baseOrigin.y) / baseScale)
+                    }
+                    let s = min(max(baseScale * v.magnification, 0.15), 4)
+                    scale = s
+                    origin = CGPoint(x: v.startLocation.x - anchorWorld.x * s, y: v.startLocation.y - anchorWorld.y * s)
+                }
+                .onEnded { _ in
+                    baseScale = scale
+                    baseOrigin = origin
+                    magnifying = false
+                }
+        )
+    }
+
+    private func drawTable(_ table: Record, guests: [Record], in world: GraphicsContext) {
+        let tx = table.number("x") ?? 0
+        let ty = table.number("y") ?? 0
+        let rotation = table.number("rotation") ?? 0
+        let angle = rotation * .pi / 180
+        let seatsTotal = table.number("seats") ?? 0
+        let tableId = table.id ?? ""
+        let seated = guests.filter { $0.string("tableId") == tableId }
+        let full = Double(seated.count) >= seatsTotal && seatsTotal > 0
+
+        var local = world
+        local.translateBy(x: tx, y: ty)
+        var turned = local
+        turned.rotate(by: .radians(angle))
+
+        // Stol
+        let dims = FloorGeometry.dims(table)
+        let isRound = table.string("shape") == "round"
+        let shape: Path = isRound
+            ? Path(ellipseIn: CGRect(x: -FloorGeometry.roundRadius, y: -FloorGeometry.roundRadius,
+                                     width: FloorGeometry.roundRadius * 2, height: FloorGeometry.roundRadius * 2))
+            : Path(roundedRect: CGRect(x: -dims.w / 2, y: -dims.h / 2, width: dims.w, height: dims.h), cornerRadius: 6)
+        turned.fill(shape, with: .color(full ? Color(hex: 0xF3F8F1) : .white))
+        turned.stroke(shape, with: .color(Theme.goldDeep), lineWidth: 1.5)
+
+        // Tekst ostaje uspravan i kad je stol zakrenut.
+        func upright(_ p: Point) -> CGPoint {
+            CGPoint(x: p.x * cos(angle) - p.y * sin(angle), y: p.x * sin(angle) + p.y * cos(angle))
+        }
+        let labelY = isRound ? -10.0 : -7.0
+        local.draw(
+            Text(verbatim: table.string("name") ?? "").font(Theme.title(13.5)).foregroundStyle(Theme.bronze),
+            at: upright(Point(x: 0, y: labelY)), anchor: .center)
+        local.draw(
+            Text(verbatim: "\(seated.count)/\(Int(seatsTotal))")
+                .font(Theme.ui(11)).foregroundStyle(full ? Theme.success : Theme.muted),
+            at: upright(Point(x: 0, y: labelY + 16)), anchor: .center)
+
+        // Mjesta
+        var bySeat: [Int: Record] = [:]
+        for g in seated { if let i = g.integer("seatIndex") { bySeat[Int(i)] = g } }
+        for (i, pos) in FloorGeometry.seatPositions(table).enumerated() {
+            let p = upright(pos)
+            let guest = bySeat[i]
+            let color = Self.seatColor(guest)
+            let circle = Path(ellipseIn: CGRect(x: p.x - 10, y: p.y - 10, width: 20, height: 20))
+            local.fill(circle, with: .color(color ?? Theme.champagne))
+            local.stroke(circle, with: .color(color ?? Theme.border), lineWidth: 1.5)
+            if let guest = guest {
+                local.draw(
+                    Text(verbatim: Self.initials(guest.string("name") ?? "")).font(Theme.uiBold(7)).foregroundStyle(.white),
+                    at: p, anchor: .center)
+            }
+        }
+    }
+
+    static func seatColor(_ guest: Record?) -> Color? {
+        guard let guest = guest else { return nil }
+        let party = guest.string("party")
+        if party == "couple" { return Theme.seatCouple }
+        return guest.isTruthy("party") ? Theme.seatKumovi : Theme.gold
+    }
+
+    static func initials(_ name: String) -> String {
+        let letters = name.split(whereSeparator: { $0.isWhitespace }).compactMap { $0.first }
+        let s = String(letters.prefix(2)).uppercased()
+        return s.isEmpty ? "?" : s
+    }
+
+    // MARK: Prikaz
+
+    private func controls(size: CGSize) -> some View {
+        VStack(spacing: 10) {
+            roundButton("plus") { zoom(by: 1.25, size: size) }
+            roundButton("minus") { zoom(by: 0.8, size: size) }
+            roundButton("arrow.up.left.and.arrow.down.right") { fit(size: size) }
+        }
+        .padding(16)
+    }
+
+    private func roundButton(_ icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .semibold))
+                .frame(width: 40, height: 40)
+                .foregroundStyle(Theme.goldDeep)
+                .background(.white, in: Circle())
+                .overlay(Circle().stroke(Theme.border))
+        }
+    }
+
+    private func zoom(by factor: CGFloat, size: CGSize) {
+        let s = min(max(scale * factor, 0.15), 4)
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        let wx = (center.x - origin.x) / scale, wy = (center.y - origin.y) / scale
+        scale = s
+        origin = CGPoint(x: center.x - wx * s, y: center.y - wy * s)
+        baseScale = scale
+        baseOrigin = origin
+    }
+
+    private func fitIfNeeded() {
+        guard !fitted, viewSize.width > 0, !store.tables.isEmpty else { return }
+        fitted = true
+        fit(size: viewSize)
+    }
+
+    /// Prilagodi prikaz svim stolovima (kao fitToContent na webu).
+    private func fit(size: CGSize) {
+        guard let b = FloorGeometry.contentBounds(store.tables), size.width > 0, size.height > 0 else { return }
+        let pad = 30.0
+        let w = max(b.x2 - b.x1 + pad * 2, 420)
+        let h = max(b.y2 - b.y1 + pad * 2, 300)
+        let s = min(size.width / w, size.height / h)
+        scale = s
+        origin = CGPoint(
+            x: size.width / 2 - (b.x1 + b.x2) / 2 * s,
+            y: size.height / 2 - (b.y1 + b.y2) / 2 * s)
+        baseScale = scale
+        baseOrigin = origin
     }
 }

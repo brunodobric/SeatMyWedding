@@ -67,3 +67,11 @@ extension Color {
         self.init(hex: v)
     }
 }
+
+extension Theme {
+    /// Boje mjesta: mladenci, kumovi s partnerima i ostali gosti (isto kao web).
+    static let seatCouple = Color(hex: 0x8A5A7E)
+    static let seatKumovi = Color(hex: 0x5E7F99)
+    static let success = Color(hex: 0x5C8A5C)
+    static let error = Color(hex: 0xB04A3F)
+}
