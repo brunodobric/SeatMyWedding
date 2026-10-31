@@ -198,6 +198,26 @@ final class WeddingStore {
         put("guests", [g])
     }
 
+    /// Automatsko slaganje; vraća prijedlog radi prikaza. Prije promjene pamti
+    /// stanje gostiju da se može poništiti (`undoAutoSeating`).
+    private(set) var autoSeatingSnapshot: [Record]?
+
+    @discardableResult
+    func autoSeat() -> SeatingSuggestion {
+        let suggestion = data.suggestSeating()
+        autoSeatingSnapshot = guests
+        var wedding = data
+        let changed = Set(wedding.apply(suggestion))
+        put("guests", wedding.guests.filter { changed.contains($0.id ?? "") })
+        return suggestion
+    }
+
+    func undoAutoSeating() {
+        guard let snapshot = autoSeatingSnapshot else { return }
+        put("guests", snapshot)
+        autoSeatingSnapshot = nil
+    }
+
     func unseatedGuests() -> [Record] {
         invitedGuests
             .filter { $0.string("status") != "assigned" && $0.string("status") != "maybe" }

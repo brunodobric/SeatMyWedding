@@ -81,7 +81,7 @@ function fuzzRecord(kind) {
 const list = (kind, n) => Array.from({ length: n }, () => fuzzRecord(kind));
 
 // ── Slučajevi ────────────────────────────────────────────────────────────────
-const out = { cleanData: [], migrateTables: [], repairSeating: [], mergeSyncStates: [], cloudDoc: [], floorGeometry: [], dropGuest: [] };
+const out = { cleanData: [], migrateTables: [], repairSeating: [], mergeSyncStates: [], cloudDoc: [], floorGeometry: [], dropGuest: [], suggestSeating: [] };
 
 // cleanData
 const cleanInputs = [
@@ -265,6 +265,38 @@ for (let i = 0; i < 150; i++) {
     input: { tables, guests, guestId: gid, target },
     expected: { guests: clone(ctx.state.guests), notices, undoMessage }
   });
+}
+
+
+// suggestSeating: automatsko slaganje (js/seating-algo.js)
+vm.runInContext(fs.readFileSync(path.join(root, 'js', 'seating-algo.js'), 'utf8'), ctx, { filename: 'seating-algo.js' });
+for (let i = 0; i < 120; i++) {
+  const nt = int(1, 5), ng = int(1, 16), nc = int(0, 3);
+  const tables = Array.from({ length: nt }, (_, k) => ({
+    id: 't-' + (k + 1), name: 'Stol ' + (k + 1), shape: k === 0 && chance(0.35) ? 'head' : 'round', seats: int(2, 6)
+  }));
+  const categories = Array.from({ length: nc }, (_, k) => ({ id: 'c-' + (k + 1), name: 'Kat ' + (k + 1), color: '#C9A24B', atHeadTable: chance(0.15) }));
+  const usedSeats = new Set();
+  const guests = Array.from({ length: ng }, (_, k) => {
+    const g = { id: 'g-' + (k + 1), name: 'Gost ' + (k + 1), status: 'unassigned', tableId: null, seatIndex: null, locked: false, categoryId: nc && chance(0.6) ? 'c-' + int(1, nc) : null };
+    if (chance(0.15)) g.status = 'maybe';
+    if (chance(0.35)) {
+      const t = pick(tables), seat = int(0, t.seats - 1), key = t.id + '/' + seat;
+      if (!usedSeats.has(key)) {
+        usedSeats.add(key);
+        g.tableId = t.id; g.seatIndex = seat; g.status = 'assigned'; g.locked = chance(0.5);
+      }
+    }
+    return g;
+  });
+  const gp = () => 'g-' + int(1, ng);
+  const rules = [];
+  for (let k = int(0, 3); k > 0; k--) rules.push({ id: 'r-' + rules.length, type: chance(0.2) ? 'companion' : 'together', guestIds: [...new Set([gp(), gp(), ...(chance(0.3) ? [gp()] : [])])], categoryId: null, tableId: null, seatIndex: null });
+  for (let k = int(0, 3); k > 0; k--) rules.push({ id: 'r-' + rules.length, type: 'apart', guestIds: [...new Set([gp(), gp()])], categoryId: null, tableId: null, seatIndex: null });
+  for (let k = int(0, 2); k > 0; k--) rules.push({ id: 'r-' + rules.length, type: 'fixed', guestIds: [gp()], categoryId: null, tableId: 't-' + int(1, nt), seatIndex: chance(0.5) ? int(0, 5) : null });
+  if (nc && chance(0.4)) rules.push({ id: 'r-' + rules.length, type: 'category-together', guestIds: [], categoryId: 'c-' + int(1, nc), tableId: null, seatIndex: null });
+  const result = run(`suggestSeating(${JSON.stringify(tables)}, ${JSON.stringify(guests)}, ${JSON.stringify(rules)}, ${JSON.stringify(categories)})`);
+  out.suggestSeating.push({ name: 'nasumično ' + i, input: { tables, categories, guests, rules }, expected: clone(result) });
 }
 
 // ── Zapis ────────────────────────────────────────────────────────────────────
