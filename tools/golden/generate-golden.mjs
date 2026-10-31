@@ -81,7 +81,7 @@ function fuzzRecord(kind) {
 const list = (kind, n) => Array.from({ length: n }, () => fuzzRecord(kind));
 
 // ── Slučajevi ────────────────────────────────────────────────────────────────
-const out = { cleanData: [], migrateTables: [], repairSeating: [], mergeSyncStates: [], cloudDoc: [], floorGeometry: [], dropGuest: [], suggestSeating: [], normalizeRules: [], setRelations: [], ruleStatus: [], categoryRules: [] };
+const out = { cleanData: [], migrateTables: [], repairSeating: [], mergeSyncStates: [], cloudDoc: [], floorGeometry: [], dropGuest: [], suggestSeating: [], normalizeRules: [], setRelations: [], ruleStatus: [], categoryRules: [], planHall: [], placeTable: [], reseat: [] };
 
 // cleanData
 const cleanInputs = [
@@ -359,6 +359,52 @@ for (let i = 0; i < 150; i++) {
   uuidCounter = 0;
   await run(`addTogetherGroups(${JSON.stringify(groups)})`);
   out.categoryRules.push({ name: 'nasumično ' + i, input: { tables: w.tables, categories: w.categories, guests: w.guests, rules: w.rules, categoryId: catId, on, groups }, expected: { category: afterCat, groups: stripSatisfied(ctx.state.rules) } });
+}
+
+
+// Sala: planHall / placeNewTable (js/hall.js) i reseatOverflowGuests (js/state.js)
+function hallWorld() {
+  const tables = [];
+  if (chance(0.5)) tables.push({ id: 'h-1', name: 'Stol mladenaca', shape: 'head', seats: 6, seatsLong: 6, seatsEnd: 0, x: 500, y: 60, rotation: 0 });
+  const regularCount = chance(0.2) ? 0 : int(1, 9);
+  const kind = pick(['round', 'royal', 'u', 'mixed']);
+  for (let k = 0; k < regularCount; k++) {
+    const round = kind === 'round' || (kind === 'mixed' && chance(0.5));
+    const sl = int(2, 8);
+    const base = { id: 't-' + (k + 1), name: chance(0.85) ? 'Stol ' + (k + 1) : pick(['VIP', 'Stol 12x', 'Djeca']), x: int(100, 900), y: int(150, 1200), rotation: kind === 'u' ? 90 : pick([0, 0, 90, 180]) };
+    tables.push(round ? { ...base, shape: 'round', seats: int(4, 12) }
+      : { ...base, shape: pick(['royal', 'royal', 'rectangular', 'square']), seats: sl * 2, seatsLong: sl, seatsEnd: pick([0, 0, 1]) });
+  }
+  const categories = Array.from({ length: int(0, 3) }, (_, k) => ({ id: 'c-' + (k + 1), name: 'K' + (k + 1), color: '#C9A24B', atHeadTable: chance(0.3) }));
+  const guests = Array.from({ length: int(0, 40) }, (_, k) => ({
+    id: 'g-' + (k + 1), name: 'Gost ' + (k + 1), status: chance(0.1) ? 'maybe' : 'unassigned', tableId: null, seatIndex: null,
+    locked: false, categoryId: categories.length && chance(0.5) ? pick(categories).id : null, ...(chance(0.08) ? { party: pick(['couple', 'kumovi']) } : {})
+  }));
+  return { tables, categories, guests };
+}
+const setHall = w => { ctx.state = { settings: {}, tables: clone(w.tables), categories: clone(w.categories), guests: clone(w.guests), rules: [] }; };
+for (let i = 0; i < 120; i++) {
+  const w = hallWorld();
+  const form = { template: pick(['round', 'long', 'u']), guestCount: int(0, 220), perTable: int(2, 14), mode: pick(['rebuild', 'add', 'add']) };
+  setHall(w); uuidCounter = 0;
+  const plan = clone(run(`planHall(${JSON.stringify(form)})`));
+  out.planHall.push({ name: 'nasumično ' + i, input: { ...w, form }, expected: plan });
+
+  const nt = { id: 'new-1', name: 'Novi', shape: pick(['round', 'royal', 'rectangular', 'square']), seats: 8, x: 500, y: 350, rotation: pick([0, 90]) };
+  if (nt.shape !== 'round') { nt.seatsLong = 4; nt.seatsEnd = pick([0, 1]); }
+  setHall(w); uuidCounter = 0;
+  const placed = clone(run(`placeNewTable(${JSON.stringify(nt)})`));
+  out.placeTable.push({ name: 'nasumično ' + i, input: { ...w, table: nt }, expected: placed });
+}
+for (let i = 0; i < 80; i++) {
+  const table = { id: 't-1', name: 'Stol 1', shape: 'round', seats: int(0, 6) };
+  const guests = Array.from({ length: int(0, 8) }, (_, k) => ({
+    id: 'g-' + (k + 1), name: 'G' + (k + 1), status: 'assigned', tableId: chance(0.9) ? 't-1' : 't-2',
+    seatIndex: chance(0.9) ? int(0, 8) : null, locked: chance(0.25)
+  }));
+  ctx.state = { settings: {}, tables: [clone(table)], categories: [], guests: clone(guests), rules: [] };
+  const moved = clone(run(`reseatOverflowGuests(state.tables[0])`)).map(g => g.id);
+  out.reseat.push({ name: 'nasumično ' + i, input: { table, guests }, expected: { guests: clone(ctx.state.guests), moved } });
 }
 
 // ── Zapis ────────────────────────────────────────────────────────────────────
