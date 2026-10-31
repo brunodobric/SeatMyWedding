@@ -34,12 +34,12 @@ async function init() {
   if (typeof splash !== 'undefined') splash.ready();
 }
 
-const SECTIONS = ['sala', 'gosti', 'raspored'];
+// Two screens: Sala (floor plan, tables and seating) and Gosti.
+const SECTIONS = ['sala', 'gosti'];
 
 function renderSection(section) {
   if (section === 'sala') renderSala();
   else if (section === 'gosti') renderGosti();
-  else if (section === 'raspored') renderRaspored();
 }
 
 // A new deploy installs in the background; the open page keeps its version
@@ -181,18 +181,17 @@ function closeOptions() {
 const SCREEN_OPTIONS = {
   sala: () => [
     { id: 'hall', icon: 'sparkles', label: 'Složi salu', run: () => openHallModal(null) },
+    { id: 'add-table', icon: 'plus', label: 'Dodaj stol', run: () => openTableModal(null) },
+    { id: 'unseat-all', icon: 'user-x', label: 'Makni sve goste sa stolova', danger: true,
+      disabled: !state.guests.some(g => g.tableId && !g.locked), run: unseatAllConfirmed },
     { id: 'start-over', icon: 'undo', label: 'Kreni ispočetka', danger: true, run: startOver }
   ],
   gosti: () => [
     { id: 'categories', icon: 'palette', label: 'Kategorije', run: openCategoryManager },
     { id: 'delete-guests', icon: 'trash', label: 'Obriši sve goste', danger: true, disabled: !state.guests.length, run: deleteAllGuestsConfirmed }
   ],
-  raspored: () => [
-    { id: 'unseat-all', icon: 'user-x', label: 'Makni sve goste sa stolova', danger: true,
-      disabled: !state.guests.some(g => g.tableId && !g.locked), run: unseatAllConfirmed }
-  ]
 };
-const SCREEN_NAMES = { sala: 'Sala', gosti: 'Gosti', raspored: 'Raspored' };
+const SCREEN_NAMES = { sala: 'Sala', gosti: 'Gosti' };
 
 function renderOptions() {
   const names = document.getElementById('opt-full-names');
@@ -385,7 +384,7 @@ function showOnboarding() {
       if (rows.length) await importGuestRows(rows, null);
       modal.style.display = 'none';
       renderAll();
-      navigateTo(rows.length ? 'raspored' : 'gosti');
+      navigateTo(rows.length ? 'sala' : 'gosti');
     }
   }
 }
@@ -406,7 +405,7 @@ function guideSteps() {
   return [
     { nav: 'sala', label: 'Složi salu', done: state.tables.some(t => !isHeadTable(t)) },
     { nav: 'gosti', label: 'Dodaj goste', done: state.guests.length > 0 },
-    { nav: 'raspored', label: 'Predloži raspored', done: state.guests.some(g => g.status === 'assigned') }
+    { nav: 'sala', label: 'Predloži raspored', done: state.guests.some(g => g.status === 'assigned') }
   ];
 }
 
@@ -431,31 +430,6 @@ function renderGuide() {
 }
 
 // ── SALA ───────────────────────────────────────────────────────────────────────
-
-function renderSala() {
-  renderCapacityBar();
-  renderTableList();
-}
-
-function renderCapacityBar() {
-  const el = document.getElementById('capacity-bar');
-  if (!el) return;
-  const c = capacityInfo();
-  let status;
-  if (state.tables.length === 0) status = '<span class="cap-status">Još nema stolova</span>';
-  else if (c.missing > 0) status = `<span class="cap-status bad">${icon('alert')} Fali ${c.missing} ${c.missing === 1 ? 'mjesto' : 'mjesta'}</span>`;
-  else if (c.guests > 0) status = `<span class="cap-status ok">${icon('check')} Dovoljno mjesta${c.regularSeats - c.regularGuests > 0 ? ` (${c.regularSeats - c.regularGuests} slobodno)` : ''}</span>`;
-  else status = '';
-  el.innerHTML = `
-    <div class="cap-numbers">
-      <span><strong>${c.guests}</strong> ${c.guests === 1 ? 'gost' : 'gostiju'}</span>
-      <span class="cap-dot">·</span>
-      <span><strong>${c.seats}</strong> mjesta</span>
-      ${status}
-    </div>
-    <button class="btn-primary btn-sm" id="btn-open-hall">${icon('sparkles')} ${c.missing > 0 ? 'Dodaj stolove' : state.tables.length > 1 ? 'Složi salu' : 'Složi salu automatski'}</button>`;
-  document.getElementById('btn-open-hall').addEventListener('click', () => openHallModal(c.missing > 0 ? 'add' : null));
-}
 
 function templateArt(key) {
   const g = (inner) => `<svg class="tpl-art" viewBox="0 0 120 80" aria-hidden="true">${inner}</svg>`;
@@ -546,34 +520,6 @@ function setupHallModal() {
       () => applyHallPlan(planHall(form)));
     document.getElementById('modal-hall').style.display = 'none';
     if (floorPlanAssign) floorPlanAssign._fitted = false;
-  });
-}
-
-function renderTableList() {
-  const list = document.getElementById('table-list');
-  if (!list) return;
-  if (state.tables.length === 0) {
-    list.innerHTML = `<div class="empty-state"><p>Još nema stolova.</p><button class="btn-primary" id="btn-empty-hall">${icon('sparkles')} Složi salu automatski</button></div>`;
-    document.getElementById('btn-empty-hall').addEventListener('click', () => openHallModal(null));
-    return;
-  }
-  list.innerHTML = state.tables.map(t => {
-    const assigned = state.guests.filter(g => g.tableId === t.id).length;
-    const shapeIcon = icon({ round: 'round', square: 'square', rectangular: 'rect', royal: 'royal', head: 'toast' }[t.shape] || 'square');
-    return `<div class="table-row" data-id="${t.id}">
-      <span class="table-shape-icon">${shapeIcon}</span>
-      <div class="table-row-info">
-        <span class="table-row-name">${esc(t.name)}</span>
-        <span class="table-row-count">${assigned}/${t.seats} mjesta</span>
-      </div>
-      <button class="btn-icon" data-edit="${t.id}" title="Uredi">${icon('edit')}</button>
-    </div>`;
-  }).join('');
-  list.querySelectorAll('[data-edit]').forEach(btn => {
-    btn.addEventListener('click', (e) => { e.stopPropagation(); openTableModal(btn.dataset.edit); });
-  });
-  list.querySelectorAll('.table-row').forEach(row => {
-    row.addEventListener('click', () => { openTableModal(row.dataset.id); });
   });
 }
 
@@ -714,14 +660,8 @@ function setupTableModal() {
     renderSala();
   });
 
-  document.getElementById('btn-add-table').addEventListener('click', () => openTableModal(null));
   document.getElementById('btn-add-table-fp').addEventListener('click', () => openTableModal(null));
-
-  document.getElementById('btn-arrange-from-sala').addEventListener('click', () => {
-    rasporedView = 'floor';
-    setArranging(true);
-    navigateTo('raspored');
-  });
+  document.getElementById('btn-hall-fp').addEventListener('click', () => openHallModal(null));
 
   document.getElementById('btn-snap-grid').addEventListener('click', () => {
     if (!floorPlanAssign) return;
@@ -815,9 +755,8 @@ function renderGuestList() {
   list.innerHTML = guests.map(g => {
     const cat = state.categories.find(c => c.id === g.categoryId);
     const table = g.tableId ? state.tables.find(t => t.id === g.tableId) : null;
-    const statusLabel = g.status === 'assigned' ? `<span class="status-badge assigned">${esc((table ? table.name : undefined) || '?')}</span>`
-      : g.status === 'maybe' ? '<span class="status-badge maybe">Možda</span>'
-      : '<span class="status-badge unassigned">Bez mjesta</span>';
+    const statusLabel = g.status === 'maybe' ? '<span class="status-badge maybe">Možda</span>'
+      : guestSeatSelect(g, table);
     return `<div class="guest-row${guestHasViolation(g) ? ' violated' : ''}" data-id="${g.id}">
       <div class="guest-row-main">
         <div class="guest-row-text">
@@ -833,8 +772,33 @@ function renderGuestList() {
     </div>`;
   }).join('');
   list.querySelectorAll('.guest-row').forEach(row => {
-    row.addEventListener('click', () => openGuestModal(row.dataset.id));
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.seat-select')) return;
+      openGuestModal(row.dataset.id);
+    });
   });
+  list.querySelectorAll('.seat-select').forEach(sel => sel.addEventListener('change', async () => {
+    const guestId = sel.dataset.guest;
+    if (!sel.value) { await unassignGuest(guestId); return; }
+    const seat = firstFreeSeat(state.tables.find(t => t.id === sel.value));
+    if (seat < 0) { alert('Za tim stolom više nema mjesta.'); renderGuestList(); return; }
+    await assignGuest(guestId, sel.value, seat);
+  }));
+}
+
+// The guest's table as a badge that opens a picker: choose a table or “Bez mjesta”.
+function guestSeatSelect(g, table) {
+  const used = {};
+  state.guests.forEach(x => { if (x.tableId) used[x.tableId] = (used[x.tableId] || 0) + 1; });
+  const seated = g.status === 'assigned' && table;
+  return `<select class="status-badge seat-select ${seated ? 'assigned' : 'unassigned'}" data-guest="${g.id}" aria-label="Stol za: ${esc(g.name)}">
+    <option value="">Bez mjesta</option>
+    ${state.tables.map(t => {
+      const mine = seated && t.id === table.id;
+      const left = t.seats - (used[t.id] || 0);
+      return `<option value="${t.id}"${mine ? ' selected' : ''}${!mine && left <= 0 ? ' disabled' : ''}>${esc(t.name)}${mine ? '' : ` (${left} slob.)`}</option>`;
+    }).join('')}
+  </select>`;
 }
 
 function setupGostiEvents() {
@@ -1196,7 +1160,7 @@ function setupGuestModal() {
 let rasporedSearch = '';
 let rasporedView = 'floor';
 let selectedGuestForAssign = null;
-// Jedan tlocrt dvorane: u Rasporedu se prekidačem „Premjesti stolove” prebacuje
+// Jedan tlocrt dvorane (tab Sala): prekidač „Premjesti stolove” prebacuje ga
 // sa smještanja gostiju na slaganje stolova.
 let arrangingTables = false;
 
@@ -1212,6 +1176,8 @@ function setArranging(on) {
     floorPlanAssign.setMode(arrangingTables ? 'edit' : 'assign');
   }
 }
+
+function renderSala() { renderRaspored(); }
 
 function renderRaspored() {
   document.querySelector('.raspored-layout').dataset.view = rasporedView;
@@ -1233,9 +1199,7 @@ function renderRaspored() {
     floorPlanAssign.setShowFullNames(!!state.settings.showFullNames);
     floorPlanAssign.update(state.tables, state.guests, state.categories, getViolatedTableIds());
   } else if (rasporedView === 'tables') {
-    renderTablesView();  // replaces the guests-view skeleton, if any
-  } else {
-    renderGuestsView();
+    renderTablesView();
   }
 }
 
@@ -1262,11 +1226,9 @@ function renderSeatingProgress() {
       guestViolationFilter = true;
       navigateTo('gosti');
     } else if (btn.dataset.progress === 'capacity') {
-      navigateTo('sala');
       openHallModal('add');
     } else {
       const panel = document.getElementById('unassigned-panel');
-      if (rasporedView === 'guests') { rasporedView = 'floor'; renderRaspored(); }
       panel.scrollIntoView({ block: 'nearest' });
       panel.classList.remove('flash');
       void panel.offsetWidth;
@@ -1341,11 +1303,14 @@ function firstFreeSeat(table) {
 function renderTablesView() {
   const container = document.getElementById('raspored-list');
   if (state.tables.length === 0) {
-    container.innerHTML = '<div class="empty-state"><p>Još nema stolova. Dodaj ih u Sali.</p></div>';
+    container.innerHTML = `<div class="empty-state"><p>Još nema stolova.</p><button class="btn-primary" id="btn-empty-hall">${icon('sparkles')} Složi salu automatski</button></div>`;
+    document.getElementById('btn-empty-hall').addEventListener('click', () => openHallModal(null));
     return;
   }
   const violated = getViolatedTableIds();
-  container.innerHTML = `<div class="table-cards">${state.tables.map(t => {
+  const tables = [...state.tables].sort((a, b) =>
+    (isHeadTable(b) - isHeadTable(a)) || a.name.localeCompare(b.name, 'hr', { numeric: true }));
+  container.innerHTML = `<div class="table-cards">${tables.map(t => {
     const guests = state.guests.filter(g => g.tableId === t.id).sort((a, b) => (a.seatIndex || 0) - (b.seatIndex || 0));
     const free = t.seats - guests.length;
     const addBtn = free > 0
@@ -1355,6 +1320,7 @@ function renderTablesView() {
       <div class="table-card-head">
         <h3>${esc(t.name)}</h3>
         <span class="table-card-count${free === 0 ? ' full' : ''}">${guests.length}/${t.seats}</span>
+        <button class="btn-icon table-card-edit" data-edit-table="${t.id}" title="Uredi stol">${icon('edit')}</button>
       </div>
       <ol class="table-card-guests">${guests.map(g => {
         const cat = state.categories.find(c => c.id === g.categoryId);
@@ -1367,7 +1333,11 @@ function renderTablesView() {
       }).join('')}</ol>
       ${addBtn}
     </div>`;
-  }).join('')}</div>`;
+  }).join('')}
+    <button class="table-card table-card-new" id="btn-table-card-new">${icon('plus')} Dodaj stol</button>
+  </div>`;
+  container.querySelectorAll('[data-edit-table]').forEach(btn => btn.addEventListener('click', () => openTableModal(btn.dataset.editTable)));
+  document.getElementById('btn-table-card-new').addEventListener('click', () => openTableModal(null));
   container.querySelectorAll('[data-guest]').forEach(li => {
     li.addEventListener('mousedown', e => armGuestDrag(e, li.dataset.guest, true));
     li.addEventListener('touchstart', e => armGuestDrag(e, li.dataset.guest, true), { passive: true });
@@ -1387,61 +1357,6 @@ function renderTablesView() {
     } else {
       showAssignSeatModal(table.id, seat);
     }
-  }));
-}
-
-function renderGuestsView() {
-  const container = document.getElementById('raspored-list');
-  if (!document.getElementById('guests-view-search')) {
-    container.innerHTML = `<input id="guests-view-search" class="form-control guests-view-search" type="search" placeholder="Pretraži goste...">
-      <div id="guests-view-table"></div>`;
-    document.getElementById('guests-view-search').addEventListener('input', e => {
-      rasporedSearch = e.target.value;
-      document.getElementById('raspored-search').value = rasporedSearch;
-      renderGuestsView();
-    });
-  }
-  document.getElementById('guests-view-search').value = rasporedSearch;
-  const wrap = document.getElementById('guests-view-table');
-  let guests = [...state.guests];
-  if (rasporedSearch) {
-    const q = rasporedSearch.toLowerCase();
-    guests = guests.filter(g => g.name.toLowerCase().includes(q));
-  }
-  guests.sort((a, b) => a.name.localeCompare(b.name));
-  if (guests.length === 0) {
-    wrap.innerHTML = '<div class="empty-state"><p>Nema gostiju.</p></div>';
-    return;
-  }
-  const used = {};
-  state.guests.forEach(g => { if (g.tableId) used[g.tableId] = (used[g.tableId] || 0) + 1; });
-  wrap.innerHTML = `<table class="pregled-table">
-    <thead><tr><th>Gost</th><th class="hide-sm">Kategorija</th><th>Stol</th></tr></thead>
-    <tbody>${guests.map(g => {
-      const cat = state.categories.find(c => c.id === g.categoryId);
-      const select = g.status === 'maybe'
-        ? '<span class="status-badge maybe">Možda</span>'
-        : `<select class="form-control table-select" data-guest="${g.id}">
-            <option value="">— bez mjesta —</option>
-            ${state.tables.map(t => {
-              const left = t.seats - (used[t.id] || 0);
-              const mine = g.tableId === t.id;
-              return `<option value="${t.id}"${mine ? ' selected' : ''}${!mine && left <= 0 ? ' disabled' : ''}>${esc(t.name)}${mine ? '' : ` (${left} slob.)`}</option>`;
-            }).join('')}
-          </select>`;
-      return `<tr>
-        <td>${cat ? `<span class="chip-dot" style="background:${cat.color}"></span> ` : ''}${esc(g.name)}${g.locked ? ` <span class="lock-badge">${icon('lock')}</span>` : ''}</td>
-        <td class="hide-sm">${cat ? `<span class="cat-chip" style="background:${cat.color}">${esc(cat.name)}</span>` : '—'}</td>
-        <td>${select}</td>
-      </tr>`;
-    }).join('')}</tbody>
-  </table>`;
-  wrap.querySelectorAll('.table-select').forEach(sel => sel.addEventListener('change', async () => {
-    const tableId = sel.value;
-    if (!tableId) { await unassignGuest(sel.dataset.guest); return; }
-    const seat = firstFreeSeat(state.tables.find(t => t.id === tableId));
-    if (seat < 0) { alert('Za tim stolom više nema mjesta.'); renderGuestsView(); return; }
-    await assignGuest(sel.dataset.guest, tableId, seat);
   }));
 }
 

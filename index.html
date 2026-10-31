@@ -253,32 +253,57 @@
         <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg></span>
         <span>Gosti</span>
       </button>
-      <button class="nav-item" data-nav="raspored">
-        <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-chair"/></svg></span>
-        <span>Raspored</span>
-      </button>
     </nav>
 
     <!-- ── Main content ──────────────────────────────────────────────────── -->
     <main id="main-content">
 
-      <!-- ═══ SALA ═══════════════════════════════════════════════════════ -->
+      <!-- ═══ SALA: tlocrt, stolovi i raspored sjedenja ════════════════════ -->
       <section id="section-sala" class="section active">
         <div class="section-header">
-          <h2 class="section-title">Postavljanje sale</h2>
+          <h2 class="section-title">Sala</h2>
         </div>
-        <div id="capacity-bar" class="capacity-bar"></div>
-
-        <div class="sala-layout">
-          <div class="sala-panel">
-            <div class="sala-panel-header">
-              <span class="sala-panel-title">Stolovi</span>
-              <div class="sala-panel-actions">
-                <button class="btn-secondary btn-sm" id="btn-arrange-from-sala" title="Premjesti stolove na tlocrtu"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg> Tlocrt</button>
-                <button class="btn-secondary btn-sm" id="btn-add-table">+ Dodaj stol</button>
+        <div class="raspored-topbar">
+          <div id="seating-progress" class="seating-progress"></div>
+          <button class="btn-primary" id="btn-suggest-seating"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Predloži<span class="hide-xs">raspored</span></button>
+        </div>
+        <div class="raspored-toolbar">
+          <div class="view-switch" role="tablist">
+            <button class="view-btn active" data-view="floor"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg> Tlocrt</button>
+            <button class="view-btn" data-view="tables"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Popis stolova</button>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn-icon floor-only hide-touch" id="btn-zoom-in-assign" title="Povećaj"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
+            <button class="btn-icon floor-only hide-touch" id="btn-zoom-out-assign" title="Smanji"><svg class="ic" aria-hidden="true"><use href="#i-minus"/></svg></button>
+            <button class="btn-icon floor-only" id="btn-zoom-reset-assign" title="Resetiraj"><svg class="ic" aria-hidden="true"><use href="#i-focus"/></svg></button>
+            <button class="btn-secondary" id="btn-share" title="Podijeli popis „Gdje sjedim”"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span class="hide-sm">Podijeli</span></button>
+            <button class="btn-secondary" id="btn-print" title="Ispiši ili spremi PDF"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> <span class="hide-sm">Ispis</span></button>
+          </div>
+        </div>
+        <div class="raspored-layout" data-view="floor">
+          <!-- Guests without a seat -->
+          <div class="unassigned-panel" id="unassigned-panel">
+            <div class="unassigned-header">
+              <h3>Bez mjesta <span id="unassigned-count"></span></h3>
+              <input id="raspored-search" class="form-control" type="search" placeholder="Pretraži...">
+              <p class="unassigned-hint" id="unassigned-hint"></p>
+            </div>
+            <div id="unassigned-list"></div>
+          </div>
+          <div class="raspored-main">
+            <div class="raspored-canvas floor-only">
+              <div class="floor-plan-toolbar fp-arrange-bar">
+                <button class="btn-secondary" id="btn-arrange" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-hall"/></svg> Premjesti stolove</button>
+                <button class="btn-secondary arrange-only" id="btn-snap-grid"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg> Mreža</button>
+                <button class="btn-secondary arrange-only" id="btn-add-table-fp">+ Dodaj stol</button>
+                <button class="btn-secondary arrange-only" id="btn-hall-fp"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Složi salu</button>
+                <span class="fp-arrange-hint arrange-only">Povuci stol na novo mjesto, dodirni ga za uređivanje.</span>
+              </div>
+              <div class="floor-plan-svg-wrap">
+                <svg id="fp-assign-svg" class="floor-plan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
               </div>
             </div>
-            <div id="table-list"></div>
+            <div id="raspored-list" class="raspored-list"></div>
           </div>
         </div>
       </section>
@@ -313,55 +338,6 @@
         </div>
       </section>
 
-      <!-- ═══ RASPORED ════════════════════════════════════════════════════ -->
-      <section id="section-raspored" class="section">
-        <div class="section-header">
-          <h2 class="section-title">Raspored sjedenja</h2>
-        </div>
-        <div class="raspored-topbar">
-          <div id="seating-progress" class="seating-progress"></div>
-          <button class="btn-primary" id="btn-suggest-seating"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Predloži<span class="hide-xs">raspored</span></button>
-        </div>
-        <div class="raspored-toolbar">
-          <div class="view-switch" role="tablist">
-            <button class="view-btn active" data-view="floor"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg> Tlocrt</button>
-            <button class="view-btn" data-view="tables"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Po stolovima</button>
-            <button class="view-btn" data-view="guests"><svg class="ic" aria-hidden="true"><use href="#i-user"/></svg> Po gostima</button>
-          </div>
-          <div class="toolbar-right">
-            <button class="btn-icon floor-only hide-touch" id="btn-zoom-in-assign" title="Povećaj"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
-            <button class="btn-icon floor-only hide-touch" id="btn-zoom-out-assign" title="Smanji"><svg class="ic" aria-hidden="true"><use href="#i-minus"/></svg></button>
-            <button class="btn-icon floor-only" id="btn-zoom-reset-assign" title="Resetiraj"><svg class="ic" aria-hidden="true"><use href="#i-focus"/></svg></button>
-            <button class="btn-secondary" id="btn-share" title="Podijeli popis „Gdje sjedim”"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> <span class="hide-sm">Podijeli</span></button>
-            <button class="btn-secondary" id="btn-print" title="Ispiši ili spremi PDF"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> <span class="hide-sm">Ispis</span></button>
-          </div>
-        </div>
-        <div class="raspored-layout" data-view="floor">
-          <!-- Guests without a seat -->
-          <div class="unassigned-panel" id="unassigned-panel">
-            <div class="unassigned-header">
-              <h3>Bez mjesta <span id="unassigned-count"></span></h3>
-              <input id="raspored-search" class="form-control" type="search" placeholder="Pretraži...">
-              <p class="unassigned-hint" id="unassigned-hint"></p>
-            </div>
-            <div id="unassigned-list"></div>
-          </div>
-          <div class="raspored-main">
-            <div class="raspored-canvas floor-only">
-              <div class="floor-plan-toolbar fp-arrange-bar">
-                <button class="btn-secondary" id="btn-arrange" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-hall"/></svg> Premjesti stolove</button>
-                <button class="btn-secondary arrange-only" id="btn-snap-grid"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg> Mreža</button>
-                <button class="btn-secondary arrange-only" id="btn-add-table-fp">+ Dodaj stol</button>
-                <span class="fp-arrange-hint arrange-only">Povuci stol na novo mjesto, dodirni ga za uređivanje.</span>
-              </div>
-              <div class="floor-plan-svg-wrap">
-                <svg id="fp-assign-svg" class="floor-plan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
-              </div>
-            </div>
-            <div id="raspored-list" class="raspored-list"></div>
-          </div>
-        </div>
-      </section>
 
     </main>
   </div><!-- /app-body -->
@@ -376,10 +352,6 @@
       <button class="bottom-nav-item" data-nav="gosti">
         <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg></span>
         <span>Gosti</span>
-      </button>
-      <button class="bottom-nav-item" data-nav="raspored">
-        <span class="nav-icon"><svg class="ic" aria-hidden="true"><use href="#i-chair"/></svg></span>
-        <span>Raspored</span>
       </button>
     </div>
   </nav>
