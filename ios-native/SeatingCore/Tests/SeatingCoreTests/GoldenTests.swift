@@ -125,6 +125,38 @@ final class GoldenTests: XCTestCase {
         }
     }
 
+    func testDropGuest() throws {
+        let cases = try load("dropGuest")
+        XCTAssertGreaterThan(cases.count, 50)
+        for c in cases {
+            let input = try XCTUnwrap(c.input.objectValue)
+            var data = WeddingData(tables: records(input["tables"]), guests: records(input["guests"]))
+            let guestId = try XCTUnwrap(input["guestId"]?.stringValue)
+            let t = try XCTUnwrap(input["target"]?.objectValue)
+            let target: DropTarget
+            switch t["kind"]?.stringValue {
+            case "seat":
+                target = .seat(tableId: t["tableId"]?.stringValue ?? "", seatIndex: Int(t["seatIndex"]?.numberValue ?? 0))
+            case "table":
+                target = .table(tableId: t["tableId"]?.stringValue ?? "")
+            default:
+                target = .unseat
+            }
+            let result = data.dropGuest(guestId, onto: target)
+            data.place(result.moves)
+
+            let expected = try XCTUnwrap(c.expected.objectValue)
+            XCTAssertEqual(data.guests.map { $0.json }, expected["guests"]?.arrayValue, "dropGuest gosti: \(c.name)")
+            let notices = (expected["notices"]?.arrayValue ?? []).compactMap { $0.objectValue }
+            XCTAssertEqual(notices.count, result.notice == nil ? 0 : 1, "dropGuest poruke: \(c.name)")
+            if let n = result.notice, let want = notices.first {
+                XCTAssertEqual(n.message, want["message"]?.stringValue, "dropGuest poruka: \(c.name)")
+                XCTAssertEqual(n.isError, want["isError"]?.isTruthy ?? false, "dropGuest greška: \(c.name)")
+            }
+            XCTAssertEqual(result.undoMessage, expected["undoMessage"]?.stringValue, "dropGuest poništi: \(c.name)")
+        }
+    }
+
     func testCloudDoc() throws {
         let cases = try load("cloudDoc")
         for c in cases {

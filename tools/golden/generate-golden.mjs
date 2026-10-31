@@ -81,7 +81,7 @@ function fuzzRecord(kind) {
 const list = (kind, n) => Array.from({ length: n }, () => fuzzRecord(kind));
 
 // ── Slučajevi ────────────────────────────────────────────────────────────────
-const out = { cleanData: [], migrateTables: [], repairSeating: [], mergeSyncStates: [], cloudDoc: [], floorGeometry: [] };
+const out = { cleanData: [], migrateTables: [], repairSeating: [], mergeSyncStates: [], cloudDoc: [], floorGeometry: [], dropGuest: [] };
 
 // cleanData
 const cleanInputs = [
@@ -224,6 +224,48 @@ for (let i = 0; i < geoTables.length; i += 5) {
   out.floorGeometry.push({ name: 'skupina ' + i, input: { tables: group }, expected: geometry(group) });
 }
 out.floorGeometry.push({ name: 'nema stolova', input: { tables: [] }, expected: geometry([]) });
+
+// dropGuest: smještanje gosta (js/guest-drag.js) sa zamjenom mjesta
+for (const f of ['hall.js', 'guest-drag.js']) {
+  vm.runInContext(fs.readFileSync(path.join(root, 'js', f), 'utf8'), ctx, { filename: f });
+}
+function extractFunction(src, name) {
+  const start = src.indexOf('function ' + name + '(');
+  let depth = 0, i = src.indexOf('{', start);
+  for (let j = i; j < src.length; j++) {
+    if (src[j] === '{') depth++;
+    if (src[j] === '}' && --depth === 0) return src.slice(start, j + 1);
+  }
+  throw new Error('nema funkcije ' + name);
+}
+vm.runInContext(extractFunction(fs.readFileSync(path.join(root, 'js', 'app.js'), 'utf8'), 'firstFreeSeat'), ctx);
+let notices = [], undoMessage = null;
+ctx.showToast = (message, isError) => { notices.push({ message, isError: !!isError }); };
+ctx.withUndo = async (message, action) => { undoMessage = message; return action(); };
+ctx.emit = () => {};
+for (let i = 0; i < 150; i++) {
+  const nt = int(1, 4);
+  const tables = Array.from({ length: nt }, (_, k) => ({ id: 't-' + (k + 1), name: 'Stol ' + (k + 1), shape: k === 0 && chance(0.4) ? 'head' : 'round', seats: int(1, 4) }));
+  const guests = Array.from({ length: int(1, 9) }, (_, k) => {
+    const seated = chance(0.6);
+    const g = { id: 'g-' + (k + 1), name: 'Gost ' + (k + 1), status: 'unassigned', tableId: null, seatIndex: null, locked: chance(0.2) };
+    if (seated) { g.tableId = 't-' + int(1, nt); g.seatIndex = int(0, 3); g.status = 'assigned'; }
+    if (chance(0.15)) g.party = pick(['couple', 'kumovi']);
+    return g;
+  });
+  const gid = chance(0.95) ? pick(guests).id : 'g-404';
+  const kind = pick(['seat', 'seat', 'table', 'unseat']);
+  const tid = chance(0.95) ? 't-' + int(1, nt) : 't-404';
+  const target = kind === 'seat' ? { kind, tableId: tid, seatIndex: int(0, 3) } : kind === 'table' ? { kind, tableId: tid } : { kind };
+  ctx.state = { settings: {}, tables: clone(tables), categories: [], guests: clone(guests), rules: [] };
+  notices = []; undoMessage = null;
+  await run(`dropGuest(${JSON.stringify(gid)}, ${JSON.stringify(target)})`);
+  out.dropGuest.push({
+    name: 'nasumično ' + i,
+    input: { tables, guests, guestId: gid, target },
+    expected: { guests: clone(ctx.state.guests), notices, undoMessage }
+  });
+}
 
 // ── Zapis ────────────────────────────────────────────────────────────────────
 const text = JSON.stringify(out, null, 1) + '\n';
