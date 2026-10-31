@@ -14,6 +14,7 @@ struct TableSheet: View {
     let tableId: String
     @State private var pickingSeat: SeatRef?
     @State private var actionsFor: Record?
+    @State private var editing = false
 
     private struct SeatRef: Identifiable { let id: Int }
 
@@ -60,8 +61,11 @@ struct TableSheet: View {
             .navigationTitle(table?.string("name") ?? "Stol")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Uredi stol") { editing = true } }
                 ToolbarItem(placement: .confirmationAction) { Button("Gotovo") { dismiss() } }
             }
+            .sheet(isPresented: $editing) { TableEditView(tableId: tableId) }
+            .onChange(of: table == nil) { _, gone in if gone { dismiss() } }
             .sheet(item: $pickingSeat) { seat in
                 GuestPicker { guestId in
                     store.drop(guestId, onto: .seat(tableId: tableId, seatIndex: seat.id))

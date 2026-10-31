@@ -279,4 +279,103 @@ final class WeddingStore {
         t["y"] = .number(y.rounded())
         put("tables", [t])
     }
+
+    /// Oblik stola kao u obrascu za stol na webu (broj mjesta po obliku).
+    struct TableForm {
+        var name: String
+        var shape: String
+        var seats = 8
+        var seatsLong = 4
+        var seatsEnd = 0
+        var rotated = false
+    }
+
+    func tableRecord(_ form: TableForm, existing: Record?) -> Record {
+        var seats = form.seats, seatsLong: Int?, seatsEnd: Int?
+        switch form.shape {
+        case "round":
+            seats = max(1, form.seats)
+        case "square":
+            seatsLong = max(1, form.seatsLong); seatsEnd = seatsLong; seats = seatsLong! * 4
+        case "head":
+            var sl = max(0, form.seatsLong); let se = max(0, form.seatsEnd)
+            if sl + se * 2 < 1 { sl = 1 }
+            seatsLong = sl; seatsEnd = se; seats = sl + se * 2
+        default:
+            seatsLong = max(1, form.seatsLong); seatsEnd = max(0, form.seatsEnd); seats = seatsLong! * 2 + seatsEnd! * 2
+        }
+        var t = existing ?? Record(["id": .string(UUID().uuidString.lowercased()), "x": .number(500), "y": .number(350)])
+        let trimmed = form.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        t["name"] = .string(trimmed.isEmpty ? "Stol" : trimmed)
+        t["shape"] = .string(form.shape)
+        t["seats"] = .number(Double(seats))
+        t["seatsLong"] = seatsLong.map { .number(Double($0)) }
+        t["seatsEnd"] = seatsEnd.map { .number(Double($0)) }
+        t["rotation"] = .number(form.shape != "round" && form.shape != "square" && form.rotated ? 90 : 0)
+        return t
+    }
+
+    /// Sprema novi ili izmijenjeni stol; gosti na ukinutim mjestima dobivaju druga mjesta.
+    func saveTable(_ form: TableForm, id: String?) {
+        let existing = tables.first { $0.id == id }
+        var table = tableRecord(form, existing: existing)
+        if existing == nil { table = data.placeNewTable(table) }
+        put("tables", [table])
+        var wedding = data
+        let moved = wedding.reseatOverflowGuests(table: table)
+        if !moved.isEmpty { put("guests", moved) }
+    }
+
+    /// Briše stol (osim stola mladenaca): gosti ostaju bez mjesta, pravila za taj stol nestaju.
+    func deleteTable(_ id: String) {
+        guard let table = tables.first(where: { $0.id == id }), table.string("shape") != "head" else { return }
+        let seated = guests.filter { $0.string("tableId") == id }
+        let gone = rules.filter { $0.string("tableId") == id }
+        let name = table.string("name") ?? "Stol"
+        remove("tables", ids: [id])
+        let freed = seated.map { g -> Record in
+            var g = g
+            g["tableId"] = .null; g["seatIndex"] = .null; g["status"] = .string("unassigned")
+            return g
+        }
+        if !freed.isEmpty { put("guests", freed) }
+        if !gone.isEmpty { remove("rules", ids: gone.compactMap { $0.id }) }
+        show("Obrisano: \(name)", undo: { [weak self] in
+            self?.put("tables", [table])
+            if !seated.isEmpty { self?.put("guests", seated) }
+            if !gone.isEmpty { self?.put("rules", gone) }
+        })
+    }
+
+    func planHall(template: HallTemplate, guestCount: Int, perTable: Int, mode: HallMode) -> HallPlan {
+        data.planHall(template: template, guestCount: guestCount, perTable: perTable, mode: mode)
+    }
+
+    func currentTemplate() -> HallTemplate { data.currentHallTemplateForUI() }
+
+    /// Primjenjuje plan sale ("Složi salu") uz mogućnost poništavanja.
+    func applyHallPlan(_ plan: HallPlan) {
+        let removedSet = Set(plan.remove)
+        let oldTables = tables.filter { removedSet.contains($0.id ?? "") }
+        let seated = guests.filter { removedSet.contains($0.string("tableId") ?? "") }
+        let oldRules = rules
+        if !plan.remove.isEmpty { remove("tables", ids: plan.remove) }
+        if !seated.isEmpty {
+            put("guests", seated.map { g in
+                var g = g
+                g["tableId"] = .null; g["seatIndex"] = .null; g["status"] = .string("unassigned")
+                return g
+            })
+        }
+        if !plan.create.isEmpty { put("tables", plan.create) }
+        applyRules(data.normalizeRules(rules))
+        let createdIds = plan.create.compactMap { $0.id }
+        show(seated.isEmpty ? "Sala je složena" : "Sala je složena, \(seated.count) gostiju je bez mjesta", undo: { [weak self] in
+            guard let self else { return }
+            if !createdIds.isEmpty { self.remove("tables", ids: createdIds) }
+            if !oldTables.isEmpty { self.put("tables", oldTables) }
+            if !seated.isEmpty { self.put("guests", seated) }
+            self.applyRules(oldRules)
+        })
+    }
 }

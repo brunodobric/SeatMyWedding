@@ -205,6 +205,8 @@ extension WeddingData {
         return isTurned(t) ? (hh, hw) : (hw, hh)
     }
 
+    public func currentHallTemplateForUI() -> HallTemplate { currentHallTemplate() }
+
     func currentHallTemplate() -> HallTemplate {
         let regular = tables.filter { !$0.isHeadTable }
         if regular.isEmpty || regular.contains(where: { $0.string("shape") == "round" }) { return .round }

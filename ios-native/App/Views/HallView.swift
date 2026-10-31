@@ -16,6 +16,8 @@ struct HallView: View {
     @State private var fitted = false
     @State private var arranging = false
     @State private var openTable: TableRef?
+    @State private var addingTable = false
+    @State private var settingUpHall = false
     @State private var dragMode: DragMode?
     @State private var movingTable: String?
     @State private var moveDelta: CGSize = .zero
@@ -30,7 +32,10 @@ struct HallView: View {
                         ContentUnavailableView {
                             Label("Još nema stolova", systemImage: "square.grid.3x3")
                         } description: {
-                            Text("Uvezi sigurnosnu kopiju na kartici Gosti. Slaganje sale dolazi uskoro.")
+                            Text("Složi salu po predlošku ili dodaj stolove jedan po jedan.")
+                        } actions: {
+                            Button("Složi salu") { settingUpHall = true }.buttonStyle(.borderedProminent).tint(Theme.gold)
+                            Button("Dodaj stol") { addingTable = true }
                         }
                     } else {
                         canvas
@@ -46,15 +51,24 @@ struct HallView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button(arranging ? "Gotovo" : "Premjesti stolove") { arranging.toggle() }
-                        .font(Theme.ui(15))
+                    Menu {
+                        Button("Dodaj stol", systemImage: "plus") { addingTable = true }
+                        Button("Složi salu", systemImage: "square.grid.3x3") { settingUpHall = true }
+                        Button(arranging ? "Gotovo s premještanjem" : "Premjesti stolove", systemImage: "arrow.up.and.down.and.arrow.left.and.right") {
+                            arranging.toggle()
+                        }
                         .disabled(store.tables.isEmpty)
+                    } label: {
+                        Image(systemName: arranging ? "checkmark.circle.fill" : "ellipsis.circle")
+                    }
                 }
             }
             .sheet(item: $openTable) { ref in
                 TableSheet(tableId: ref.id)
                     .presentationDetents([.medium, .large])
             }
+            .sheet(isPresented: $addingTable) { TableEditView(tableId: nil) }
+            .sheet(isPresented: $settingUpHall) { HallSetupView() }
         }
     }
 
