@@ -428,6 +428,17 @@ const OB_PARTY_FIELDS = [
   { id: 'ob-kum-plus', slot: 'kum-plus', seat: 5 }
 ];
 
+// What someone of the wedding party is, for the export and the printouts
+// ('' for guests). Older records have no slot, only couple / kumovi.
+const PARTY_ROLES = {
+  bride: 'Mladenka', groom: 'Mladoženja', kuma: 'Kuma', kum: 'Kum',
+  'kuma-plus': 'Pratnja kume', 'kum-plus': 'Pratnja kuma'
+};
+function partyRole(g) {
+  if (!isWeddingParty(g)) return '';
+  return PARTY_ROLES[g.partySlot] || (g.party === 'couple' ? 'Mladenci' : 'Kumovi');
+}
+
 // The person of the wedding party in a slot (older records have no slot: they
 // are found by their seat at the bridal table).
 function partyMember(slot, head) {
@@ -1729,14 +1740,14 @@ function setupRasporedEvents() {
   document.getElementById('btn-share').addEventListener('click', shareSeatingList);
 
   document.getElementById('btn-export-csv').addEventListener('click', () => {
-    const rows = [['Ime', 'Kategorija', 'Stol', 'Mjesto', 'Status', 'Bilješka']];
+    const rows = [['Ime', 'Uloga', 'Kategorija', 'Stol', 'Mjesto', 'Status', 'Bilješka']];
     const statusLabels = { assigned: 'Dodijeljen', unassigned: 'Nedodijeljen', maybe: 'Možda' };
     [...state.guests].sort((a, b) => a.name.localeCompare(b.name)).forEach(g => {
       const catObj = state.categories.find(c => c.id === g.categoryId);
       const cat = catObj ? catObj.name : '';
       const tableObj = g.tableId ? state.tables.find(t => t.id === g.tableId) : null;
       const table = tableObj ? tableObj.name : '';
-      rows.push([g.name, cat, table, g.tableId && g.seatIndex != null ? g.seatIndex + 1 : '', statusLabels[g.status] || g.status || '', g.notes || '']);
+      rows.push([g.name, partyRole(g), cat, table, g.tableId && g.seatIndex != null ? g.seatIndex + 1 : '', statusLabels[g.status] || g.status || '', g.notes || '']);
     });
     // A cell starting with = + - @ would run as a formula in Excel.
     const cell = c => { const v = String(c); return /^[=+\-@\t\r]/.test(v) ? "'" + v : v; };
@@ -1782,6 +1793,12 @@ function seatedGuestsSorted() {
     .sort((a, b) => a.name.localeCompare(b.name, 'hr'));
 }
 
+// " · Mladenka" after a name of the wedding party in the printouts.
+function roleNote(g) {
+  const role = partyRole(g);
+  return role ? ` <span class="print-role">· ${esc(role)}</span>` : '';
+}
+
 function buildPrintArea(parts) {
   const area = document.getElementById('print-area');
   const title = esc(state.settings.weddingTitle || 'Moje Vjenčanje');
@@ -1797,7 +1814,7 @@ function buildPrintArea(parts) {
         const guests = state.guests.filter(g => g.tableId === t.id).sort((a, b) => (a.seatIndex || 0) - (b.seatIndex || 0));
         return `<div class="print-table">
           <h3>${esc(t.name)}</h3>
-          <ol>${guests.map(g => `<li>${esc(g.name)}</li>`).join('') || '<li class="muted">—</li>'}</ol>
+          <ol>${guests.map(g => `<li>${esc(g.name)}${roleNote(g)}</li>`).join('') || '<li class="muted">—</li>'}</ol>
         </div>`;
       }).join('')}</div>
     </section>`);
@@ -1806,7 +1823,7 @@ function buildPrintArea(parts) {
     const tableName = id => (state.tables.find(t => t.id === id) || {}).name || '';
     pages.push(`<section class="print-page">${header('Gdje sjedim')}
       <div class="print-alpha">${seatedGuestsSorted().map(g =>
-        `<div class="print-alpha-row"><span>${esc(g.name)}</span><span class="print-dots"></span><strong>${esc(tableName(g.tableId))}</strong></div>`
+        `<div class="print-alpha-row"><span>${esc(g.name)}${roleNote(g)}</span><span class="print-dots"></span><strong>${esc(tableName(g.tableId))}</strong></div>`
       ).join('')}</div>
     </section>`);
   }
@@ -1815,7 +1832,7 @@ function buildPrintArea(parts) {
 
 async function shareSeatingList() {
   const tableName = id => (state.tables.find(t => t.id === id) || {}).name || '';
-  const lines = seatedGuestsSorted().map(g => `${g.name} – ${tableName(g.tableId)}`);
+  const lines = seatedGuestsSorted().map(g => `${g.name}${partyRole(g) ? ` (${partyRole(g)})` : ''} – ${tableName(g.tableId)}`);
   if (!lines.length) { showToast('Još nitko nema mjesto'); return; }
   const title = `${state.settings.weddingTitle || 'Vjenčanje'} – gdje sjedim`;
   const text = `${title}\n\n${lines.join('\n')}`;
