@@ -395,6 +395,9 @@ class FloorPlan {
         }
       }
 
+      // While arranging tables a seat is just part of its table: a tap opens
+      // the table and a press starts dragging it.
+      if (this.mode === 'edit') { seatG.style.cursor = ''; g.appendChild(seatG); return; }
       seatG.addEventListener('click', (e) => {
         e.stopPropagation();
         this.onSeatClick(table.id, idx, guest || null);

@@ -2,7 +2,6 @@
 const CATEGORY_COLORS = ['#7B9E87','#7A8FA6','#B07B72','#9B8EA8','#8A9A6A','#C4956A','#6B8FAA','#A88FA8'];
 
 let currentSection = 'sala';
-let floorPlanEdit = null;
 let floorPlanAssign = null;
 let lastSeatingSnapshot = null;
 
@@ -436,22 +435,6 @@ function renderGuide() {
 function renderSala() {
   renderCapacityBar();
   renderTableList();
-  if (!floorPlanEdit) {
-    const svg = document.getElementById('fp-edit-svg');
-    if (svg) {
-      floorPlanEdit = new FloorPlan(svg, {
-        mode: 'edit',
-        showFullNames: !!state.settings.showFullNames,
-        onTableMove: async (table) => { await saveTable(table); },
-        onTableClick: (id) => { openTableModal(id); floorPlanEdit.selectTable(id); }
-      });
-    }
-  }
-  if (floorPlanEdit) {
-    floorPlanEdit.setShowFullNames(!!state.settings.showFullNames);
-    const violated = getViolatedTableIds();
-    floorPlanEdit.update(state.tables, state.guests, state.categories, violated);
-  }
 }
 
 function renderCapacityBar() {
@@ -562,7 +545,6 @@ function setupHallModal() {
     await withUndo(seated ? `Sala je složena, ${seated} gostiju je bez mjesta` : 'Sala je složena',
       () => applyHallPlan(planHall(form)));
     document.getElementById('modal-hall').style.display = 'none';
-    if (floorPlanEdit) floorPlanEdit.fitToContent();
     if (floorPlanAssign) floorPlanAssign._fitted = false;
   });
 }
@@ -735,23 +717,23 @@ function setupTableModal() {
   document.getElementById('btn-add-table').addEventListener('click', () => openTableModal(null));
   document.getElementById('btn-add-table-fp').addEventListener('click', () => openTableModal(null));
 
-  document.getElementById('btn-snap-grid').addEventListener('click', () => {
-    if (!floorPlanEdit) return;
-    const active = !floorPlanEdit.snapToGrid;
-    floorPlanEdit.setSnapToGrid(active);
-    document.getElementById('btn-snap-grid').classList.toggle('active', active);
+  document.getElementById('btn-arrange-from-sala').addEventListener('click', () => {
+    rasporedView = 'floor';
+    setArranging(true);
+    navigateTo('raspored');
   });
 
-
-  document.getElementById('btn-zoom-in').addEventListener('click', () => floorPlanEdit && floorPlanEdit.zoomIn());
-  document.getElementById('btn-zoom-out').addEventListener('click', () => floorPlanEdit && floorPlanEdit.zoomOut());
-  document.getElementById('btn-zoom-reset').addEventListener('click', () => floorPlanEdit && floorPlanEdit.resetView());
+  document.getElementById('btn-snap-grid').addEventListener('click', () => {
+    if (!floorPlanAssign) return;
+    const active = !floorPlanAssign.snapToGrid;
+    floorPlanAssign.setSnapToGrid(active);
+    document.getElementById('btn-snap-grid').classList.toggle('active', active);
+  });
 }
 
 async function toggleFullNames() {
   const next = !state.settings.showFullNames;
   await saveSettings({ showFullNames: next });
-  if (floorPlanEdit) floorPlanEdit.setShowFullNames(next);
   if (floorPlanAssign) floorPlanAssign.setShowFullNames(next);
   renderOptions();
 }
@@ -1214,6 +1196,22 @@ function setupGuestModal() {
 let rasporedSearch = '';
 let rasporedView = 'floor';
 let selectedGuestForAssign = null;
+// Jedan tlocrt dvorane: u Rasporedu se prekidačem „Premjesti stolove” prebacuje
+// sa smještanja gostiju na slaganje stolova.
+let arrangingTables = false;
+
+function setArranging(on) {
+  arrangingTables = !!on;
+  if (arrangingTables) selectedGuestForAssign = null;
+  document.querySelector('.raspored-layout').classList.toggle('arranging', arrangingTables);
+  const btn = document.getElementById('btn-arrange');
+  btn.classList.toggle('active', arrangingTables);
+  btn.setAttribute('aria-pressed', String(arrangingTables));
+  if (floorPlanAssign) {
+    floorPlanAssign.selectedTableId = null;
+    floorPlanAssign.setMode(arrangingTables ? 'edit' : 'assign');
+  }
+}
 
 function renderRaspored() {
   document.querySelector('.raspored-layout').dataset.view = rasporedView;
@@ -1224,8 +1222,10 @@ function renderRaspored() {
     if (!floorPlanAssign) {
       const svg = document.getElementById('fp-assign-svg');
       floorPlanAssign = new FloorPlan(svg, {
-        mode: 'assign',
+        mode: arrangingTables ? 'edit' : 'assign',
         showFullNames: !!state.settings.showFullNames,
+        onTableMove: async (table) => { await saveTable(table); },
+        onTableClick: (id) => { openTableModal(id); floorPlanAssign.selectTable(id); },
         onSeatClick: (tableId, seatIndex, guest) => handleSeatClick(tableId, seatIndex, guest),
         onSeatPress: (e, tableId, seatIndex, guest) => armGuestDrag(e, guest.id, false)
       });
@@ -1569,6 +1569,10 @@ function setupRasporedEvents() {
     rasporedView = btn.dataset.view;
     renderRaspored();
   }));
+  document.getElementById('btn-arrange').addEventListener('click', () => {
+    setArranging(!arrangingTables);
+    renderUnassignedPanel();
+  });
   document.getElementById('btn-zoom-in-assign').addEventListener('click', () => floorPlanAssign && floorPlanAssign.zoomIn());
   document.getElementById('btn-zoom-out-assign').addEventListener('click', () => floorPlanAssign && floorPlanAssign.zoomOut());
   document.getElementById('btn-zoom-reset-assign').addEventListener('click', () => floorPlanAssign && floorPlanAssign.resetView());
@@ -1759,18 +1763,6 @@ function setupModalClose() {
   });
 }
 
-// Mobile sala tabs
-function setupSalaTabs() {
-  document.querySelectorAll('.sala-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.sala-tab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      document.querySelectorAll('.sala-tab-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === btn.dataset.tab));
-      renderSala();
-    });
-  });
-}
-
 // ── Entry point ────────────────────────────────────────────────────────────────
 
 async function _appMain() {
@@ -1786,7 +1778,6 @@ async function _appMain() {
   setupSeatOptionsModal();
   setupAutoSeating();
   setupSeatingResultModal();
-  setupSalaTabs();
   setupOptions();
   await init();
 }

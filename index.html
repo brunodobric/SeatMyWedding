@@ -269,40 +269,16 @@
         </div>
         <div id="capacity-bar" class="capacity-bar"></div>
 
-        <!-- Mobile tabs -->
-        <div class="sala-tabs">
-          <button class="sala-tab active" data-tab="tlocrt"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg> Tlocrt</button>
-          <button class="sala-tab" data-tab="lista"><svg class="ic" aria-hidden="true"><use href="#i-list"/></svg> Popis stolova</button>
-        </div>
-
         <div class="sala-layout">
-          <!-- Left panel wrapped in mobile tab panel -->
-          <div class="sala-tab-panel" data-panel="lista">
-            <div class="sala-panel">
-              <div class="sala-panel-header">
-                <span class="sala-panel-title">Stolovi</span>
+          <div class="sala-panel">
+            <div class="sala-panel-header">
+              <span class="sala-panel-title">Stolovi</span>
+              <div class="sala-panel-actions">
+                <button class="btn-secondary btn-sm" id="btn-arrange-from-sala" title="Premjesti stolove na tlocrtu"><svg class="ic" aria-hidden="true"><use href="#i-map"/></svg> Tlocrt</button>
                 <button class="btn-secondary btn-sm" id="btn-add-table">+ Dodaj stol</button>
               </div>
-              <div id="table-list"></div>
             </div>
-          </div>
-
-          <!-- Right: floor plan canvas wrapped in mobile tab panel -->
-          <div class="sala-tab-panel active" data-panel="tlocrt">
-            <div class="sala-canvas">
-              <div class="floor-plan-toolbar">
-                <button class="btn-secondary" id="btn-snap-grid"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg> Mreža</button>
-                <button class="btn-secondary fp-add-table" id="btn-add-table-fp">+ Dodaj stol</button>
-                <div style="display:flex;gap:4px;margin-left:auto">
-                  <button class="btn-icon" id="btn-zoom-in" title="Povećaj"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
-                  <button class="btn-icon" id="btn-zoom-out" title="Smanji"><svg class="ic" aria-hidden="true"><use href="#i-minus"/></svg></button>
-                  <button class="btn-icon" id="btn-zoom-reset" title="Resetiraj pogled"><svg class="ic" aria-hidden="true"><use href="#i-focus"/></svg></button>
-                </div>
-              </div>
-              <div class="floor-plan-svg-wrap">
-                <svg id="fp-edit-svg" class="floor-plan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
-              </div>
-            </div>
+            <div id="table-list"></div>
           </div>
         </div>
       </section>
@@ -372,6 +348,12 @@
           </div>
           <div class="raspored-main">
             <div class="raspored-canvas floor-only">
+              <div class="floor-plan-toolbar fp-arrange-bar">
+                <button class="btn-secondary" id="btn-arrange" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-hall"/></svg> Premjesti stolove</button>
+                <button class="btn-secondary arrange-only" id="btn-snap-grid"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg> Mreža</button>
+                <button class="btn-secondary arrange-only" id="btn-add-table-fp">+ Dodaj stol</button>
+                <span class="fp-arrange-hint arrange-only">Povuci stol na novo mjesto, dodirni ga za uređivanje.</span>
+              </div>
               <div class="floor-plan-svg-wrap">
                 <svg id="fp-assign-svg" class="floor-plan-svg" xmlns="http://www.w3.org/2000/svg"></svg>
               </div>

@@ -503,16 +503,21 @@ select.form-control { cursor: pointer; }
 .sala-layout {
   display: flex;
   flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
+/* Sala je popis stolova; tlocrt je samo u Rasporedu (prekidač „Premjesti stolove”). */
 .sala-panel {
-  width: 260px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--color-border);
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  max-width: 720px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-right: 1px solid var(--color-border);
 }
+.sala-panel-actions { display: flex; gap: 6px; }
 .sala-panel-header {
   padding: 12px 16px;
   border-bottom: 1px solid var(--color-border);
@@ -544,13 +549,6 @@ select.form-control { cursor: pointer; }
 .table-row-name { display: block; font-weight: 500; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .table-row-count { font-size: 0.78rem; color: var(--color-muted); }
 
-.sala-canvas {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--color-champagne);
-}
 .floor-plan-toolbar {
   display: flex;
   align-items: center;
@@ -562,9 +560,11 @@ select.form-control { cursor: pointer; }
 }
 .floor-plan-toolbar .btn-secondary,
 .floor-plan-toolbar .btn-icon { font-size: 0.82rem; padding: 5px 10px; }
-/* Na računalu je popis stolova uvijek vidljiv, pa je ovaj gumb samo za mobilni tlocrt */
-.fp-add-table { display: none; }
-@media (max-width: 767px) { .fp-add-table { display: inline-flex; } }
+/* Raspored: tlocrt se prebacuje u slaganje stolova prekidačem „Premjesti stolove” */
+.fp-arrange-bar .arrange-only { display: none; }
+.raspored-layout.arranging .fp-arrange-bar .arrange-only { display: inline-flex; }
+.fp-arrange-hint { font-size: 0.78rem; color: var(--color-muted); align-items: center; }
+.raspored-layout.arranging[data-view="floor"] .unassigned-panel { display: none; }
 .floor-plan-toolbar .btn-secondary.active {
   background: var(--color-champagne);
   border-color: var(--color-gold-deep);
@@ -605,42 +605,6 @@ select.form-control { cursor: pointer; }
   color: var(--color-gold-deep);
   font-weight: 600;
 }
-
-/* Mobile sala tabs */
-.sala-tabs {
-  display: none;
-  gap: 0;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface);
-}
-.sala-tab {
-  flex: 1;
-  padding: 10px;
-  text-align: center;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--color-muted);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.15s;
-}
-.sala-tab.active { color: var(--color-gold-deep); border-bottom-color: var(--color-gold); }
-.sala-tab-panel { display: flex; flex: 1; min-height: 0; overflow: hidden; flex-direction: column; }
-/* Desktop: popis stolova fiksne širine, tlocrt zauzima ostatak */
-.sala-layout > .sala-tab-panel:first-child {
-  flex: 0 0 auto;
-  width: 260px;
-  max-width: 40%;
-}
-.sala-layout > .sala-tab-panel[data-panel="tlocrt"] {
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 0;
-}
-/* The wrapped panels must fill the tab-panel's height so #table-list gets a
-   bounded height and can scroll (applies on desktop and mobile). */
-.sala-tab-panel > .sala-panel,
-.sala-tab-panel > .sala-canvas { height: 100%; min-height: 0; display: flex; flex-direction: column; }
 
 /* ── Gosti section ──────────────────────────────────────────────────────────── */
 .gosti-layout { display: flex; flex: 1; overflow: hidden; }
@@ -1205,7 +1169,6 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
   #wedding-title-display { font-size: 1.95rem; }
   .header-stats { gap: 6px; }
   .stat-badge { font-size: 0.72rem; padding: 3px 8px; }
-  .sala-panel { width: 220px; }
   .unassigned-panel { width: 200px; }
 }
 
@@ -1230,45 +1193,11 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
   .btn-options .hide-xs { display: none; }
   .stat-badge { font-size: 0.68rem; padding: 3px 6px; }
 
-  /* Sala: mobile uses tabs instead of the desktop split layout.
-     Every flex ancestor of #table-list needs min-height:0 so it can shrink
-     below its content and hand the overflow to the scroll container. */
-  .sala-tabs { display: flex; }
+  /* Sala: the table list fills the screen. Every flex ancestor of #table-list
+     needs min-height:0 so it can hand the overflow to the scroll container. */
   #section-sala { flex: 1; min-height: 0; overflow: hidden; }
-  .sala-layout {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  /* Hide the raw desktop split panels; only the tab-wrapped copies show. */
-  .sala-layout > .sala-panel,
-  .sala-layout > .sala-canvas { display: none; }
-
-  /* Only the active tab panel shows; it fills the remaining height. */
-  .sala-tab-panel { display: none; flex: 1; min-height: 0; overflow: hidden; width: 100%; }
-  .sala-tab-panel.active { display: flex; width: 100%; }
-  /* Override desktop 260px / max-width 40% so popis takes full screen width */
-  .sala-layout > .sala-tab-panel:first-child,
-  .sala-layout > .sala-tab-panel[data-panel="lista"],
-  .sala-layout > .sala-tab-panel[data-panel="tlocrt"] {
-    flex: 1 1 auto;
-    min-height: 0;
-    width: 100% !important;
-    max-width: none !important;
-  }
-
-  .sala-tab-panel .sala-panel {
-    width: 100% !important;
-    max-width: none !important;
-    height: 100%;
-    max-height: none;
-    min-height: 0;
-    border-right: none;
-    border-bottom: none;
-  }
-  .sala-tab-panel .sala-canvas { height: 100%; }
+  .sala-panel { max-width: none; border-right: none; }
+  .fp-arrange-hint { display: none !important; }
   #table-list { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
   .guide-bar { padding: 2px 4px 2px 10px; gap: 6px; }
