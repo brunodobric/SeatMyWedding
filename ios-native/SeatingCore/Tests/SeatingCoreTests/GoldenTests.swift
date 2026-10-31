@@ -157,6 +157,32 @@ final class GoldenTests: XCTestCase {
         }
     }
 
+    func testSuggestSeating() throws {
+        let cases = try load("suggestSeating")
+        XCTAssertGreaterThan(cases.count, 50)
+        for c in cases {
+            let input = try XCTUnwrap(c.input.objectValue)
+            let data = WeddingData(
+                tables: records(input["tables"]), categories: records(input["categories"]),
+                guests: records(input["guests"]), rules: records(input["rules"])
+            )
+            let got = data.suggestSeating()
+            let gotAssignments: [JSONValue] = got.assignments.map {
+                .object([
+                    "guestId": .string($0.id),
+                    "tableId": $0.tableId.map { .string($0) } ?? .null,
+                    "seatIndex": $0.seatIndex.map { .number($0) } ?? .null
+                ])
+            }
+            let expected = try XCTUnwrap(c.expected.objectValue)
+            XCTAssertEqual(gotAssignments, expected["assignments"]?.arrayValue, "suggestSeating raspored: \(c.name)")
+            let gotViolations: [JSONValue] = got.violations.map {
+                .object(["ruleId": $0.ruleId.map { .string($0) } ?? .null, "reason": .string($0.reason)])
+            }
+            XCTAssertEqual(gotViolations, expected["violations"]?.arrayValue, "suggestSeating prekršaji: \(c.name)")
+        }
+    }
+
     func testCloudDoc() throws {
         let cases = try load("cloudDoc")
         for c in cases {
