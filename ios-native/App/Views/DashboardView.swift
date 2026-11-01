@@ -6,6 +6,8 @@ struct DashboardView: View {
     @Environment(WeddingStore.self) private var store
     @State private var editingDate = false
     @State private var editingParty = false
+    @State private var showSettings = false
+    @State private var titleScrolledAway = false
 
     private static let storageFormat: DateFormatter = {
         let f = DateFormatter()
@@ -35,15 +37,36 @@ struct DashboardView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    Text(title)
+                        .font(.largeTitle.bold())
+                        .foregroundStyle(Theme.ink)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 4)
+                        .background(GeometryReader { g in
+                            Color.clear.preference(key: TitleBottomKey.self, value: g.frame(in: .named("dashboard")).maxY)
+                        })
                     dateCard
                     partyCard
                     statsCard
                 }
                 .padding(16)
             }
+            .coordinateSpace(name: "dashboard")
+            .onPreferenceChange(TitleBottomKey.self) { titleScrolledAway = $0 < 8 }
             .background(Theme.background)
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(title).font(.headline).foregroundStyle(Theme.ink)
+                        .opacity(titleScrolledAway ? 1 : 0)
+                        .animation(.easeInOut(duration: 0.15), value: titleScrolledAway)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                        .accessibilityLabel("Postavke")
+                }
+            }
+            .sheet(isPresented: $showSettings) { SettingsView() }
             .sheet(isPresented: Binding(get: { store.needsOnboarding }, set: { _ in })) { OnboardingView() }
             .sheet(isPresented: $editingDate) { DateEditView() }
             .sheet(isPresented: $editingParty) { PartyView() }
@@ -234,5 +257,57 @@ private struct OnboardingView: View {
             }
         }
         .interactiveDismissDisabled()
+    }
+}
+
+private struct TitleBottomKey: PreferenceKey {
+    static let defaultValue: CGFloat = 100
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+/// Izgled aplikacije: prati sustav ili je uvijek svijetao/tamni.
+enum AppearanceChoice: String, CaseIterable, Identifiable {
+    case system, light, dark
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .system: return "Automatski"
+        case .light: return "Svijetli"
+        case .dark: return "Tamni"
+        }
+    }
+    var scheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+}
+
+private struct SettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("appearance") private var appearance = AppearanceChoice.system
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Picker("Izgled", selection: $appearance) {
+                        ForEach(AppearanceChoice.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("Tema")
+                } footer: {
+                    Text("Automatski prati postavku telefona.")
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
+            .navigationTitle("Postavke")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Gotovo") { dismiss() } } }
+        }
     }
 }

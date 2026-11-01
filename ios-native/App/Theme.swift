@@ -16,12 +16,16 @@ enum Theme {
     /// Pun stol u tlocrtu.
     static let tableFull = dynamic(light: 0xF3F8F1, dark: 0x2F3A2F)
 
-    private static func dynamic(light: UInt32, dark: UInt32) -> Color {
+    private static func dynamicUI(light: UInt32, dark: UInt32) -> UIColor {
         func ui(_ hex: UInt32) -> UIColor {
             UIColor(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
                     blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
         }
-        return Color(UIColor { $0.userInterfaceStyle == .dark ? ui(dark) : ui(light) })
+        return UIColor { $0.userInterfaceStyle == .dark ? ui(dark) : ui(light) }
+    }
+
+    private static func dynamic(light: UInt32, dark: UInt32) -> Color {
+        Color(dynamicUI(light: light, dark: dark))
     }
 
     /// Zadani iOS fontovi (San Francisco) sa sistemskim stilovima, pa se tekst
@@ -49,13 +53,10 @@ enum Theme {
     static func applyAppearance() {
         let nav = UINavigationBarAppearance()
         nav.configureWithOpaqueBackground()
-        nav.backgroundColor = UIColor(background)
-        nav.titleTextAttributes = [
-            .foregroundColor: UIColor(ink)
-        ]
-        nav.largeTitleTextAttributes = [
-            .foregroundColor: UIColor(ink)
-        ]
+        nav.backgroundColor = dynamicUI(light: 0xFDFBF7, dark: 0x1C1C1E)
+        let inkUI = dynamicUI(light: 0x2B2622, dark: 0xF2EDE4)
+        nav.titleTextAttributes = [.foregroundColor: inkUI]
+        nav.largeTitleTextAttributes = [.foregroundColor: inkUI]
         UINavigationBar.appearance().standardAppearance = nav
         UINavigationBar.appearance().scrollEdgeAppearance = nav
     }
