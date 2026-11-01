@@ -119,7 +119,7 @@ extension WeddingData {
             }
             .compactMap { $0.element.id }
         let order = party + others
-        let oldSeats = Int(head.number("seats") ?? 0)
+        let oldSeats = (head.number("seats") ?? 0).safeInt
         let seats = max(1, order.count, oldSeats - removed)
         func setHead(_ h: Record) {
             if let k = tables.firstIndex(where: { $0.id == headId }) { tables[k] = h }

@@ -282,7 +282,7 @@ extension WeddingData {
                         bestScore = score
                         improved = true
                         freeByTable[tid]!.removeFirst()
-                        if let s = from.seat, s == s.rounded() { freeByTable[from.tableId, default: []].append(Int(s)) }
+                        if let s = from.seat, s == s.rounded() { freeByTable[from.tableId, default: []].append(s.safeInt) }
                         break
                     } else {
                         slots[id] = from

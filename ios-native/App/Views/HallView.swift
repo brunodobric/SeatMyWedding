@@ -200,13 +200,13 @@ struct HallView: View {
             Text(verbatim: table.string("name") ?? "").font(Theme.fixed(13.5, weight: .semibold)).foregroundStyle(Theme.bronze),
             at: upright(Point(x: 0, y: labelY)), anchor: .center)
         local.draw(
-            Text(verbatim: "\(seated.count)/\(Int(seatsTotal))")
+            Text(verbatim: "\(seated.count)/\(seatsTotal.safeInt)")
                 .font(Theme.fixed(11)).foregroundStyle(full ? Theme.success : Theme.muted),
             at: upright(Point(x: 0, y: labelY + 16)), anchor: .center)
 
         // Mjesta
         var bySeat: [Int: Record] = [:]
-        for g in seated { if let i = g.integer("seatIndex") { bySeat[Int(i)] = g } }
+        for g in seated { if let i = g.integer("seatIndex") { bySeat[i.safeInt] = g } }
         for (i, pos) in FloorGeometry.seatPositions(table).enumerated() {
             let p = upright(pos)
             let guest = bySeat[i]

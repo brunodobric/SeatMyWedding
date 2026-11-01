@@ -11,6 +11,7 @@ struct GuestsView: View {
     @State private var pasting = false
     @State private var party = false
     @State private var message: String?
+    @State private var pendingBackup: Data?
 
     private var shownGuests: [Record] {
         var list = store.invitedGuests
@@ -89,6 +90,13 @@ struct GuestsView: View {
             .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
                 handleImport(result)
             }
+            .confirmationDialog("Vratiti podatke iz kopije?", isPresented: Binding(
+                get: { pendingBackup != nil }, set: { if !$0 { pendingBackup = nil } }
+            ), titleVisibility: .visible) {
+                Button("Zamijeni sve podatke", role: .destructive) { applyBackup() }
+            } message: {
+                Text("Uvoz zamjenjuje sve trenutne goste, stolove i pravila. Možeš ga poništiti.")
+            }
             .alert("Uvoz", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
                 Button("U redu", role: .cancel) {}
             } message: {
@@ -130,8 +138,23 @@ struct GuestsView: View {
             let url = try result.get()
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            try store.importBackup(try Data(contentsOf: url))
-            message = "Uvezeno: \(store.invitedGuests.count) gostiju, \(store.tables.count) stolova."
+            let bytes = try Data(contentsOf: url)
+            if store.guests.isEmpty && store.tables.isEmpty {
+                pendingBackup = bytes
+                applyBackup()
+            } else {
+                pendingBackup = bytes
+            }
+        } catch {
+            message = "Datoteka se ne može uvesti."
+        }
+    }
+
+    private func applyBackup() {
+        guard let bytes = pendingBackup else { return }
+        pendingBackup = nil
+        do {
+            try store.importBackup(bytes)
         } catch {
             message = "Datoteka se ne može uvesti."
         }

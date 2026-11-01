@@ -86,14 +86,14 @@ extension WeddingData {
         let regularSeats = seats - headSeats
         let regularGuests = Double(guestCount) - headPartyCount(headSeats)
         return CapacityInfo(
-            guests: guestCount, seats: Int(seats), regularGuests: Int(regularGuests),
-            regularSeats: Int(regularSeats), missing: Int(max(0, regularGuests - regularSeats)))
+            guests: guestCount, seats: seats.safeInt, regularGuests: regularGuests.safeInt,
+            regularSeats: regularSeats.safeInt, missing: max(0, regularGuests - regularSeats).safeInt)
     }
 
     // MARK: Izgradnja stolova
 
     private func tablesNeeded(_ guestCount: Double, _ perTable: Double) -> Int {
-        perTable > 0 ? Int((max(0, guestCount) / perTable).rounded(.up)) : 0
+        perTable > 0 ? (max(0, guestCount) / perTable).rounded(.up).safeInt : 0
     }
 
     private func makeHallTable(_ template: HallTemplate, _ perTable: Int, _ name: String,
@@ -267,7 +267,7 @@ extension WeddingData {
     public func placeNewTable(_ table: Record, makeID: @escaping IDMaker = newRecordID) -> Record {
         let template = currentHallTemplate()
         let regular = tables.filter { !$0.isHeadTable }
-        let perTable = regular.first.map { Int(seatsOf($0)) } ?? template.defaultSeats
+        let perTable = regular.first.map { seatsOf($0).safeInt } ?? template.defaultSeats
         let place = tablePlacer(template, perTable, makeID: makeID)
         return place { p in
             var t = table

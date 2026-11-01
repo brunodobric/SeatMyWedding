@@ -91,14 +91,16 @@ final class WeddingStore {
     }
 
     /// JSON sigurnosna kopija s web aplikacije (isti oblik: settings, tables, categories, guests, rules).
+    /// Zamjenjuje sve trenutne podatke, ali kao obične izmjene (obrisani zapisi dobivaju
+    /// nadgrobne oznake da se brisanje prenese i u oblak) i uz mogućnost poništavanja.
     func importBackup(_ bytes: Data) throws {
         let raw = try JSONDecoder().decode(JSONValue.self, from: bytes)
         guard raw.objectValue != nil else { throw CocoaError(.fileReadCorruptFile) }
         var wedding = DataCleaning.cleanData(raw)
         wedding.migrateTables()
         wedding.repairSeating()
-        sync = SyncState(wedding: wedding, now: Self.now())
-        persist()
+        let undo = commit(wedding)
+        show("Podaci su vraćeni iz kopije", undo: undo)
     }
 
     private func persist() {
@@ -151,32 +153,15 @@ final class WeddingStore {
         return guest.id ?? ""
     }
 
-    /// Briše gosta i izbacuje ga iz pravila (grupa "zajedno" ostaje ako u njoj
-    /// ima bar dvoje; pravila "odvojeno" i "fiksno mjesto" za gosta nestaju).
+    /// Briše gosta i izbacuje ga iz pravila (grupa "zajedno" ostaje ako u njoj ima
+    /// bar dvoje; pravila "odvojeno" i "fiksno mjesto" za gosta nestaju).
     func deleteGuest(_ id: String) {
-        let before = data
-        let name = guests.first { $0.id == id }?.string("name") ?? "Gost"
-        defer { show("Obrisano: \(name)", undo: { [weak self] in self?.commit(before) }) }
-        let now = Self.now()
-        sync.remove("guests", ids: [id], now: now)
-        var changed: [Record] = []
-        var gone: [String] = []
-        for rule in sync.records["rules"] ?? [] {
-            guard let ruleId = rule.id,
-                  let ids = rule.fields["guestIds"]?.arrayValue?.compactMap({ $0.stringValue }),
-                  ids.contains(id) else { continue }
-            let rest = ids.filter { $0 != id }
-            if rule.string("type") == "together", rest.count >= 2 {
-                var r = rule
-                r["guestIds"] = .array(rest.map { .string($0) })
-                changed.append(r)
-            } else {
-                gone.append(ruleId)
-            }
-        }
-        if !changed.isEmpty { sync.put("rules", changed, now: now) }
-        if !gone.isEmpty { sync.remove("rules", ids: gone, now: now) }
-        persist()
+        guard let guest = guests.first(where: { $0.id == id }) else { return }
+        var after = data
+        after.guests.removeAll { $0.id == id }
+        after.rules = after.normalizeRules(after.rules)
+        let undo = commit(after)
+        show("Obrisano: \(guest.string("name") ?? "gost")", undo: undo)
     }
 
     // MARK: Pravila
@@ -248,24 +233,22 @@ final class WeddingStore {
         put("guests", [g])
     }
 
-    /// Automatsko slaganje; vraća prijedlog radi prikaza. Prije promjene pamti
-    /// stanje gostiju da se može poništiti (`undoAutoSeating`).
-    private(set) var autoSeatingSnapshot: [Record]?
+    /// Automatsko slaganje; vraća prijedlog radi prikaza. Poništava se samo ono što je
+    /// slaganje promijenilo (`undoAutoSeating`).
+    private var autoSeatingUndo: (() -> Void)?
 
     @discardableResult
     func autoSeat() -> SeatingSuggestion {
         let suggestion = data.suggestSeating()
-        autoSeatingSnapshot = guests
-        var wedding = data
-        let changed = Set(wedding.apply(suggestion))
-        put("guests", wedding.guests.filter { changed.contains($0.id ?? "") })
+        var after = data
+        after.apply(suggestion)
+        autoSeatingUndo = commit(after)
         return suggestion
     }
 
     func undoAutoSeating() {
-        guard let snapshot = autoSeatingSnapshot else { return }
-        put("guests", snapshot)
-        autoSeatingSnapshot = nil
+        autoSeatingUndo?()
+        autoSeatingUndo = nil
     }
 
     func unseatedGuests() -> [Record] {
@@ -358,47 +341,54 @@ final class WeddingStore {
 
     /// Primjenjuje plan sale ("Složi salu") uz mogućnost poništavanja.
     func applyHallPlan(_ plan: HallPlan) {
-        let removedSet = Set(plan.remove)
-        let oldTables = tables.filter { removedSet.contains($0.id ?? "") }
-        let seated = guests.filter { removedSet.contains($0.string("tableId") ?? "") }
-        let oldRules = rules
-        if !plan.remove.isEmpty { remove("tables", ids: plan.remove) }
-        if !seated.isEmpty {
-            put("guests", seated.map { g in
-                var g = g
-                g["tableId"] = .null; g["seatIndex"] = .null; g["status"] = .string("unassigned")
-                return g
-            })
+        let removed = Set(plan.remove)
+        var after = data
+        after.tables.removeAll { removed.contains($0.id ?? "") }
+        var freed = 0
+        for i in after.guests.indices where removed.contains(after.guests[i].string("tableId") ?? "") {
+            after.guests[i]["tableId"] = .null
+            after.guests[i]["seatIndex"] = .null
+            after.guests[i]["status"] = .string("unassigned")
+            freed += 1
         }
-        if !plan.create.isEmpty { put("tables", plan.create) }
-        applyRules(data.normalizeRules(rules))
-        let createdIds = plan.create.compactMap { $0.id }
-        show(seated.isEmpty ? "Sala je složena" : "Sala je složena, \(seated.count) gostiju je bez mjesta", undo: { [weak self] in
-            guard let self else { return }
-            if !createdIds.isEmpty { self.remove("tables", ids: createdIds) }
-            if !oldTables.isEmpty { self.put("tables", oldTables) }
-            if !seated.isEmpty { self.put("guests", seated) }
-            self.applyRules(oldRules)
-        })
+        after.tables.append(contentsOf: plan.create)
+        after.rules = after.normalizeRules(after.rules)
+        let undo = commit(after)
+        show(freed == 0 ? "Sala je složena" : "Sala je složena, \(freed) gostiju je bez mjesta", undo: undo)
     }
 
     // MARK: Zajednički zapis više promjena
 
-    /// Zapisuje razliku između trenutnog stanja i `new` (stolovi, gosti, kategorije, pravila).
-    func commit(_ new: WeddingData) {
+    /// Zapisuje razliku između trenutnog stanja i `new` (stolovi, gosti, kategorije,
+    /// pravila) i vraća funkciju koja poništava samo te zapise, ne i izmjene nastale kasnije.
+    @discardableResult
+    func commit(_ new: WeddingData) -> () -> Void {
+        var restores: [(key: String, previous: [Record], created: [String])] = []
         func diff(_ key: String, _ next: [Record]) {
             let old = sync.records[key] ?? []
             let oldById = Dictionary(old.compactMap { r in r.id.map { ($0, r) } }, uniquingKeysWith: { $1 })
             let nextIds = Set(next.compactMap { $0.id })
             let changed = next.filter { r in r.id.flatMap { oldById[$0] } != r }
             let gone = old.compactMap { $0.id }.filter { !nextIds.contains($0) }
+            let touched = Set(changed.compactMap { $0.id }).union(gone)
+            let previous = old.filter { touched.contains($0.id ?? "") }
+            let created = changed.compactMap { $0.id }.filter { oldById[$0] == nil }
             if !gone.isEmpty { remove(key, ids: gone) }
             if !changed.isEmpty { put(key, changed) }
+            if !previous.isEmpty || !created.isEmpty { restores.append((key, previous, created)) }
         }
+        diff("settings", [new.settings])
         diff("tables", new.tables)
         diff("categories", new.categories)
         diff("guests", new.guests)
         diff("rules", new.rules)
+        return { [weak self] in
+            guard let self else { return }
+            for r in restores {
+                if !r.created.isEmpty { self.remove(r.key, ids: r.created) }
+                if !r.previous.isEmpty { self.put(r.key, r.previous) }
+            }
+        }
     }
 
     // MARK: Mladenci i kumovi
@@ -408,11 +398,10 @@ final class WeddingStore {
     }
 
     func saveWeddingParty(names: [String]) {
-        let before = data
         var after = data
         after.saveWeddingParty(names: names)
-        commit(after)
-        show("Mladenci i kumovi su spremljeni", undo: { [weak self] in self?.commit(before) })
+        let undo = commit(after)
+        show("Mladenci i kumovi su spremljeni", undo: undo)
     }
 
     // MARK: Uvoz popisa gostiju
@@ -422,7 +411,6 @@ final class WeddingStore {
     /// Dodaje goste iz zalijepljenog popisa; parovi i obitelji sjede zajedno.
     @discardableResult
     func importGuests(_ rows: [ImportRow], defaultCategoryId: String?, includeExisting: Bool) -> ImportPreview {
-        let before = data
         var wedding = data
         let preview = GuestImport.preview(rows, existingNames: wedding.guests.compactMap { $0.string("name") },
                                           includeExisting: includeExisting)
@@ -458,10 +446,8 @@ final class WeddingStore {
             if ids.count > 1 { groups.append(ids) }
         }
         if !groups.isEmpty { wedding.rules = wedding.rulesAfterAddingTogether(groups) }
-        commit(wedding)
-        if preview.guests > 0 {
-            show("Dodano gostiju: \(preview.guests)", undo: { [weak self] in self?.commit(before) })
-        }
+        let undo = commit(wedding)
+        if preview.guests > 0 { show("Dodano gostiju: \(preview.guests)", undo: undo) }
         return preview
     }
 }
