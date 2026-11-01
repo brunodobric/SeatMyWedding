@@ -24,19 +24,6 @@ struct SeatingView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Smješteno \(seatedCount) od \(store.invitedGuests.count)")
                             .font(Theme.ui(15))
-                        Button {
-                            if store.tables.isEmpty {
-                                store.show("Najprije dodaj stolove u Sali.", isError: true)
-                            } else {
-                                result = store.autoSeat()
-                            }
-                        } label: {
-                            Label("Složi automatski", systemImage: "wand.and.stars")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .buttonBorderShape(.roundedRectangle(radius: 10))
-                        .tint(Theme.gold)
                     }
                     if store.violatedRuleCount > 0 {
                         Label("\(store.violatedRuleCount) pravila nije ispunjeno", systemImage: "exclamationmark.triangle")
@@ -73,6 +60,7 @@ struct SeatingView: View {
                             }
                             .disabled(store.tables.isEmpty)
                         }
+                        .draggable(GuestDragItem(id: guest.id ?? "", name: guest.string("name") ?? ""))
                     }
                 }
                     .listRowBackground(Theme.surface)
@@ -100,13 +88,37 @@ struct SeatingView: View {
             .navigationTitle("Raspored")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { SortMenu(selection: $tableSort) { $0.label } }
-                ToolbarItem(placement: .primaryAction) { ExportMenu() }
+                // Uvijek vidljivo: Složi automatski. Ostalo je u izborniku preljeva.
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: runAutoSeat) {
+                        Label("Složi automatski", systemImage: "wand.and.stars")
+                    }
+                    .labelStyle(.titleAndIcon)
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Picker("Sortiranje stolova", selection: $tableSort) {
+                            ForEach(TableSort.allCases) { Text($0.label).tag($0) }
+                        }
+                        ExportMenu(asSubmenu: true)
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel("Više")
+                }
             }
             .sheet(item: $tableSheet) { ref in TableSheet(tableId: ref.id) }
             .sheet(item: Binding(get: { result.map(ResultBox.init) }, set: { if $0 == nil { result = nil } })) { box in
                 SeatingResultView(result: box.value)
             }
+        }
+    }
+
+    private func runAutoSeat() {
+        if store.tables.isEmpty {
+            store.show("Najprije dodaj stolove u Sali.", isError: true)
+        } else {
+            result = store.autoSeat()
         }
     }
 

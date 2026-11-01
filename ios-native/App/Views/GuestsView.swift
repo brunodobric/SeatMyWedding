@@ -56,6 +56,7 @@ struct GuestsView: View {
                         ForEach(shownGuests, id: \.id) { guest in
                             Button { editing = GuestSheet(id: guest.id) } label: { GuestRow(guest: guest) }
                                 .buttonStyle(.plain)
+                                .draggable(GuestDragItem(id: guest.id ?? "", name: guest.string("name") ?? ""))
                                 .listRowBackground(Theme.surface)
                                 .swipeActions {
                                     Button("Obriši", role: .destructive) {
@@ -73,18 +74,24 @@ struct GuestsView: View {
             .navigationTitle("Gosti")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    SortMenu(selection: $sort) { $0.label }
+                // Uvijek vidljivo: Dodaj gosta. Ostalo je u izborniku preljeva.
+                ToolbarItem(placement: .primaryAction) {
+                    Button { editing = GuestSheet(id: nil) } label: {
+                        Label("Dodaj gosta", systemImage: "plus")
+                    }
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
-                        Button("Dodaj gosta", systemImage: "plus") { editing = GuestSheet(id: nil) }
+                        Picker("Sortiranje", selection: $sort) {
+                            ForEach(GuestSort.allCases) { Text($0.label).tag($0) }
+                        }
                         Button("Uvezi popis (tekst)", systemImage: "text.badge.plus") { pasting = true }
                         Button("Mladenci i kumovi", systemImage: "heart") { party = true }
                         Button("Uvezi kopiju", systemImage: "square.and.arrow.down") { importing = true }
                     } label: {
-                        Image(systemName: "plus")
+                        Image(systemName: "ellipsis.circle")
                     }
+                    .accessibilityLabel("Više")
                 }
             }
             .sheet(item: $editing) { sheet in
