@@ -60,7 +60,7 @@ struct TableSheet: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle(table?.string("name") ?? "Stol")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Uredi stol") { editing = true } }
                 ToolbarItem(placement: .confirmationAction) { Button("Gotovo") { dismiss() } }
@@ -131,7 +131,7 @@ struct GuestPicker: View {
             .scrollContentBackground(.hidden)
             .searchable(text: $search, prompt: "Traži goste")
             .navigationTitle("Tko sjedi ovdje?")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
             }

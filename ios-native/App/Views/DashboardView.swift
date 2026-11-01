@@ -63,7 +63,7 @@ struct DashboardView: View {
             .coordinateSpace(name: "dashboard")
             .onPreferenceChange(TitleBottomKey.self) { titleScrolledAway = $0 < 8 }
             .background(Theme.background)
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text(title).font(.headline).foregroundStyle(Theme.ink)
@@ -205,7 +205,7 @@ private struct DateEditView: View {
                 }
             }
             .navigationTitle("Datum vjenčanja")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -255,7 +255,7 @@ private struct OnboardingView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Dobro došli")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Preskoči") { store.finishOnboarding(bride: "", groom: "", date: "") }
@@ -318,7 +318,7 @@ private struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Postavke")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Gotovo") { dismiss() } } }
         }
         // Prozor sa sheetom ne preuzima odmah promjenu s korijena, pa izgled postavljamo i ovdje.

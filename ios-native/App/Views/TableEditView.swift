@@ -74,7 +74,7 @@ struct TableEditView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle(tableId == nil ? "Dodaj stol" : "Uredi stol")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -187,7 +187,7 @@ struct HallSetupView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Složi salu")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
