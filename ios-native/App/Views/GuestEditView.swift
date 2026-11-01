@@ -19,7 +19,8 @@ struct GuestEditView: View {
     @State private var apart: [String] = []
     @State private var fixedTableId: String?
     @State private var fixedSeat: Int?
-    @State private var categoryTogether = false
+    /// Izmjena prekidača "cijela kategorija za isti stol"; nil dok je korisnik nije dirao.
+    @State private var categoryTogetherEdit: Bool?
 
     var body: some View {
         NavigationStack {
@@ -52,7 +53,9 @@ struct GuestEditView: View {
                         }
                     }
                     if categoryId != nil {
-                        Toggle("Cijela kategorija za isti stol", isOn: $categoryTogether)
+                        Toggle("Cijela kategorija za isti stol", isOn: Binding(
+                            get: { categoryTogetherEdit ?? (categoryId.map { store.isCategoryTogether($0) } ?? false) },
+                            set: { categoryTogetherEdit = $0 }))
                     }
                 } header: {
                     Text("Pravila")
@@ -79,8 +82,8 @@ struct GuestEditView: View {
                     Button("Spremi") {
                         let id = store.saveGuest(id: guestId, name: name, categoryId: categoryId, notes: notes, locked: locked, maybe: maybe)
                         store.setRelations(guestId: id, together: together, apart: apart, fixedTableId: fixedTableId, fixedSeat: fixedSeat)
-                        if let cat = categoryId, store.isCategoryTogether(cat) != categoryTogether {
-                            store.setCategoryTogether(cat, on: categoryTogether)
+                        if let cat = categoryId, let on = categoryTogetherEdit, store.isCategoryTogether(cat) != on {
+                            store.setCategoryTogether(cat, on: on)
                         }
                         dismiss()
                     }
@@ -93,6 +96,7 @@ struct GuestEditView: View {
                     dismiss()
                 }
             }
+            .onChange(of: categoryId) { _, _ in categoryTogetherEdit = nil }
             .onAppear(perform: load)
         }
     }
@@ -110,8 +114,7 @@ struct GuestEditView: View {
         together = rel.together
         apart = rel.apart
         fixedTableId = rel.fixed?.string("tableId")
-        fixedSeat = rel.fixed?.integer("seatIndex").map { Int($0) }
-        if let cat = categoryId { categoryTogether = store.isCategoryTogether(cat) }
+        fixedSeat = rel.fixed?.integer("seatIndex")?.safeInt
     }
 }
 

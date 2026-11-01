@@ -78,3 +78,9 @@ public struct WeddingData: Equatable, Sendable {
         ])
     }
 }
+
+
+extension Double {
+    /// Cijeli broj bez rušenja aplikacije kad podaci sadrže NaN ili ogromne brojeve.
+    public var safeInt: Int { isFinite ? Int(max(-1e9, min(1e9, self))) : 0 }
+}

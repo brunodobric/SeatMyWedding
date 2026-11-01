@@ -100,10 +100,10 @@ struct TableEditView: View {
         }
         form.name = t.string("name") ?? ""
         form.shape = t.string("shape") ?? "round"
-        let seats = Int(t.number("seats") ?? 8)
+        let seats = (t.number("seats") ?? 8).safeInt
         form.seats = seats
-        form.seatsLong = Int(t.integer("seatsLong") ?? Double(form.shape == "square" ? max(1, seats / 4) : 4))
-        form.seatsEnd = Int(t.integer("seatsEnd") ?? (form.shape == "head" ? 0 : 1))
+        form.seatsLong = (t.integer("seatsLong") ?? Double(form.shape == "square" ? max(1, seats / 4) : 4)).safeInt
+        form.seatsEnd = (t.integer("seatsEnd") ?? (form.shape == "head" ? 0 : 1)).safeInt
         form.rotated = (t.number("rotation") ?? 0) != 0
     }
 }
@@ -127,7 +127,7 @@ struct HallSetupView: View {
 
     private var summary: String {
         let p = plan
-        let seats = p.create.filter { $0.string("shape") != "head" }.reduce(0) { $0 + Int($1.number("seats") ?? 0) }
+        let seats = p.create.filter { $0.string("shape") != "head" }.reduce(0) { $0 + ($1.number("seats") ?? 0).safeInt }
         if mode == .add && p.count == 0 { return "Već imate dovoljno mjesta za \(guestCount) gostiju." }
         let word = p.count == 1 ? "stol" : (p.count < 5 ? "stola" : "stolova")
         let verb = mode == .add ? "Dodat će se" : "Trebate"
@@ -188,7 +188,7 @@ struct HallSetupView: View {
                 template = store.currentTemplate()
                 let regular = store.tables.filter { $0.string("shape") != "head" }
                 guestCount = max(5, store.data.capacityInfo().guests)
-                perTable = regular.first.map { Int($0.number("seats") ?? 8) } ?? template.defaultSeats
+                perTable = regular.first.map { ($0.number("seats") ?? 8).safeInt } ?? template.defaultSeats
                 mode = regular.isEmpty ? .rebuild : .add
             }
         }
