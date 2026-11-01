@@ -132,9 +132,7 @@ struct GuestMultiPicker: View {
     let exclude: String?
 
     private var candidates: [Record] {
-        store.invitedGuests
-            .filter { $0.id != exclude }
-            .sorted { ($0.string("name") ?? "").localizedCaseInsensitiveCompare($1.string("name") ?? "") == .orderedAscending }
+        GuestSort.name.sorted(store.invitedGuests.filter { $0.id != exclude })
     }
 
     private var summary: String {

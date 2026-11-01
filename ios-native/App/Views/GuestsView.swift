@@ -150,13 +150,11 @@ struct GuestsView: View {
             let url = try result.get()
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            let bytes = try Data(contentsOf: url)
-            if store.guests.isEmpty && store.tables.isEmpty {
-                pendingBackup = bytes
-                applyBackup()
-            } else {
-                pendingBackup = bytes
-            }
+            // Sigurnosna kopija je mali JSON; odbij neobično velike datoteke prije čitanja.
+            let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+            guard size <= 20_000_000 else { throw CocoaError(.fileReadTooLarge) }
+            pendingBackup = try Data(contentsOf: url)
+            if store.guests.isEmpty && store.tables.isEmpty { applyBackup() }
         } catch {
             message = "Datoteka se ne može uvesti."
         }

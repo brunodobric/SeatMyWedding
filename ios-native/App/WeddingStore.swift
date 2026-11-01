@@ -72,6 +72,10 @@ final class WeddingStore {
             sync = SyncState(json: try JSONDecoder().decode(JSONValue.self, from: bytes))
             repair()
         } catch {
+            // Nečitljivu datoteku sačuvaj sa strane: inače bi je prvo spremanje prepisalo praznim stanjem.
+            let aside = fileURL.deletingLastPathComponent()
+                .appendingPathComponent("wedding-nečitljivo-\(Int(Date().timeIntervalSince1970)).json")
+            try? FileManager.default.moveItem(at: fileURL, to: aside)
             loadError = "Spremljeni podaci se ne mogu pročitati."
         }
     }
@@ -252,9 +256,7 @@ final class WeddingStore {
     }
 
     func unseatedGuests() -> [Record] {
-        invitedGuests
-            .filter { $0.string("status") != "assigned" && $0.string("status") != "maybe" }
-            .sorted { ($0.string("name") ?? "").localizedCaseInsensitiveCompare($1.string("name") ?? "") == .orderedAscending }
+        GuestSort.name.sorted(invitedGuests.filter { $0.string("status") != "assigned" && $0.string("status") != "maybe" })
     }
 
     // MARK: Stolovi

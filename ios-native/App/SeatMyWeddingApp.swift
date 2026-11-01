@@ -7,6 +7,7 @@ struct SeatMyWeddingApp: App {
 
     init() {
         Theme.applyAppearance()
+        ExportFiles.cleanUp()
     }
 
     var body: some Scene {

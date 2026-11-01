@@ -102,13 +102,7 @@ private struct GuestsWithHall: View {
                 HallView()
             }
         }
-        .background(
-            GeometryReader { g in
-                Color.clear
-                    .onAppear { width = g.size.width }
-                    .onChange(of: g.size.width) { _, new in width = new }
-            }
-        )
+        .measureWidth($width)
     }
 }
 
@@ -118,8 +112,6 @@ private struct SeatingWithHall: View {
     @State private var width: CGFloat = 0
 
     var body: some View {
-        // Širina se mjeri u pozadini (ne obavijanjem sadržaja u GeometryReader), da ugniježđeni
-        // prikazi zadrže svoja sigurna područja i ne idu pod sistemske kontrole.
         Group {
             if width >= 820 {
                 HStack(spacing: 0) {
@@ -132,11 +124,19 @@ private struct SeatingWithHall: View {
                 SeatingView()
             }
         }
-        .background(
+        .measureWidth($width)
+    }
+}
+
+private extension View {
+    /// Širina se mjeri u pozadini (ne obavijanjem sadržaja u GeometryReader), da ugniježđeni
+    /// prikazi zadrže svoja sigurna područja i ne idu pod sistemske kontrole.
+    func measureWidth(_ width: Binding<CGFloat>) -> some View {
+        background(
             GeometryReader { g in
                 Color.clear
-                    .onAppear { width = g.size.width }
-                    .onChange(of: g.size.width) { _, new in width = new }
+                    .onAppear { width.wrappedValue = g.size.width }
+                    .onChange(of: g.size.width) { _, new in width.wrappedValue = new }
             }
         )
     }

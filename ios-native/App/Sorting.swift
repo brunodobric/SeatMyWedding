@@ -59,18 +59,3 @@ enum TableSort: String, CaseIterable, Identifiable {
         }
     }
 }
-
-struct SortMenu<S: CaseIterable & Identifiable & Hashable>: View where S.AllCases: RandomAccessCollection {
-    @Binding var selection: S
-    let label: (S) -> String
-
-    var body: some View {
-        Menu {
-            Picker("Sortiranje", selection: $selection) {
-                ForEach(S.allCases) { Text(label($0)).tag($0) }
-            }
-        } label: {
-            Image(systemName: "arrow.up.arrow.down")
-        }
-    }
-}

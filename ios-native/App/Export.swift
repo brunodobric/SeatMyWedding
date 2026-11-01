@@ -6,8 +6,17 @@ import SeatingCore
 
 /// Datoteke za dijeljenje i ispis (CSV, JSON, PDF) u privremenoj mapi.
 enum ExportFiles {
+    private static var directory: URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent("izvoz", isDirectory: true)
+    }
+
+    /// Izvezeni popisi sadrže imena gostiju: briši ih pri pokretanju, ne ostavljaj ih u privremenoj mapi.
+    static func cleanUp() {
+        try? FileManager.default.removeItem(at: directory)
+    }
+
     static func write(_ name: String, _ data: Data) throws -> URL {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("izvoz", isDirectory: true)
+        let dir = directory
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let url = dir.appendingPathComponent(name)
         try data.write(to: url, options: .atomic)
@@ -78,7 +87,7 @@ enum SeatingPDF {
         var col = 0
         var rowTop = y
         var rowBottom = y
-        for (i, t) in tables.enumerated() {
+        for t in tables {
             let height = 20 + CGFloat(max(1, t.guests.count)) * 16 + 14
             if col == 0, rowBottom + height > page.height - margin {
                 ctx.beginPage()
@@ -106,7 +115,6 @@ enum SeatingPDF {
                 col = 0
                 rowTop = rowBottom
             }
-            _ = i
         }
     }
 
