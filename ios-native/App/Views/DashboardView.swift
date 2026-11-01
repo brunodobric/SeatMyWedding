@@ -63,7 +63,7 @@ struct DashboardView: View {
             .coordinateSpace(name: "dashboard")
             .onPreferenceChange(TitleBottomKey.self) { titleScrolledAway = $0 < 8 }
             .background(Theme.background)
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text(title).font(.headline).foregroundStyle(Theme.ink)
