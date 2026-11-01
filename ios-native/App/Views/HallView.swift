@@ -92,14 +92,15 @@ struct HallView: View {
                           highlighted: arranging)
             }
         }
-        .dropDestination(for: GuestDragItem.self) { items, location in
+        .dropDestination(for: DropPayload.self) { items, location in
             guard let tableId = hitTable(at: location), let item = items.first else { return false }
-            store.drop(item.id, onto: .table(tableId: tableId))
-            return true
-        }
-        .dropDestination(for: String.self) { texts, location in
-            guard let tableId = hitTable(at: location), let text = texts.first else { return false }
-            return store.dropName(text, onto: tableId)
+            switch item {
+            case .guest(let guest):
+                store.drop(guest.id, onto: .table(tableId: tableId))
+                return true
+            case .text(let text):
+                return store.dropName(text, onto: tableId)
+            }
         }
         .onTapGesture { location in
             guard !arranging else { return }
