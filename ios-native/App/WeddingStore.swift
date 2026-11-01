@@ -154,6 +154,9 @@ final class WeddingStore {
     /// Briše gosta i izbacuje ga iz pravila (grupa "zajedno" ostaje ako u njoj
     /// ima bar dvoje; pravila "odvojeno" i "fiksno mjesto" za gosta nestaju).
     func deleteGuest(_ id: String) {
+        let before = data
+        let name = guests.first { $0.id == id }?.string("name") ?? "Gost"
+        defer { show("Obrisano: \(name)", undo: { [weak self] in self?.commit(before) }) }
         let now = Self.now()
         sync.remove("guests", ids: [id], now: now)
         var changed: [Record] = []

@@ -93,6 +93,7 @@ struct SeatingView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Raspored")
+            .toolbar { ToolbarItem(placement: .primaryAction) { ExportMenu() } }
             .sheet(item: $tableSheet) { ref in TableSheet(tableId: ref.id) }
             .sheet(item: Binding(get: { result.map(ResultBox.init) }, set: { if $0 == nil { result = nil } })) { box in
                 SeatingResultView(result: box.value)
