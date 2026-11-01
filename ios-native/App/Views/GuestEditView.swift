@@ -45,7 +45,9 @@ struct GuestEditView: View {
                 Section {
                     GuestMultiPicker(title: "Sjedi zajedno s", selection: $together, exclude: guestId)
                     GuestMultiPicker(title: "Odvojeno od", selection: $apart, exclude: guestId)
-                    Picker("Fiksni stol", selection: $fixedTableId) {
+                    Picker("Fiksni stol", selection: Binding(
+                        get: { fixedTableId },
+                        set: { fixedTableId = $0; fixedSeat = nil })) {
                         Text("Bez ograničenja").tag(String?.none)
                         ForEach(store.tables, id: \.id) { t in Text(t.string("name") ?? "Stol").tag(t.id) }
                     }

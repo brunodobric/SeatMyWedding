@@ -6,14 +6,15 @@ Nativna Swift verzija aplikacije. Plan: https://claude.ai/artifact/SotoqrU2oQsWr
 
 - `SeatingCore/` je Swift paket bez ikakvog sučelja: modeli, čišćenje podataka,
   popravci rasporeda i spajanje dva uređaja (sinkronizacija). Ovo je jezgra koju
-  će koristiti aplikacija (SwiftUI dolazi u idućoj fazi).
+  koristi aplikacija.
 - Podaci su JSON zapisi (`Record`), a ne krute strukture, da polja koja web doda
   ne nestanu kad ih iPhone spremi natrag u oblak.
 - Format dokumenta u oblaku (`users/{uid}/data/wedding`, `syncVersion 2`) ostaje
   isti kao na webu.
 
-- `App/` i `project.yml`: SwiftUI aplikacija (kostur: Gosti, Sala, Raspored, tema,
-  lokalno spremanje, uvoz JSON kopije s weba). Xcode projekt se generira alatom
+- `App/` i `project.yml`: SwiftUI aplikacija (Dashboard, Gosti, Sala, Raspored,
+  mladenci i kumovi, uvoz popisa i JSON kopije, izvoz i ispis, povlačenje gostiju
+  na stolove, tamna tema, iPhone Duo i iPad; lokalno spremanje, bez oblaka i prijave). Xcode projekt se generira alatom
   XcodeGen: `brew install xcodegen && cd ios-native && xcodegen generate && open SeatMyWedding.xcodeproj`.
 
 ## Je li Swift isti kao JavaScript

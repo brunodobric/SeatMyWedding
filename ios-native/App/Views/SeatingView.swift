@@ -21,7 +21,7 @@ struct SeatingView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("Smješteno \(seatedCount) od \(store.invitedGuests.count)")
+                    Text("Smješteno \(seatedCount) od \(store.data.capacityInfo().guests)")
                         .font(Theme.ui(15))
                     if store.violatedRuleCount > 0 {
                         Label("\(store.violatedRuleCount) pravila nije ispunjeno", systemImage: "exclamationmark.triangle")

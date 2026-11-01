@@ -62,6 +62,9 @@ struct RootView: View {
                 }
             }
             .animation(.easeInOut(duration: 0.2), value: store.toast?.id)
+            .onAppear {
+                if let error = store.loadError { store.show(error, isError: true) }
+            }
     }
 
     @ViewBuilder
@@ -163,7 +166,7 @@ private struct ToastBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(toast.isError ? Theme.error : Theme.ink, in: RoundedRectangle(cornerRadius: 12))
+        .background(toast.isError ? Theme.error : Color(hex: 0x2B2622), in: RoundedRectangle(cornerRadius: 12))
         .shadow(radius: 6, y: 2)
     }
 }
