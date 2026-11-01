@@ -76,12 +76,16 @@ struct RootView: View {
 /// Raspored: na užem prostoru samo popis; kad ima mjesta (otvoreni iPhone Duo, iPad),
 /// popis stolova i tlocrt jedno uz drugo, s istim stanjem i funkcijama.
 private struct SeatingWithHall: View {
+    @State private var width: CGFloat = 0
+
     var body: some View {
-        GeometryReader { geo in
-            if geo.size.width >= 820 {
+        // Širina se mjeri u pozadini (ne obavijanjem sadržaja u GeometryReader), da ugniježđeni
+        // prikazi zadrže svoja sigurna područja i ne idu pod sistemske kontrole.
+        Group {
+            if width >= 820 {
                 HStack(spacing: 0) {
                     SeatingView()
-                        .frame(width: min(geo.size.width * 0.4, 420))
+                        .frame(width: min(width * 0.4, 420))
                     Divider()
                     HallView()
                 }
@@ -89,6 +93,13 @@ private struct SeatingWithHall: View {
                 SeatingView()
             }
         }
+        .background(
+            GeometryReader { g in
+                Color.clear
+                    .onAppear { width = g.size.width }
+                    .onChange(of: g.size.width) { _, new in width = new }
+            }
+        )
     }
 }
 
