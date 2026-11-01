@@ -1,5 +1,7 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
+import CoreTransferable
 import SeatingCore
 
 /// Datoteke za dijeljenje i ispis (CSV, JSON, PDF) u privremenoj mapi.
@@ -125,25 +127,54 @@ enum SeatingPDF {
     }
 }
 
+/// Datoteke se prave tek kad korisnik odabere dijeljenje (ne pri svakom crtanju).
+struct PDFExport: Transferable {
+    let wedding: WeddingData
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .pdf) { doc in
+            SentTransferredFile(try ExportFiles.pdf(doc.wedding, tables: true, alphabetical: true))
+        }
+    }
+}
+
+struct CSVExport: Transferable {
+    let wedding: WeddingData
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .commaSeparatedText) { doc in
+            SentTransferredFile(try ExportFiles.csv(doc.wedding))
+        }
+    }
+}
+
+struct JSONExport: Transferable {
+    let wedding: WeddingData
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .json) { doc in
+            SentTransferredFile(try ExportFiles.json(doc.wedding))
+        }
+    }
+}
+
 /// Izbornik za izvoz, dijeljenje i ispis rasporeda.
 struct ExportMenu: View {
     @Environment(WeddingStore.self) private var store
 
     var body: some View {
+        let wedding = store.data
         Menu {
-            if let text = store.data.seatingShareText() {
+            if let text = wedding.seatingShareText() {
                 ShareLink(item: text, subject: Text("Gdje sjedim")) {
                     Label("Podijeli popis (tekst)", systemImage: "text.bubble")
                 }
             }
-            if let url = try? ExportFiles.pdf(store.data, tables: true, alphabetical: true) {
-                ShareLink(item: url) { Label("Ispis / PDF rasporeda", systemImage: "printer") }
+            ShareLink(item: PDFExport(wedding: wedding), preview: SharePreview("Raspored sjedenja.pdf")) {
+                Label("Ispis / PDF rasporeda", systemImage: "printer")
             }
-            if let url = try? ExportFiles.csv(store.data) {
-                ShareLink(item: url) { Label("Izvoz CSV (Excel)", systemImage: "tablecells") }
+            ShareLink(item: CSVExport(wedding: wedding), preview: SharePreview("raspored-sjedenja.csv")) {
+                Label("Izvoz CSV (Excel)", systemImage: "tablecells")
             }
-            if let url = try? ExportFiles.json(store.data) {
-                ShareLink(item: url) { Label("Sigurnosna kopija (JSON)", systemImage: "externaldrive") }
+            ShareLink(item: JSONExport(wedding: wedding), preview: SharePreview("raspored-sjedenja.json")) {
+                Label("Sigurnosna kopija (JSON)", systemImage: "externaldrive")
             }
         } label: {
             Image(systemName: "square.and.arrow.up")
