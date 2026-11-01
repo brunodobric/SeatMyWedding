@@ -8,6 +8,8 @@ struct GuestsView: View {
     @State private var categoryFilter: String?
     @State private var editing: GuestSheet?
     @State private var importing = false
+    @State private var pasting = false
+    @State private var party = false
     @State private var message: String?
 
     private var shownGuests: [Record] {
@@ -35,6 +37,8 @@ struct GuestsView: View {
                     } actions: {
                         Button("Dodaj gosta") { editing = GuestSheet(id: nil) }
                             .buttonStyle(.borderedProminent)
+                        Button("Uvezi popis (tekst)") { pasting = true }
+                        Button("Mladenci i kumovi") { party = true }
                         Button("Uvezi kopiju") { importing = true }
                     }
                 } else {
@@ -69,6 +73,8 @@ struct GuestsView: View {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button("Dodaj gosta", systemImage: "plus") { editing = GuestSheet(id: nil) }
+                        Button("Uvezi popis (tekst)", systemImage: "text.badge.plus") { pasting = true }
+                        Button("Mladenci i kumovi", systemImage: "heart") { party = true }
                         Button("Uvezi kopiju", systemImage: "square.and.arrow.down") { importing = true }
                     } label: {
                         Image(systemName: "plus")
@@ -78,6 +84,8 @@ struct GuestsView: View {
             .sheet(item: $editing) { sheet in
                 GuestEditView(guestId: sheet.id)
             }
+            .sheet(isPresented: $pasting) { GuestImportView() }
+            .sheet(isPresented: $party) { PartyView() }
             .fileImporter(isPresented: $importing, allowedContentTypes: [.json]) { result in
                 handleImport(result)
             }

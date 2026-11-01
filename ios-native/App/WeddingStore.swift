@@ -378,4 +378,87 @@ final class WeddingStore {
             self.applyRules(oldRules)
         })
     }
+
+    // MARK: Zajednički zapis više promjena
+
+    /// Zapisuje razliku između trenutnog stanja i `new` (stolovi, gosti, kategorije, pravila).
+    func commit(_ new: WeddingData) {
+        func diff(_ key: String, _ next: [Record]) {
+            let old = sync.records[key] ?? []
+            let oldById = Dictionary(old.compactMap { r in r.id.map { ($0, r) } }, uniquingKeysWith: { $1 })
+            let nextIds = Set(next.compactMap { $0.id })
+            let changed = next.filter { r in r.id.flatMap { oldById[$0] } != r }
+            let gone = old.compactMap { $0.id }.filter { !nextIds.contains($0) }
+            if !gone.isEmpty { remove(key, ids: gone) }
+            if !changed.isEmpty { put(key, changed) }
+        }
+        diff("tables", new.tables)
+        diff("categories", new.categories)
+        diff("guests", new.guests)
+        diff("rules", new.rules)
+    }
+
+    // MARK: Mladenci i kumovi
+
+    func partyNames() -> [String] {
+        WeddingParty.slots.map { data.partyMember($0)?.string("name") ?? "" }
+    }
+
+    func saveWeddingParty(names: [String]) {
+        let before = data
+        var after = data
+        after.saveWeddingParty(names: names)
+        commit(after)
+        show("Mladenci i kumovi su spremljeni", undo: { [weak self] in self?.commit(before) })
+    }
+
+    // MARK: Uvoz popisa gostiju
+
+    private static let categoryColors = ["#7B9E87", "#7A8FA6", "#B07B72", "#9B8EA8", "#8A9A6A", "#C4956A", "#6B8FAA", "#A88FA8"]
+
+    /// Dodaje goste iz zalijepljenog popisa; parovi i obitelji sjede zajedno.
+    @discardableResult
+    func importGuests(_ rows: [ImportRow], defaultCategoryId: String?, includeExisting: Bool) -> ImportPreview {
+        let before = data
+        var wedding = data
+        let preview = GuestImport.preview(rows, existingNames: wedding.guests.compactMap { $0.string("name") },
+                                          includeExisting: includeExisting)
+        var catByName: [String: String] = [:]
+        for c in wedding.categories { if let n = c.string("name"), let id = c.id { catByName[n.lowercased()] = id } }
+        var groups: [[String]] = []
+        for row in preview.rows {
+            var categoryId = defaultCategoryId
+            if let name = row.category {
+                let key = name.lowercased()
+                if catByName[key] == nil {
+                    let id = UUID().uuidString.lowercased()
+                    wedding.categories.append(Record([
+                        "id": .string(id), "name": .string(name),
+                        "color": .string(Self.categoryColors[wedding.categories.count % Self.categoryColors.count]),
+                        "atHeadTable": .bool(false)
+                    ]))
+                    catByName[key] = id
+                }
+                categoryId = catByName[key]
+            }
+            var ids: [String] = []
+            for name in row.names {
+                let id = UUID().uuidString.lowercased()
+                wedding.guests.append(Record([
+                    "id": .string(id), "name": .string(name),
+                    "categoryId": categoryId.map { .string($0) } ?? .null,
+                    "status": .string("unassigned"), "tableId": .null, "seatIndex": .null,
+                    "locked": .bool(false), "notes": .string("")
+                ]))
+                ids.append(id)
+            }
+            if ids.count > 1 { groups.append(ids) }
+        }
+        if !groups.isEmpty { wedding.rules = wedding.rulesAfterAddingTogether(groups) }
+        commit(wedding)
+        if preview.guests > 0 {
+            show("Dodano gostiju: \(preview.guests)", undo: { [weak self] in self?.commit(before) })
+        }
+        return preview
+    }
 }

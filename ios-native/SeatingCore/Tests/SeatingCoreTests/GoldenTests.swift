@@ -296,6 +296,36 @@ final class GoldenTests: XCTestCase {
         }
     }
 
+    private func importRowsJSON(_ rows: [ImportRow]) -> [JSONValue] {
+        rows.map { .object(["names": .array($0.names.map { .string($0) }), "category": $0.category.map { .string($0) } ?? .null]) }
+    }
+
+    private func previewJSON(_ p: ImportPreview) -> JSONValue {
+        .object([
+            "rows": .array(importRowsJSON(p.rows)), "guests": .number(Double(p.guests)),
+            "groups": .number(Double(p.groups)), "skipped": .number(Double(p.skipped)),
+            "duplicates": .array(p.duplicates.map { .string($0) })
+        ])
+    }
+
+    func testGuestImport() throws {
+        let cases = try load("guestImport")
+        XCTAssertGreaterThan(cases.count, 50)
+        for c in cases {
+            let input = try XCTUnwrap(c.input.objectValue)
+            let text = input["text"]?.stringValue ?? ""
+            let existing = ids(input["existing"])
+            let expected = try XCTUnwrap(c.expected.objectValue)
+            let sf = GuestImport.detectSurnameFirst(text)
+            XCTAssertEqual(sf, expected["surnameFirst"]?.isTruthy, "detectSurnameFirst: \(c.name)")
+            let rows = GuestImport.parse(text, surnameFirst: sf)
+            XCTAssertEqual(importRowsJSON(rows), expected["rows"]?.arrayValue, "parse: \(c.name)")
+            XCTAssertEqual(importRowsJSON(GuestImport.parse(text, surnameFirst: true)), expected["rowsSF"]?.arrayValue, "parse prezime prvo: \(c.name)")
+            XCTAssertEqual(previewJSON(GuestImport.preview(rows, existingNames: existing)), expected["preview"], "preview: \(c.name)")
+            XCTAssertEqual(previewJSON(GuestImport.preview(rows, existingNames: existing, includeExisting: true)), expected["previewAll"], "preview svi: \(c.name)")
+        }
+    }
+
     func testCloudDoc() throws {
         let cases = try load("cloudDoc")
         for c in cases {
