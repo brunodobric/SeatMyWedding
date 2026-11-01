@@ -20,6 +20,7 @@ struct SeatingView: View {
     var body: some View {
         NavigationStack {
             List {
+                ScreenTitleHeader(title: "Raspored").screenTitleRow()
                 Section {
                     Text("Smješteno \(seatedCount) od \(store.data.capacityInfo().guests)")
                         .font(Theme.ui(15))
@@ -83,8 +84,7 @@ struct SeatingView: View {
             .searchable(text: $search, prompt: "Traži goste bez mjesta")
             .scrollContentBackground(.hidden)
             .background(Theme.background)
-            .navigationTitle("Raspored")
-            .navigationBarTitleDisplayMode(.large)
+            .screenTitle("Raspored")
             .toolbar {
                 // Uvijek vidljivo: Složi automatski. Ostalo je u izborniku preljeva.
                 ToolbarItem(placement: .primaryAction) {
@@ -161,7 +161,7 @@ private struct SeatingResultView: View {
                     .listRowBackground(Theme.surface)
             }
             .navigationTitle("Automatsko slaganje")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Poništi") { store.undoAutoSeating(); dismiss() }

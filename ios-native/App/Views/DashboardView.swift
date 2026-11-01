@@ -8,7 +8,6 @@ struct DashboardView: View {
     @State private var editingParty = false
     @State private var showSettings = false
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @State private var titleScrolledAway = false
 
     private static let storageFormat: DateFormatter = {
         let f = DateFormatter()
@@ -41,14 +40,7 @@ struct DashboardView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    Text(title)
-                        .font(.largeTitle.bold())
-                        .foregroundStyle(Theme.ink)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 4)
-                        .background(GeometryReader { g in
-                            Color.clear.preference(key: TitleBottomKey.self, value: g.frame(in: .named("dashboard")).maxY)
-                        })
+                    ScreenTitleHeader(title: title)
                     if sizeClass == .regular {
                         // Široki zaslon: dva jednaka stupca (paran broj, da se sadržaj čisto dijeli pri pregibu).
                         HStack(alignment: .top, spacing: 16) {
@@ -63,16 +55,9 @@ struct DashboardView: View {
                 }
                 .padding(16)
             }
-            .coordinateSpace(name: "dashboard")
-            .onPreferenceChange(TitleBottomKey.self) { titleScrolledAway = $0 < 8 }
             .background(Theme.background)
-            .navigationBarTitleDisplayMode(.inline)
+            .screenTitle(title)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text(title).font(.headline).foregroundStyle(Theme.ink)
-                        .opacity(titleScrolledAway ? 1 : 0)
-                        .animation(.easeInOut(duration: 0.15), value: titleScrolledAway)
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showSettings = true } label: { Image(systemName: "gearshape") }
                         .accessibilityLabel("Postavke")
@@ -208,7 +193,7 @@ private struct DateEditView: View {
                 }
             }
             .navigationTitle("Datum vjenčanja")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -258,7 +243,7 @@ private struct OnboardingView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Dobro došli")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Preskoči") { store.finishOnboarding(bride: "", groom: "", date: "") }
@@ -272,11 +257,6 @@ private struct OnboardingView: View {
         }
         .interactiveDismissDisabled()
     }
-}
-
-private struct TitleBottomKey: PreferenceKey {
-    static let defaultValue: CGFloat = 100
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 /// Izgled aplikacije: prati sustav ili je uvijek svijetao/tamni.
@@ -321,7 +301,7 @@ private struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Postavke")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Gotovo") { dismiss() } } }
         }
         // Prozor sa sheetom ne preuzima odmah promjenu s korijena, pa izgled postavljamo i ovdje.

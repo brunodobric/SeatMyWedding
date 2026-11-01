@@ -50,7 +50,7 @@ struct HallView: View {
             }
             .background(Theme.background)
             .navigationTitle("Sala")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
                     Button { settingUpHall = true } label: {
