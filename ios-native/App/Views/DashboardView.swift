@@ -321,5 +321,7 @@ private struct SettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Gotovo") { dismiss() } } }
         }
+        // Prozor sa sheetom ne preuzima odmah promjenu s korijena, pa izgled postavljamo i ovdje.
+        .preferredColorScheme(appearance.scheme)
     }
 }
