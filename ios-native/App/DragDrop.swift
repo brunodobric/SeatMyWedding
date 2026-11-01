@@ -14,6 +14,20 @@ struct GuestDragItem: Codable, Transferable {
     }
 }
 
+/// Sve što se može ispustiti na tlocrt, kroz jedno odredište: gost iz aplikacije
+/// (po identitetu) ili obični tekst iz druge aplikacije (po imenu).
+enum DropPayload: Transferable {
+    case guest(GuestDragItem)
+    case text(String)
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(importedContentType: .json) { data in
+            .guest(try JSONDecoder().decode(GuestDragItem.self, from: data))
+        }
+        ProxyRepresentation(importing: { (text: String) in DropPayload.text(text) })
+    }
+}
+
 extension WeddingStore {
     /// Ime ispušteno na stol iz druge aplikacije (npr. iz Poruka u Split Viewu):
     /// postojeći gost s tim imenom se smješta, a nepoznato ime postaje novi gost.
