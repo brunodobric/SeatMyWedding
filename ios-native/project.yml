@@ -43,6 +43,9 @@ targets:
         CFBundleVersion: "1"
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen: {}
+        # iPad: više prozora aplikacije (npr. gosti u jednom, sala u drugom); iPhone ovo ne koristi.
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft

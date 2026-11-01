@@ -26,12 +26,13 @@ struct PartyView: View {
             .navigationTitle("Mladenci i kumovi")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() }.keyboardShortcut(.cancelAction) }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Spremi") {
                         store.saveWeddingParty(names: names)
                         dismiss()
                     }
+                    .keyboardShortcut("s", modifiers: .command)
                 }
             }
             .onAppear {
@@ -100,13 +101,14 @@ struct GuestImportView: View {
             .navigationTitle("Uvoz gostiju")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() }.keyboardShortcut(.cancelAction) }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Dodaj") {
                         store.importGuests(rows, defaultCategoryId: categoryId, includeExisting: includeExisting)
                         dismiss()
                     }
                     .disabled(preview.guests == 0)
+                    .keyboardShortcut("s", modifiers: .command)
                 }
             }
         }

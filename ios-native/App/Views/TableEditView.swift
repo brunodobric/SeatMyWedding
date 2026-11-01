@@ -76,12 +76,13 @@ struct TableEditView: View {
             .navigationTitle(tableId == nil ? "Dodaj stol" : "Uredi stol")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() }.keyboardShortcut(.cancelAction) }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Spremi") {
                         store.saveTable(form, id: tableId)
                         dismiss()
                     }
+                    .keyboardShortcut("s", modifiers: .command)
                 }
             }
             .confirmationDialog("Obrisati stol?", isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -189,13 +190,14 @@ struct HallSetupView: View {
             .navigationTitle("Složi salu")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() }.keyboardShortcut(.cancelAction) }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Složi") {
                         store.applyHallPlan(plan)
                         dismiss()
                     }
                     .disabled(plan.count == 0 && plan.create.isEmpty)
+                    .keyboardShortcut("s", modifiers: .command)
                 }
             }
             .onAppear {

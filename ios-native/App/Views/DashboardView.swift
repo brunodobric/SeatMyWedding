@@ -53,6 +53,9 @@ struct DashboardView: View {
                     }
                 }
                 .padding(16)
+                // Na velikom iPadu kartice se ne rastežu preko cijelog zaslona.
+                .frame(maxWidth: 1000)
+                .frame(maxWidth: .infinity)
             }
             .background(Theme.background)
             .navigationTitle(title)
@@ -195,12 +198,13 @@ private struct DateEditView: View {
             .navigationTitle("Datum vjenčanja")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() }.keyboardShortcut(.cancelAction) }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Spremi") {
                         store.setWeddingDate(DashboardView.store(date))
                         dismiss()
                     }
+                    .keyboardShortcut("s", modifiers: .command)
                 }
             }
             .onAppear {
@@ -302,7 +306,7 @@ private struct SettingsView: View {
             .background(Theme.background)
             .navigationTitle("Postavke")
             .navigationBarTitleDisplayMode(.large)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Gotovo") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Gotovo") { dismiss() }.keyboardShortcut(.defaultAction) } }
         }
         // Prozor sa sheetom ne preuzima odmah promjenu s korijena, pa izgled postavljamo i ovdje.
         .preferredColorScheme(appearance.scheme)

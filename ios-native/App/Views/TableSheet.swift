@@ -63,7 +63,7 @@ struct TableSheet: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Uredi stol") { editing = true } }
-                ToolbarItem(placement: .confirmationAction) { Button("Gotovo") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("Gotovo") { dismiss() }.keyboardShortcut(.defaultAction) }
             }
             .sheet(isPresented: $editing) { TableEditView(tableId: tableId) }
             .onChange(of: table == nil) { _, gone in if gone { dismiss() } }
@@ -133,7 +133,7 @@ struct GuestPicker: View {
             .navigationTitle("Tko sjedi ovdje?")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() }.keyboardShortcut(.cancelAction) }
             }
         }
         .presentationDetents([.medium, .large])
