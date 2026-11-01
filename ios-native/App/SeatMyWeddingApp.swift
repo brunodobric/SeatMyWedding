@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct SeatMyWeddingApp: App {
     @State private var store = WeddingStore()
+    @AppStorage("appearance") private var appearance = AppearanceChoice.system
 
     init() {
         Theme.applyAppearance()
@@ -13,6 +14,7 @@ struct SeatMyWeddingApp: App {
             RootView()
                 .environment(store)
                 .tint(Theme.goldDeep)
+                .preferredColorScheme(appearance.scheme)
         }
     }
 }
