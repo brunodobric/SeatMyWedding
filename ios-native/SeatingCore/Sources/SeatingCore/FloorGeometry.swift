@@ -23,10 +23,6 @@ public struct Bounds: Equatable, Sendable {
 /// Port iz js/floor-plan.js (TABLE_DIMS, _dims, _getSeatPositions, _contentBounds);
 /// koordinate su iste kao na webu pa ista sala izgleda isto na oba mjesta.
 public enum FloorGeometry {
-    public static let canvasWidth = 1000.0
-    public static let canvasHeight = 700.0
-    public static let worldSize = 2400.0
-    public static let gridSize = 50.0
     public static let seatPitch = 28.0
     public static let roundRadius = 45.0
     public static let seatRadius = 10.0

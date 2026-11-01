@@ -227,7 +227,7 @@ struct HallView: View {
             let p = upright(pos)
             let guest = bySeat[i]
             let color = Self.seatColor(guest)
-            let circle = Path(ellipseIn: CGRect(x: p.x - 10, y: p.y - 10, width: 20, height: 20))
+            let circle = Path(ellipseIn: CGRect(x: p.x - FloorGeometry.seatRadius, y: p.y - FloorGeometry.seatRadius, width: FloorGeometry.seatRadius * 2, height: FloorGeometry.seatRadius * 2))
             local.fill(circle, with: .color(color ?? Theme.champagne))
             local.stroke(circle, with: .color(color ?? Theme.border), lineWidth: 1.5)
             if let guest = guest {

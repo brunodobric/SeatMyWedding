@@ -72,6 +72,10 @@ final class WeddingStore {
             sync = SyncState(json: try JSONDecoder().decode(JSONValue.self, from: bytes))
             repair()
         } catch {
+            // Nečitljivu datoteku sačuvaj sa strane: inače bi je prvo spremanje prepisalo praznim stanjem.
+            let aside = fileURL.deletingLastPathComponent()
+                .appendingPathComponent("wedding-nečitljivo-\(Int(Date().timeIntervalSince1970)).json")
+            try? FileManager.default.moveItem(at: fileURL, to: aside)
             loadError = "Spremljeni podaci se ne mogu pročitati."
         }
     }
@@ -111,6 +115,7 @@ final class WeddingStore {
             try bytes.write(to: fileURL, options: .atomic)
         } catch {
             loadError = "Podaci se ne mogu spremiti."
+            show("Podaci se ne mogu spremiti.", isError: true)
         }
     }
 
@@ -214,6 +219,11 @@ final class WeddingStore {
     /// Spušta gosta na mjesto, stol ili "bez mjesta" (zamjena s onim tko sjedi, bez
     /// zaključanih). Pravila su ista kao na webu (SeatingCore.dropGuest).
     func drop(_ guestId: String, onto target: DropTarget) {
+        if case .unseat = target {} else if let g = guests.first(where: { $0.id == guestId }),
+           g.isTruthy("locked"), !(g.string("tableId") ?? "").isEmpty {
+            show("\(g.string("name") ?? "Gost") ima zaključano mjesto", isError: true)
+            return
+        }
         let result = data.dropGuest(guestId, onto: target)
         if let n = result.notice { show(n.message, isError: n.isError) }
         guard !result.moves.isEmpty else { return }
@@ -252,9 +262,7 @@ final class WeddingStore {
     }
 
     func unseatedGuests() -> [Record] {
-        invitedGuests
-            .filter { $0.string("status") != "assigned" && $0.string("status") != "maybe" }
-            .sorted { ($0.string("name") ?? "").localizedCaseInsensitiveCompare($1.string("name") ?? "") == .orderedAscending }
+        GuestSort.name.sorted(invitedGuests.filter { $0.string("status") != "assigned" && $0.string("status") != "maybe" })
     }
 
     // MARK: Stolovi
@@ -288,7 +296,7 @@ final class WeddingStore {
 
     /// Sljedeći slobodni redni broj za stol gostiju (stol mladenaca se ne računa).
     var nextTableNumber: Int {
-        Int(tables.filter { $0.string("shape") != "head" }.map { tableNumber($0) }.max() ?? 0) + 1
+        (tables.filter { $0.string("shape") != "head" }.map { tableNumber($0) }.max() ?? 0).safeInt + 1
     }
 
     func tableRecord(_ form: TableForm, existing: Record?) -> Record {
@@ -422,6 +430,7 @@ final class WeddingStore {
     /// Treba li pokazati uvodni ekran: novo vjenčanje bez naslova koje korisnik nije preskočio.
     var needsOnboarding: Bool {
         (data.settings.string("weddingTitle") ?? "").isEmpty && !data.settings.isTruthy("onboardingDone")
+            && guests.isEmpty && tables.isEmpty
     }
 
     /// Završava uvod: imena (ako su upisana) postaju mladenci i naslov, datum je neobavezan.

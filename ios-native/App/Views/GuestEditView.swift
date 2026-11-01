@@ -45,7 +45,9 @@ struct GuestEditView: View {
                 Section {
                     GuestMultiPicker(title: "Sjedi zajedno s", selection: $together, exclude: guestId)
                     GuestMultiPicker(title: "Odvojeno od", selection: $apart, exclude: guestId)
-                    Picker("Fiksni stol", selection: $fixedTableId) {
+                    Picker("Fiksni stol", selection: Binding(
+                        get: { fixedTableId },
+                        set: { fixedTableId = $0; fixedSeat = nil })) {
                         Text("Bez ograničenja").tag(String?.none)
                         ForEach(store.tables, id: \.id) { t in Text(t.string("name") ?? "Stol").tag(t.id) }
                     }
@@ -132,9 +134,7 @@ struct GuestMultiPicker: View {
     let exclude: String?
 
     private var candidates: [Record] {
-        store.invitedGuests
-            .filter { $0.id != exclude }
-            .sorted { ($0.string("name") ?? "").localizedCaseInsensitiveCompare($1.string("name") ?? "") == .orderedAscending }
+        GuestSort.name.sorted(store.invitedGuests.filter { $0.id != exclude })
     }
 
     private var summary: String {

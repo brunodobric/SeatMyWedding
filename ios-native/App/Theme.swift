@@ -4,14 +4,16 @@ import UIKit
 /// Boje iz web aplikacije (css/app.css, "Design tokens").
 enum Theme {
     // Svijetle boje su iz weba; tamne su meke (ne crne) i prate zadani iOS tamni način.
-    static let background = dynamic(light: 0xFDFBF7, dark: 0x1C1C1E)
+    private static let backgroundUI = dynamicUI(light: 0xFDFBF7, dark: 0x1C1C1E)
+    private static let inkUI = dynamicUI(light: 0x2B2622, dark: 0xF2EDE4)
+    static let background = Color(backgroundUI)
     static let surface = dynamic(light: 0xFFFFFF, dark: 0x2C2C2E)
     static let champagne = dynamic(light: 0xF5EBDD, dark: 0x3A342B)
     static let border = dynamic(light: 0xE8DCC8, dark: 0x48423A)
     static let gold = Color(hex: 0xC9A24B)
     static let goldDeep = dynamic(light: 0xA17C33, dark: 0xD8B565)
     static let bronze = dynamic(light: 0x6B5836, dark: 0xCDB892)
-    static let ink = dynamic(light: 0x2B2622, dark: 0xF2EDE4)
+    static let ink = Color(inkUI)
     static let muted = dynamic(light: 0x8A7F70, dark: 0xA39A8C)
     /// Pun stol u tlocrtu.
     static let tableFull = dynamic(light: 0xF3F8F1, dark: 0x2F3A2F)
@@ -53,10 +55,9 @@ enum Theme {
     static func applyAppearance() {
         let nav = UINavigationBarAppearance()
         nav.configureWithOpaqueBackground()
-        nav.backgroundColor = dynamicUI(light: 0xFDFBF7, dark: 0x1C1C1E)
+        nav.backgroundColor = backgroundUI
         // Bez crte ispod trake: na širokom zaslonu bi inače prelazila preko sistemskih kontrola sa strane.
         nav.shadowColor = .clear
-        let inkUI = dynamicUI(light: 0x2B2622, dark: 0xF2EDE4)
         nav.titleTextAttributes = [.foregroundColor: inkUI]
         nav.largeTitleTextAttributes = [.foregroundColor: inkUI]
         UINavigationBar.appearance().standardAppearance = nav

@@ -39,7 +39,7 @@ enum TableSort: String, CaseIterable, Identifiable {
             return Double(store.guests.filter { $0.string("tableId") == t.id }.count) / seats
         }
         func name(_ t: Record) -> String { t.string("name") ?? "" }
-        let index = Dictionary(uniqueKeysWithValues: store.tables.enumerated().compactMap { i, t in t.id.map { ($0, i) } })
+        let index = Dictionary(store.tables.enumerated().compactMap { i, t in t.id.map { ($0, i) } }, uniquingKeysWith: { first, _ in first })
         func byNumber(_ a: Record, _ b: Record) -> Bool {
             let na = store.tableNumber(a), nb = store.tableNumber(b)
             if na != nb { return na < nb }
@@ -56,21 +56,6 @@ enum TableSort: String, CaseIterable, Identifiable {
                 if fa == fb { return byNumber(a, b) }
                 return self == .fullest ? fa > fb : fa < fb
             }
-        }
-    }
-}
-
-struct SortMenu<S: CaseIterable & Identifiable & Hashable>: View where S.AllCases: RandomAccessCollection {
-    @Binding var selection: S
-    let label: (S) -> String
-
-    var body: some View {
-        Menu {
-            Picker("Sortiranje", selection: $selection) {
-                ForEach(S.allCases) { Text(label($0)).tag($0) }
-            }
-        } label: {
-            Image(systemName: "arrow.up.arrow.down")
         }
     }
 }
