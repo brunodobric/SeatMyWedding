@@ -44,6 +44,7 @@ struct SeatingView: View {
                             .foregroundStyle(Theme.error)
                     }
                 }
+                    .listRowBackground(Theme.surface)
 
                 Section("Bez mjesta (\(unseated.count))") {
                     if unseated.isEmpty {
@@ -74,9 +75,10 @@ struct SeatingView: View {
                         }
                     }
                 }
+                    .listRowBackground(Theme.surface)
 
                 Section("Stolovi") {
-                    ForEach(store.tables, id: \.id) { table in
+                    ForEach(tableSort.sorted(store.tables, in: store), id: \.id) { table in
                         Button {
                             if let id = table.id { tableSheet = TableRef(id: id) }
                         } label: {
@@ -90,6 +92,7 @@ struct SeatingView: View {
                         .tint(.primary)
                     }
                 }
+                    .listRowBackground(Theme.surface)
             }
             .searchable(text: $search, prompt: "Traži goste bez mjesta")
             .scrollContentBackground(.hidden)
@@ -134,6 +137,7 @@ private struct SeatingResultView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                    .listRowBackground(Theme.surface)
                 Section {
                     if result.violations.isEmpty {
                         Label("Svi posebni zahtjevi su ispunjeni.", systemImage: "checkmark.circle")
@@ -144,6 +148,7 @@ private struct SeatingResultView: View {
                         ForEach(result.violations.indices, id: \.self) { Text(result.violations[$0].reason) }
                     }
                 }
+                    .listRowBackground(Theme.surface)
             }
             .navigationTitle("Automatsko slaganje")
             .navigationBarTitleDisplayMode(.inline)

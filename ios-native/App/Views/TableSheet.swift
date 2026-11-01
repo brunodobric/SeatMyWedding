@@ -57,6 +57,7 @@ struct TableSheet: View {
                 }
             }
             .listStyle(.plain)
+            .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle(table?.string("name") ?? "Stol")
             .navigationBarTitleDisplayMode(.inline)
@@ -127,6 +128,7 @@ struct GuestPicker: View {
                 }
             }
             .listStyle(.plain)
+            .scrollContentBackground(.hidden)
             .searchable(text: $search, prompt: "Traži goste")
             .navigationTitle("Tko sjedi ovdje?")
             .navigationBarTitleDisplayMode(.inline)

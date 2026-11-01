@@ -56,6 +56,7 @@ struct GuestsView: View {
                         ForEach(shownGuests, id: \.id) { guest in
                             Button { editing = GuestSheet(id: guest.id) } label: { GuestRow(guest: guest) }
                                 .buttonStyle(.plain)
+                                .listRowBackground(Theme.surface)
                                 .swipeActions {
                                     Button("Obriši", role: .destructive) {
                                         if let id = guest.id { store.deleteGuest(id) }
