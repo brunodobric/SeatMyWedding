@@ -64,6 +64,7 @@ struct GuestsView: View {
                         }
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                     .searchable(text: $search, prompt: "Traži goste")
                 }
             }
