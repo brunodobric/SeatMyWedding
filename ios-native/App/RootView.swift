@@ -100,7 +100,7 @@ private struct GuestsWithHall: View {
                     GuestsView()
                         .frame(width: max(240, min(width * 0.34, 380)))
                     Divider()
-                    HallView()
+                    HallView(besideList: true)
                 }
             } else {
                 HallView()
@@ -122,7 +122,7 @@ private struct SeatingWithHall: View {
                     SeatingView()
                         .frame(width: min(width * 0.4, 420))
                     Divider()
-                    HallView()
+                    HallView(besideList: true)
                 }
             } else {
                 SeatingView()

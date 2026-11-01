@@ -5,6 +5,9 @@ import SeatingCore
 /// Pomicanje jednim prstom, zumiranje štipanjem ili gumbima.
 struct HallView: View {
     @Environment(WeddingStore.self) private var store
+    /// Desno od popisa (spojeni prikaz): mali naslov u sredini trake. Veliki naslov bi tamo
+    /// bio prilijepljen uz razdjelnik, jer traka nema lijevu marginu.
+    var besideList = false
 
     @State private var scale: CGFloat = 1
     @State private var origin: CGPoint = .zero
@@ -50,7 +53,7 @@ struct HallView: View {
             }
             .background(Theme.background)
             .navigationTitle("Sala")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(besideList ? .inline : .large)
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
                     Button { settingUpHall = true } label: {
