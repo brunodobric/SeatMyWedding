@@ -50,6 +50,8 @@ struct DashboardView: View {
                     statsCard
                 }
                 .padding(16)
+                .frame(maxWidth: 720)
+                .frame(maxWidth: .infinity)
             }
             .coordinateSpace(name: "dashboard")
             .onPreferenceChange(TitleBottomKey.self) { titleScrolledAway = $0 < 8 }
