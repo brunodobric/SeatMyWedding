@@ -13,9 +13,9 @@ struct HallView: View {
     @State private var magnifying = false
     @State private var anchorWorld: CGPoint = .zero
     @State private var viewSize: CGSize = .zero
-    @State private var fitted = false
-    @State private var fitScale: CGFloat = 0
-    @State private var fitOrigin: CGPoint = .zero
+    /// Dok je `false`, prikaz je uvijek "cijela sala centrirano" i računa se pri svakom crtanju
+    /// iz stvarne veličine platna; `scale` i `origin` vrijede tek nakon što korisnik pomakne ili zumira.
+    @State private var adjusted = false
     @State private var arranging = false
     @State private var openTable: TableRef?
     @State private var addingTable = false
@@ -44,9 +44,9 @@ struct HallView: View {
                         controls(size: geo.size)
                     }
                 }
-                .onAppear { viewSize = geo.size; fitIfNeeded(size: geo.size) }
-                .onChange(of: geo.size) { _, new in viewSize = new; fitIfNeeded(size: new) }
-                .onChange(of: store.tables.count) { _, _ in fitted = false; fitIfNeeded(size: geo.size) }
+                .onAppear { viewSize = geo.size }
+                .onChange(of: geo.size) { _, new in viewSize = new }
+                .onChange(of: store.tables.count) { _, _ in adjusted = false }
             }
             .background(Theme.background)
             .navigationTitle("Sala")
@@ -79,14 +79,15 @@ struct HallView: View {
     private var canvas: some View {
         let tables = store.tables
         let guests = store.guests
-        return Canvas { ctx, _ in
+        return Canvas { ctx, size in
+            let view = transform(size)
             var world = ctx
-            world.translateBy(x: origin.x, y: origin.y)
-            world.scaleBy(x: scale, y: scale)
+            world.translateBy(x: view.origin.x, y: view.origin.y)
+            world.scaleBy(x: view.scale, y: view.scale)
             for table in tables {
                 let moving = table.id == movingTable
                 drawTable(table, guests: guests, in: world,
-                          offset: moving ? CGSize(width: moveDelta.width / scale, height: moveDelta.height / scale) : .zero,
+                          offset: moving ? CGSize(width: moveDelta.width / view.scale, height: moveDelta.height / view.scale) : .zero,
                           highlighted: arranging)
             }
         }
@@ -103,6 +104,7 @@ struct HallView: View {
                             dragMode = .table
                             movingTable = id
                         } else {
+                            adopt()
                             dragMode = .pan
                         }
                     }
@@ -117,8 +119,8 @@ struct HallView: View {
                     if dragMode == .table, let id = movingTable,
                        let t = store.tables.first(where: { $0.id == id }) {
                         store.moveTable(id,
-                                        x: (t.number("x") ?? 0) + v.translation.width / scale,
-                                        y: (t.number("y") ?? 0) + v.translation.height / scale)
+                                        x: (t.number("x") ?? 0) + v.translation.width / transform(viewSize).scale,
+                                        y: (t.number("y") ?? 0) + v.translation.height / transform(viewSize).scale)
                     } else if !magnifying {
                         baseOrigin = origin
                     }
@@ -131,6 +133,7 @@ struct HallView: View {
             MagnifyGesture()
                 .onChanged { v in
                     if !magnifying {
+                        adopt()
                         magnifying = true
                         anchorWorld = CGPoint(
                             x: (v.startLocation.x - baseOrigin.x) / baseScale,
@@ -150,8 +153,9 @@ struct HallView: View {
 
     /// Stol (ili njegovo mjesto) ispod točke na ekranu.
     private func hitTable(at point: CGPoint) -> String? {
-        let wx = (point.x - origin.x) / scale
-        let wy = (point.y - origin.y) / scale
+        let view = transform(viewSize)
+        let wx = (point.x - view.origin.x) / view.scale
+        let wy = (point.y - view.origin.y) / view.scale
         for table in store.tables.reversed() {
             let rel = Point(x: wx - (table.number("x") ?? 0), y: wy - (table.number("y") ?? 0))
             let a = -(table.number("rotation") ?? 0) * .pi / 180
@@ -243,7 +247,7 @@ struct HallView: View {
         VStack(spacing: 10) {
             roundButton("plus") { zoom(by: 1.25, size: size) }
             roundButton("minus") { zoom(by: 0.8, size: size) }
-            roundButton("arrow.up.left.and.arrow.down.right") { fit(size: size) }
+            roundButton("arrow.up.left.and.arrow.down.right") { adjusted = false }
         }
         .padding(16)
     }
@@ -260,6 +264,7 @@ struct HallView: View {
     }
 
     private func zoom(by factor: CGFloat, size: CGSize) {
+        adopt()
         let s = min(max(scale * factor, 0.15), 4)
         let center = CGPoint(x: size.width / 2, y: size.height / 2)
         let wx = (center.x - origin.x) / scale, wy = (center.y - origin.y) / scale
@@ -269,32 +274,32 @@ struct HallView: View {
         baseOrigin = origin
     }
 
-    /// Veličina se prosljeđuje izravno: `viewSize` se u istom koraku još ne bi osvježio pa bi se
-    /// prilagodba radila prema prethodnoj veličini (sala je zbog toga ostajala pomaknuta).
-    private func fitIfNeeded(size: CGSize) {
-        guard size.width > 0, !store.tables.isEmpty else { return }
-        // Dok korisnik nije pomaknuo ni zumirao, prikaz se prilagođava svakoj promjeni veličine
-        // (prvi izmjereni okvir često nije konačan), pa se uvijek vidi cijela sala.
-        let untouched = !fitted || (scale == fitScale && origin == fitOrigin)
-        guard untouched else { return }
-        fitted = true
-        fit(size: size)
+    /// Prikaz koji se trenutno crta: ručni (nakon pomicanja/zumiranja) ili cijela sala centrirano.
+    private func transform(_ size: CGSize) -> (scale: CGFloat, origin: CGPoint) {
+        if adjusted { return (scale, origin) }
+        return fitTransform(size) ?? (scale, origin)
+    }
+
+    /// Prelazak na ručni prikaz: počinje od onoga što se trenutno vidi.
+    private func adopt() {
+        guard !adjusted else { return }
+        let t = transform(viewSize)
+        scale = t.scale
+        origin = t.origin
+        baseScale = t.scale
+        baseOrigin = t.origin
+        adjusted = true
     }
 
     /// Prilagodi prikaz svim stolovima (kao fitToContent na webu).
-    private func fit(size: CGSize) {
-        guard let b = FloorGeometry.contentBounds(store.tables), size.width > 0, size.height > 0 else { return }
+    private func fitTransform(_ size: CGSize) -> (scale: CGFloat, origin: CGPoint)? {
+        guard let b = FloorGeometry.contentBounds(store.tables), size.width > 0, size.height > 0 else { return nil }
         let pad = 30.0
         let w = max(b.x2 - b.x1 + pad * 2, 420)
         let h = max(b.y2 - b.y1 + pad * 2, 300)
         let s = min(size.width / w, size.height / h)
-        scale = s
-        origin = CGPoint(
+        return (s, CGPoint(
             x: size.width / 2 - (b.x1 + b.x2) / 2 * s,
-            y: size.height / 2 - (b.y1 + b.y2) / 2 * s)
-        baseScale = scale
-        baseOrigin = origin
-        fitScale = scale
-        fitOrigin = origin
+            y: size.height / 2 - (b.y1 + b.y2) / 2 * s))
     }
 }
