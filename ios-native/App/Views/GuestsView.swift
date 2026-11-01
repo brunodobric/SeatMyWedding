@@ -5,6 +5,7 @@ import SeatingCore
 struct GuestsView: View {
     @Environment(WeddingStore.self) private var store
     @State private var search = ""
+    @AppStorage("guestSort") private var sort = GuestSort.name
     @State private var categoryFilter: String?
     @State private var editing: GuestSheet?
     @State private var importing = false
@@ -22,9 +23,7 @@ struct GuestsView: View {
         if let c = categoryFilter {
             list = list.filter { $0.string("categoryId") == c }
         }
-        return list.sorted {
-            ($0.string("name") ?? "").localizedCaseInsensitiveCompare($1.string("name") ?? "") == .orderedAscending
-        }
+        return sort.sorted(list)
     }
 
     var body: some View {
@@ -72,6 +71,9 @@ struct GuestsView: View {
             .navigationTitle("Gosti")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    SortMenu(selection: $sort) { $0.label }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button("Dodaj gosta", systemImage: "plus") { editing = GuestSheet(id: nil) }

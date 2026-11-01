@@ -35,6 +35,7 @@ struct TableEditView: View {
             Form {
                 Section {
                     TextField("Naziv stola", text: $form.name)
+                    Stepper("Redni broj: \(form.number)", value: $form.number, in: 0...999)
                     if !isHead {
                         Picker("Oblik", selection: $form.shape) {
                             ForEach(shapes, id: \.0) { Text($0.1).tag($0.0) }
@@ -95,10 +96,12 @@ struct TableEditView: View {
         guard !loaded else { return }
         loaded = true
         guard let t = existing else {
-            form.name = "Stol \(store.tables.count + 1)"
+            form.number = store.nextTableNumber
+            form.name = "Stol \(form.number)"
             return
         }
         form.name = t.string("name") ?? ""
+        form.number = store.tableNumber(t).safeInt
         form.shape = t.string("shape") ?? "round"
         let seats = (t.number("seats") ?? 8).safeInt
         form.seats = seats

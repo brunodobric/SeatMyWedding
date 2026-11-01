@@ -4,6 +4,7 @@ import SeatingCore
 struct SeatingView: View {
     @Environment(WeddingStore.self) private var store
     @State private var search = ""
+    @AppStorage("tableSort") private var tableSort = TableSort.number
     @State private var result: SeatingSuggestion?
     @State private var tableSheet: TableRef?
 
@@ -56,7 +57,7 @@ struct SeatingView: View {
                             Text(guest.string("name") ?? "").font(Theme.ui(16))
                             Spacer()
                             Menu {
-                                ForEach(store.tables, id: \.id) { table in
+                                ForEach(tableSort.sorted(store.tables, in: store), id: \.id) { table in
                                     Button(table.string("name") ?? "Stol") {
                                         if let gid = guest.id, let tid = table.id {
                                             store.drop(gid, onto: .table(tableId: tid))
@@ -94,7 +95,10 @@ struct SeatingView: View {
             .background(Theme.background)
             .navigationTitle("Raspored")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .primaryAction) { ExportMenu() } }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) { SortMenu(selection: $tableSort) { $0.label } }
+                ToolbarItem(placement: .primaryAction) { ExportMenu() }
+            }
             .sheet(item: $tableSheet) { ref in TableSheet(tableId: ref.id) }
             .sheet(item: Binding(get: { result.map(ResultBox.init) }, set: { if $0 == nil { result = nil } })) { box in
                 SeatingResultView(result: box.value)
