@@ -7,6 +7,7 @@ struct DashboardView: View {
     @State private var editingDate = false
     @State private var editingParty = false
     @State private var showSettings = false
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var titleScrolledAway = false
 
     private static let storageFormat: DateFormatter = {
@@ -45,9 +46,17 @@ struct DashboardView: View {
                         .background(GeometryReader { g in
                             Color.clear.preference(key: TitleBottomKey.self, value: g.frame(in: .named("dashboard")).maxY)
                         })
-                    dateCard
-                    partyCard
-                    statsCard
+                    if sizeClass == .regular {
+                        // Široki zaslon: dva jednaka stupca (paran broj, da se sadržaj čisto dijeli pri pregibu).
+                        HStack(alignment: .top, spacing: 16) {
+                            VStack(spacing: 16) { dateCard; partyCard }
+                            statsCard
+                        }
+                    } else {
+                        dateCard
+                        partyCard
+                        statsCard
+                    }
                 }
                 .padding(16)
             }
