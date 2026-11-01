@@ -84,7 +84,7 @@ struct SeatingView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Raspored")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 // Uvijek vidljivo: Složi automatski. Ostalo je u izborniku preljeva.
                 ToolbarItem(placement: .primaryAction) {
@@ -161,7 +161,7 @@ private struct SeatingResultView: View {
                     .listRowBackground(Theme.surface)
             }
             .navigationTitle("Automatsko slaganje")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Poništi") { store.undoAutoSeating(); dismiss() }

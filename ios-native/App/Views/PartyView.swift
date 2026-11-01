@@ -24,7 +24,7 @@ struct PartyView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Mladenci i kumovi")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -98,7 +98,7 @@ struct GuestImportView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Uvoz gostiju")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {

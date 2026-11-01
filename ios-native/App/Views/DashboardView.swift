@@ -29,9 +29,12 @@ struct DashboardView: View {
 
     private var guestCount: Int { store.data.capacityInfo().guests }
     private var seatedCount: Int { store.invitedGuests.filter { !($0.string("tableId") ?? "").isEmpty }.count }
-    private var emptyTables: Int {
-        let used = Set(store.guests.compactMap { $0.string("tableId") }.filter { !$0.isEmpty })
-        return store.tables.filter { !used.contains($0.id ?? "") }.count
+    /// Slobodna mjesta na svim stolovima (zauzimaju ih i mladenci i kumovi za stolom mladenaca).
+    private var emptySeats: Int {
+        let tableIds = Set(store.tables.compactMap { $0.id })
+        let seats = store.tables.reduce(0) { $0 + FloorGeometry.count($1.number("seats")) }
+        let taken = store.guests.filter { tableIds.contains($0.string("tableId") ?? "") }.count
+        return max(0, seats - taken)
     }
 
     var body: some View {
@@ -137,7 +140,7 @@ struct DashboardView: View {
                 stat("Gosti", guestCount)
                 stat("Raspoređeno", seatedCount)
                 stat("Stolovi", store.tables.count)
-                stat("Prazni stolovi", emptyTables)
+                stat("Prazna mjesta", emptySeats)
             }
         }
     }
@@ -205,7 +208,7 @@ private struct DateEditView: View {
                 }
             }
             .navigationTitle("Datum vjenčanja")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -255,7 +258,7 @@ private struct OnboardingView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Dobro došli")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Preskoči") { store.finishOnboarding(bride: "", groom: "", date: "") }
@@ -318,7 +321,7 @@ private struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Postavke")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Gotovo") { dismiss() } } }
         }
         // Prozor sa sheetom ne preuzima odmah promjenu s korijena, pa izgled postavljamo i ovdje.

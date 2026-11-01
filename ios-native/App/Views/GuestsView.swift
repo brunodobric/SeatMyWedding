@@ -72,7 +72,7 @@ struct GuestsView: View {
             }
             .background(Theme.background)
             .navigationTitle("Gosti")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 // Uvijek vidljivo: Dodaj gosta. Ostalo je u izborniku preljeva.
                 ToolbarItem(placement: .primaryAction) {
