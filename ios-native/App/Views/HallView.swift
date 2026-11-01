@@ -298,8 +298,9 @@ struct HallView: View {
         let w = max(b.x2 - b.x1 + pad * 2, 420)
         let h = max(b.y2 - b.y1 + pad * 2, 300)
         let s = min(size.width / w, size.height / h)
-        return (s, CGPoint(
-            x: size.width / 2 - (b.x1 + b.x2) / 2 * s,
-            y: size.height / 2 - (b.y1 + b.y2) / 2 * s))
+        let scale = CGFloat(s)
+        return (scale, CGPoint(
+            x: size.width / 2 - CGFloat((b.x1 + b.x2) / 2) * scale,
+            y: size.height / 2 - CGFloat((b.y1 + b.y2) / 2) * scale))
     }
 }
