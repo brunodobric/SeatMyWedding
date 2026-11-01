@@ -72,7 +72,7 @@ enum SeatingPDF {
 
     private static func drawTables(_ ctx: UIGraphicsPDFRendererContext, _ tables: [PrintTable], title: String, monogram: String) {
         ctx.beginPage()
-        var y = header("Raspored sjedenja", title: title, monogram: monogram)
+        let y = header("Raspored sjedenja", title: title, monogram: monogram)
         let gap: CGFloat = 24
         let colWidth = (page.width - 2 * margin - gap) / 2
         var col = 0
