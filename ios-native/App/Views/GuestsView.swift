@@ -70,6 +70,7 @@ struct GuestsView: View {
             }
             .background(Theme.background)
             .navigationTitle("Gosti")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
