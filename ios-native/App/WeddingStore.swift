@@ -274,7 +274,17 @@ final class WeddingStore {
         var seatsLong = 4
         var seatsEnd = 0
         var rotated = false
+        var number = 1
     }
+
+    /// Redni broj stola: upisani broj, a stolovi bez njega dobivaju redoslijed dodavanja.
+    func tableNumber(_ table: Record) -> Double {
+        if let n = table.number("number") { return n }
+        return Double((tables.firstIndex { $0.id == table.id } ?? tables.count) + 1)
+    }
+
+    /// Sljedeći slobodni redni broj (za novi stol).
+    var nextTableNumber: Int { Int(tables.map { tableNumber($0) }.max() ?? 0) + 1 }
 
     func tableRecord(_ form: TableForm, existing: Record?) -> Record {
         var seats = form.seats, seatsLong: Int?, seatsEnd: Int?
@@ -294,6 +304,7 @@ final class WeddingStore {
         let trimmed = form.name.trimmingCharacters(in: .whitespacesAndNewlines)
         t["name"] = .string(trimmed.isEmpty ? "Stol" : trimmed)
         t["shape"] = .string(form.shape)
+        t["number"] = .number(Double(max(0, form.number)))
         t["seats"] = .number(Double(seats))
         t["seatsLong"] = seatsLong.map { .number(Double($0)) }
         t["seatsEnd"] = seatsEnd.map { .number(Double($0)) }

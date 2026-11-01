@@ -14,6 +14,8 @@ struct HallView: View {
     @State private var anchorWorld: CGPoint = .zero
     @State private var viewSize: CGSize = .zero
     @State private var fitted = false
+    @State private var fitScale: CGFloat = 0
+    @State private var fitOrigin: CGPoint = .zero
     @State private var arranging = false
     @State private var openTable: TableRef?
     @State private var addingTable = false
@@ -268,7 +270,11 @@ struct HallView: View {
     }
 
     private func fitIfNeeded() {
-        guard !fitted, viewSize.width > 0, !store.tables.isEmpty else { return }
+        guard viewSize.width > 0, !store.tables.isEmpty else { return }
+        // Dok korisnik nije pomaknuo ni zumirao, prikaz se prilagođava svakoj promjeni veličine
+        // (prvi izmjereni okvir često nije konačan), pa se uvijek vidi cijela sala.
+        let untouched = !fitted || (scale == fitScale && origin == fitOrigin)
+        guard untouched else { return }
         fitted = true
         fit(size: viewSize)
     }
@@ -286,5 +292,7 @@ struct HallView: View {
             y: size.height / 2 - (b.y1 + b.y2) / 2 * s)
         baseScale = scale
         baseOrigin = origin
+        fitScale = scale
+        fitOrigin = origin
     }
 }
