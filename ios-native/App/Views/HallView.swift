@@ -190,7 +190,7 @@ struct HallView: View {
             ? Path(ellipseIn: CGRect(x: -FloorGeometry.roundRadius, y: -FloorGeometry.roundRadius,
                                      width: FloorGeometry.roundRadius * 2, height: FloorGeometry.roundRadius * 2))
             : Path(roundedRect: CGRect(x: -dims.w / 2, y: -dims.h / 2, width: dims.w, height: dims.h), cornerRadius: 6)
-        turned.fill(shape, with: .color(full ? Color(hex: 0xF3F8F1) : .white))
+        turned.fill(shape, with: .color(full ? Theme.tableFull : Theme.surface))
         turned.stroke(shape, with: .color(highlighted ? Theme.gold : Theme.goldDeep), lineWidth: highlighted ? 2.5 : 1.5)
 
         // Tekst ostaje uspravan i kad je stol zakrenut.
@@ -254,7 +254,7 @@ struct HallView: View {
                 .font(.system(size: 16, weight: .semibold))
                 .frame(width: 40, height: 40)
                 .foregroundStyle(Theme.goldDeep)
-                .background(.white, in: Circle())
+                .background(Theme.surface, in: Circle())
                 .overlay(Circle().stroke(Theme.border))
         }
     }

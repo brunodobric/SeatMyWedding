@@ -43,7 +43,7 @@ struct DashboardView: View {
             }
             .background(Theme.background)
             .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .sheet(isPresented: Binding(get: { store.needsOnboarding }, set: { _ in })) { OnboardingView() }
             .sheet(isPresented: $editingDate) { DateEditView() }
             .sheet(isPresented: $editingParty) { PartyView() }
