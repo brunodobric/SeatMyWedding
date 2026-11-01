@@ -33,7 +33,7 @@ enum TableSort: String, CaseIterable, Identifiable {
         }
     }
 
-    func sorted(_ tables: [Record], in store: WeddingStore) -> [Record] {
+    @MainActor func sorted(_ tables: [Record], in store: WeddingStore) -> [Record] {
         func fill(_ t: Record) -> Double {
             let seats = Double(max(1, FloorGeometry.count(t.number("seats"))))
             return Double(store.guests.filter { $0.string("tableId") == t.id }.count) / seats
