@@ -94,10 +94,10 @@ private struct GuestsWithHall: View {
 
     var body: some View {
         Group {
-            if width >= 600 {
+            if width >= 500 {
                 HStack(spacing: 0) {
                     GuestsView()
-                        .frame(width: max(280, min(width * 0.34, 380)))
+                        .frame(width: max(240, min(width * 0.34, 380)))
                     Divider()
                     HallView()
                 }
