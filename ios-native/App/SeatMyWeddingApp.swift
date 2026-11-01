@@ -6,7 +6,7 @@ struct SeatMyWeddingApp: App {
     @AppStorage("appearance") private var appearance = AppearanceChoice.system
 
     init() {
-        Theme.applyAppearance()
+        // Traka koristi zadani iOS izgled: naša neprozirna traka skrivala je veliki naslov.
         ExportFiles.cleanUp()
     }
 

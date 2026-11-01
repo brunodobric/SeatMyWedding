@@ -83,7 +83,7 @@ struct GuestEditView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle(guestId == nil ? "Dodaj gosta" : "Uredi gosta")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -159,7 +159,7 @@ struct GuestMultiPicker: View {
                 }
             }
             .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
         } label: {
             HStack {
                 Text(title)

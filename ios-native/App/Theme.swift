@@ -50,19 +50,6 @@ enum Theme {
     static func uiBold(_ size: CGFloat = 16) -> Font { .system(style(for: size), weight: .semibold) }
     /// Nepromjenjiva veličina, za natpise unutar tlocrta (crtaju se u svijetu sale).
     static func fixed(_ size: CGFloat, weight: Font.Weight = .regular) -> Font { .system(size: size, weight: weight) }
-
-    /// Boja trake i naslova kao u web aplikaciji.
-    static func applyAppearance() {
-        let nav = UINavigationBarAppearance()
-        nav.configureWithOpaqueBackground()
-        nav.backgroundColor = backgroundUI
-        // Bez crte ispod trake: na širokom zaslonu bi inače prelazila preko sistemskih kontrola sa strane.
-        nav.shadowColor = .clear
-        nav.titleTextAttributes = [.foregroundColor: inkUI]
-        nav.largeTitleTextAttributes = [.foregroundColor: inkUI]
-        UINavigationBar.appearance().standardAppearance = nav
-        UINavigationBar.appearance().scrollEdgeAppearance = nav
-    }
 }
 
 extension Color {

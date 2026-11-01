@@ -40,7 +40,6 @@ struct DashboardView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    ScreenTitleHeader(title: title)
                     if sizeClass == .regular {
                         // Široki zaslon: dva jednaka stupca (paran broj, da se sadržaj čisto dijeli pri pregibu).
                         HStack(alignment: .top, spacing: 16) {
@@ -56,7 +55,8 @@ struct DashboardView: View {
                 .padding(16)
             }
             .background(Theme.background)
-            .screenTitle(title)
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showSettings = true } label: { Image(systemName: "gearshape") }
@@ -193,7 +193,7 @@ private struct DateEditView: View {
                 }
             }
             .navigationTitle("Datum vjenčanja")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
@@ -243,7 +243,7 @@ private struct OnboardingView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Dobro došli")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Preskoči") { store.finishOnboarding(bride: "", groom: "", date: "") }
@@ -301,7 +301,7 @@ private struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .navigationTitle("Postavke")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Gotovo") { dismiss() } } }
         }
         // Prozor sa sheetom ne preuzima odmah promjenu s korijena, pa izgled postavljamo i ovdje.

@@ -30,23 +30,19 @@ struct GuestsView: View {
         NavigationStack {
             Group {
                 if store.invitedGuests.isEmpty {
-                    VStack(spacing: 0) {
-                        ScreenTitleHeader(title: "Gosti").padding(.horizontal, 16)
-                        ContentUnavailableView {
-                            Label("Još nema gostiju", systemImage: "person.2")
-                        } description: {
-                            Text("Dodaj prvog gosta ili uvezi sigurnosnu kopiju s web aplikacije.")
-                        } actions: {
-                            Button("Dodaj gosta") { editing = GuestSheet(id: nil) }
-                                .buttonStyle(.borderedProminent)
-                            Button("Uvezi popis (tekst)") { pasting = true }
-                            Button("Mladenci i kumovi") { party = true }
-                            Button("Uvezi kopiju") { importing = true }
-                        }
+                    ContentUnavailableView {
+                        Label("Još nema gostiju", systemImage: "person.2")
+                    } description: {
+                        Text("Dodaj prvog gosta ili uvezi sigurnosnu kopiju s web aplikacije.")
+                    } actions: {
+                        Button("Dodaj gosta") { editing = GuestSheet(id: nil) }
+                            .buttonStyle(.borderedProminent)
+                        Button("Uvezi popis (tekst)") { pasting = true }
+                        Button("Mladenci i kumovi") { party = true }
+                        Button("Uvezi kopiju") { importing = true }
                     }
                 } else {
                     List {
-                        ScreenTitleHeader(title: "Gosti").screenTitleRow()
                         if !store.categories.isEmpty {
                             categoryChips
                                 .listRowInsets(EdgeInsets())
@@ -75,7 +71,8 @@ struct GuestsView: View {
                 }
             }
             .background(Theme.background)
-            .screenTitle("Gosti")
+            .navigationTitle("Gosti")
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 // Uvijek vidljivo: Dodaj gosta. Ostalo je u izborniku preljeva.
                 ToolbarItem(placement: .primaryAction) {
