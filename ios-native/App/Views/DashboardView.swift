@@ -208,7 +208,7 @@ private struct OnboardingView: View {
                 } header: {
                     Text("Tko se vjenča?")
                 } footer: {
-                    Text("Kume i pratnju možeš dodati poslije na pregledu.")
+                    Text("Kume i pratnju možeš dodati poslije na Dashboardu.")
                 }
                 Section {
                     Toggle("Znam datum vjenčanja", isOn: $hasDate.animation())
