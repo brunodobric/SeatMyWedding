@@ -44,9 +44,9 @@ struct HallView: View {
                         controls(size: geo.size)
                     }
                 }
-                .onAppear { viewSize = geo.size; fitIfNeeded() }
-                .onChange(of: geo.size) { _, new in viewSize = new; fitIfNeeded() }
-                .onChange(of: store.tables.count) { _, _ in fitted = false; fitIfNeeded() }
+                .onAppear { viewSize = geo.size; fitIfNeeded(size: geo.size) }
+                .onChange(of: geo.size) { _, new in viewSize = new; fitIfNeeded(size: new) }
+                .onChange(of: store.tables.count) { _, _ in fitted = false; fitIfNeeded(size: geo.size) }
             }
             .background(Theme.background)
             .navigationTitle("Sala")
@@ -269,14 +269,16 @@ struct HallView: View {
         baseOrigin = origin
     }
 
-    private func fitIfNeeded() {
-        guard viewSize.width > 0, !store.tables.isEmpty else { return }
+    /// Veličina se prosljeđuje izravno: `viewSize` se u istom koraku još ne bi osvježio pa bi se
+    /// prilagodba radila prema prethodnoj veličini (sala je zbog toga ostajala pomaknuta).
+    private func fitIfNeeded(size: CGSize) {
+        guard size.width > 0, !store.tables.isEmpty else { return }
         // Dok korisnik nije pomaknuo ni zumirao, prikaz se prilagođava svakoj promjeni veličine
         // (prvi izmjereni okvir često nije konačan), pa se uvijek vidi cijela sala.
         let untouched = !fitted || (scale == fitScale && origin == fitOrigin)
         guard untouched else { return }
         fitted = true
-        fit(size: viewSize)
+        fit(size: size)
     }
 
     /// Prilagodi prikaz svim stolovima (kao fitToContent na webu).

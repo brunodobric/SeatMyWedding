@@ -21,10 +21,9 @@ struct SeatingView: View {
         NavigationStack {
             List {
                 Section {
-                    HStack {
+                    VStack(alignment: .leading, spacing: 10) {
                         Text("Smješteno \(seatedCount) od \(store.invitedGuests.count)")
                             .font(Theme.ui(15))
-                        Spacer()
                         Button {
                             if store.tables.isEmpty {
                                 store.show("Najprije dodaj stolove u Sali.", isError: true)
@@ -33,8 +32,10 @@ struct SeatingView: View {
                             }
                         } label: {
                             Label("Složi automatski", systemImage: "wand.and.stars")
+                                .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.roundedRectangle(radius: 10))
                         .tint(Theme.gold)
                     }
                     if store.violatedRuleCount > 0 {

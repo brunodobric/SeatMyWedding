@@ -54,6 +54,8 @@ enum Theme {
         let nav = UINavigationBarAppearance()
         nav.configureWithOpaqueBackground()
         nav.backgroundColor = dynamicUI(light: 0xFDFBF7, dark: 0x1C1C1E)
+        // Bez crte ispod trake: na širokom zaslonu bi inače prelazila preko sistemskih kontrola sa strane.
+        nav.shadowColor = .clear
         let inkUI = dynamicUI(light: 0x2B2622, dark: 0xF2EDE4)
         nav.titleTextAttributes = [.foregroundColor: inkUI]
         nav.largeTitleTextAttributes = [.foregroundColor: inkUI]
