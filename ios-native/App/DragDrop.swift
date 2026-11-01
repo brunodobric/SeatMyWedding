@@ -2,15 +2,15 @@ import SwiftUI
 import UniformTypeIdentifiers
 import SeatingCore
 
-/// Gost koji se povlači s popisa na stol. Unutar aplikacije nosi identitet gosta;
-/// drugim aplikacijama izlaže se kao obični tekst (ime).
+/// Gost koji se povlači s popisa na stol. Nosi identitet gosta (ne samo ime), pa se
+/// dva gosta istog imena ne mogu zamijeniti. Ne izlaže se kao tekst, da ga odredište za
+/// imena iz drugih aplikacija ne prepozna po imenu.
 struct GuestDragItem: Codable, Transferable {
     var id: String
     var name: String
 
     static var transferRepresentation: some TransferRepresentation {
         CodableRepresentation(contentType: .json)
-        ProxyRepresentation(exporting: { $0.name })
     }
 }
 
