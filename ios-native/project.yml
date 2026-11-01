@@ -13,6 +13,20 @@ options:
 packages:
   SeatingCore:
     path: SeatingCore
+# Izričita shema aplikacije, i to prva na popisu: inače Xcode (nakon svakog novog generiranja
+# projekta) kao zadanu odabere shemu paketa SeatingCore, koja se ne može pokrenuti.
+schemes:
+  SeatMyWedding:
+    build:
+      targets:
+        SeatMyWedding: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    management:
+      shared: true
+      orderHint: 0
 targets:
   SeatMyWedding:
     type: application
