@@ -29,12 +29,24 @@ struct RootView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var section: AppSection = .dashboard
 
+    private var wide: Bool { sizeClass == .regular }
+
+    /// Na širokom zaslonu su Gosti i Sala jedan tab (gosti lijevo, sala desno).
+    private var sections: [AppSection] {
+        wide ? AppSection.allCases.filter { $0 != .guests } : AppSection.allCases
+    }
+
+    /// Odabir koji se vidi: Gosti u širokom prikazu otvaraju spojeni tab Sala.
+    private var selection: Binding<AppSection> {
+        Binding(get: { wide && section == .guests ? .hall : section }, set: { section = $0 })
+    }
+
     @ViewBuilder
     private func content(_ s: AppSection) -> some View {
         switch s {
         case .dashboard: DashboardView()
         case .guests: GuestsView()
-        case .hall: HallView()
+        case .hall: if wide { GuestsWithHall() } else { HallView() }
         case .seating: SeatingWithHall()
         }
     }
@@ -55,21 +67,48 @@ struct RootView: View {
     @ViewBuilder
     private var tabs: some View {
         if #available(iOS 18.0, *) {
-            TabView(selection: $section) {
-                ForEach(AppSection.allCases) { s in
+            TabView(selection: selection) {
+                ForEach(sections) { s in
                     Tab(s.title, systemImage: s.icon, value: s) { content(s) }
                 }
             }
             .tabViewStyle(.sidebarAdaptable)
         } else {
-            TabView(selection: $section) {
-                ForEach(AppSection.allCases) { s in
+            TabView(selection: selection) {
+                ForEach(sections) { s in
                     content(s)
                         .tabItem { Label(s.title, systemImage: s.icon) }
                         .tag(s)
                 }
             }
         }
+    }
+}
+
+/// Široki zaslon: popis gostiju (uži) lijevo i sala desno; gosti se mogu povući na stol.
+private struct GuestsWithHall: View {
+    @State private var width: CGFloat = 0
+
+    var body: some View {
+        Group {
+            if width >= 600 {
+                HStack(spacing: 0) {
+                    GuestsView()
+                        .frame(width: max(280, min(width * 0.34, 380)))
+                    Divider()
+                    HallView()
+                }
+            } else {
+                HallView()
+            }
+        }
+        .background(
+            GeometryReader { g in
+                Color.clear
+                    .onAppear { width = g.size.width }
+                    .onChange(of: g.size.width) { _, new in width = new }
+            }
+        )
     }
 }
 
