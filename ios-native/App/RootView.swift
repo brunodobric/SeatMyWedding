@@ -5,6 +5,8 @@ struct RootView: View {
 
     var body: some View {
         TabView {
+            DashboardView()
+                .tabItem { Label("Dashboard", systemImage: "heart.text.square") }
             GuestsView()
                 .tabItem { Label("Gosti", systemImage: "person.2") }
             HallView()

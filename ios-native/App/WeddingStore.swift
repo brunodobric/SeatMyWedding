@@ -390,6 +390,41 @@ final class WeddingStore {
         }
     }
 
+    // MARK: Datum vjenčanja
+
+    /// Datum vjenčanja kao "yyyy-MM-dd" (prazno = nije postavljen); sprema se u postavke.
+    var weddingDate: String { data.settings.string("weddingDate") ?? "" }
+
+    func setWeddingDate(_ value: String) {
+        var settings = data.settings
+        settings["weddingDate"] = .string(value)
+        put("settings", [settings])
+    }
+
+    // MARK: Prvo pokretanje
+
+    /// Treba li pokazati uvodni ekran: novo vjenčanje bez naslova koje korisnik nije preskočio.
+    var needsOnboarding: Bool {
+        (data.settings.string("weddingTitle") ?? "").isEmpty && !data.settings.isTruthy("onboardingDone")
+    }
+
+    /// Završava uvod: imena (ako su upisana) postaju mladenci i naslov, datum je neobavezan.
+    func finishOnboarding(bride: String, groom: String, date: String) {
+        let b = bride.trimmingCharacters(in: .whitespacesAndNewlines)
+        let g = groom.trimmingCharacters(in: .whitespacesAndNewlines)
+        var after = data
+        if !b.isEmpty || !g.isEmpty {
+            var names = Array(repeating: "", count: WeddingParty.slots.count)
+            names[2] = b
+            names[3] = g
+            after.saveWeddingParty(names: names)
+            after.settings["weddingTitle"] = .string([b, g].filter { !$0.isEmpty }.joined(separator: " i "))
+        }
+        if !date.isEmpty { after.settings["weddingDate"] = .string(date) }
+        after.settings["onboardingDone"] = .bool(true)
+        _ = commit(after)
+    }
+
     // MARK: Mladenci i kumovi
 
     func partyNames() -> [String] {

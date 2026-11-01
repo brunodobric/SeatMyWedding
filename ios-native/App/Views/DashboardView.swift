@@ -1,0 +1,238 @@
+import SwiftUI
+import SeatingCore
+
+/// Početni ekran: datum i odbrojavanje, mladenci i kumovi, broj gostiju i statistika rasporeda.
+struct DashboardView: View {
+    @Environment(WeddingStore.self) private var store
+    @State private var editingDate = false
+    @State private var editingParty = false
+
+    private static let storageFormat: DateFormatter = {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
+    private var date: Date? {
+        store.weddingDate.isEmpty ? nil : Self.storageFormat.date(from: store.weddingDate)
+    }
+
+    private var title: String {
+        let t = store.data.settings.string("weddingTitle") ?? ""
+        return t.isEmpty ? "Moje Vjenčanje" : t
+    }
+
+    private var guestCount: Int { store.data.capacityInfo().guests }
+    private var seatedCount: Int { store.invitedGuests.filter { !($0.string("tableId") ?? "").isEmpty }.count }
+    private var emptyTables: Int {
+        let used = Set(store.guests.compactMap { $0.string("tableId") }.filter { !$0.isEmpty })
+        return store.tables.filter { !used.contains($0.id ?? "") }.count
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    dateCard
+                    partyCard
+                    statsCard
+                }
+                .padding(16)
+            }
+            .background(Theme.background)
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: Binding(get: { store.needsOnboarding }, set: { _ in })) { OnboardingView() }
+            .sheet(isPresented: $editingDate) { DateEditView() }
+            .sheet(isPresented: $editingParty) { PartyView() }
+        }
+    }
+
+    private var dateCard: some View {
+        Card(title: "Datum vjenčanja", action: date == nil ? "Postavi" : "Uredi") { editingDate = true } content: {
+            if let date {
+                let days = Calendar.current.dateComponents(
+                    [.day], from: Calendar.current.startOfDay(for: .now), to: Calendar.current.startOfDay(for: date)).day ?? 0
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(date.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "hr_HR"))))
+                        .font(Theme.uiBold(18))
+                    Text(countdown(days))
+                        .font(Theme.title(30))
+                        .foregroundStyle(Theme.goldDeep)
+                }
+            } else {
+                Text("Datum još nije postavljen.").font(Theme.ui(16)).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func countdown(_ days: Int) -> String {
+        if days == 0 { return "Danas je veliki dan!" }
+        if days < 0 { return "Prošlo je \(-days) \(-days % 10 == 1 && -days % 100 != 11 ? "dan" : "dana")" }
+        return "Još \(days) \(days % 10 == 1 && days % 100 != 11 ? "dan" : "dana")"
+    }
+
+    private var partyCard: some View {
+        let names = store.partyNames()
+        let couple = [names[2], names[3]].filter { !$0.isEmpty }
+        let witnesses = [names[1], names[4]].filter { !$0.isEmpty }
+        let plus = [names[0], names[5]].filter { !$0.isEmpty }
+        return Card(title: "Mladenci i kumovi", action: "Uredi") { editingParty = true } content: {
+            if couple.isEmpty && witnesses.isEmpty && plus.isEmpty {
+                Text("Još nitko nije unesen.").font(Theme.ui(16)).foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    if !couple.isEmpty { row("Mladenci", couple) }
+                    if !witnesses.isEmpty { row("Kumovi", witnesses) }
+                    if !plus.isEmpty { row("Pratnja", plus) }
+                }
+            }
+        }
+    }
+
+    private func row(_ label: String, _ values: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(Theme.ui(13)).foregroundStyle(.secondary)
+            Text(values.joined(separator: " i ")).font(Theme.uiBold(17))
+        }
+    }
+
+    private var statsCard: some View {
+        Card(title: "Statistika") {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                stat("Gosti", guestCount)
+                stat("Raspoređeno", seatedCount)
+                stat("Stolovi", store.tables.count)
+                stat("Prazni stolovi", emptyTables)
+            }
+        }
+    }
+
+    private func stat(_ label: String, _ value: Int) -> some View {
+        VStack(spacing: 2) {
+            Text("\(value)").font(Theme.title(28)).foregroundStyle(Theme.goldDeep)
+            Text(label).font(Theme.ui(13)).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(Theme.champagne, in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    fileprivate static func store(_ d: Date) -> String { storageFormat.string(from: d) }
+    fileprivate static func parse(_ s: String) -> Date? { storageFormat.date(from: s) }
+}
+
+private struct Card<Content: View>: View {
+    let title: String
+    var action: String? = nil
+    var onAction: () -> Void = {}
+    @ViewBuilder var content: Content
+
+    init(title: String, action: String? = nil, onAction: @escaping () -> Void = {}, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.action = action
+        self.onAction = onAction
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(title).font(Theme.ui(14)).foregroundStyle(Theme.bronze).textCase(.uppercase)
+                Spacer()
+                if let action { Button(action, action: onAction).font(Theme.ui(15)).tint(Theme.goldDeep) }
+            }
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
+    }
+}
+
+private struct DateEditView: View {
+    @Environment(WeddingStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var date = Date.now
+    @State private var loaded = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                DatePicker("Datum", selection: $date, displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .environment(\.locale, Locale(identifier: "hr_HR"))
+                if !store.weddingDate.isEmpty {
+                    Button("Ukloni datum", role: .destructive) {
+                        store.setWeddingDate("")
+                        dismiss()
+                    }
+                }
+            }
+            .navigationTitle("Datum vjenčanja")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Spremi") {
+                        store.setWeddingDate(DashboardView.store(date))
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                guard !loaded else { return }
+                loaded = true
+                if let d = DashboardView.parse(store.weddingDate) { date = d }
+            }
+        }
+    }
+}
+
+private struct OnboardingView: View {
+    @Environment(WeddingStore.self) private var store
+    @State private var bride = ""
+    @State private var groom = ""
+    @State private var hasDate = false
+    @State private var date = Date.now
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Mladenka", text: $bride).textInputAutocapitalization(.words)
+                    TextField("Mladoženja", text: $groom).textInputAutocapitalization(.words)
+                } header: {
+                    Text("Tko se vjenča?")
+                } footer: {
+                    Text("Kume i pratnju možeš dodati poslije na Dashboardu.")
+                }
+                Section {
+                    Toggle("Znam datum vjenčanja", isOn: $hasDate.animation())
+                    if hasDate {
+                        DatePicker("Datum", selection: $date, displayedComponents: .date)
+                            .environment(\.locale, Locale(identifier: "hr_HR"))
+                    }
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
+            .navigationTitle("Dobro došli")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Preskoči") { store.finishOnboarding(bride: "", groom: "", date: "") }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Počni") {
+                        store.finishOnboarding(bride: bride, groom: groom, date: hasDate ? DashboardView.store(date) : "")
+                    }
+                }
+            }
+        }
+        .interactiveDismissDisabled()
+    }
+}
