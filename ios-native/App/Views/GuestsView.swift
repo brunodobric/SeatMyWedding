@@ -58,6 +58,12 @@ struct GuestsView: View {
                                 .buttonStyle(.plain)
                                 .draggable(GuestDragItem(id: guest.id ?? "", name: guest.string("name") ?? ""))
                                 .listRowBackground(Theme.surface)
+                                .contextMenu {
+                                    Button("Uredi", systemImage: "pencil") { editing = GuestSheet(id: guest.id) }
+                                    Button("Obriši", systemImage: "trash", role: .destructive) {
+                                        if let id = guest.id { store.deleteGuest(id) }
+                                    }
+                                }
                                 .swipeActions {
                                     Button("Obriši", role: .destructive) {
                                         if let id = guest.id { store.deleteGuest(id) }
@@ -79,6 +85,7 @@ struct GuestsView: View {
                     Button { editing = GuestSheet(id: nil) } label: {
                         Label("Dodaj gosta", systemImage: "plus")
                     }
+                    .keyboardShortcut("n", modifiers: .command)
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
@@ -143,6 +150,7 @@ struct GuestsView: View {
                 .background(selected ? color : Theme.champagne, in: Capsule())
         }
         .buttonStyle(.plain)
+        .hoverEffect(.highlight)
     }
 
     private func handleImport(_ result: Result<URL, Error>) {

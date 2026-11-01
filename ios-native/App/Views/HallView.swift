@@ -5,6 +5,9 @@ import SeatingCore
 /// Pomicanje jednim prstom, zumiranje štipanjem ili gumbima.
 struct HallView: View {
     @Environment(WeddingStore.self) private var store
+    /// Desno od popisa (spojeni prikaz): mali naslov u sredini trake. Veliki naslov bi tamo
+    /// bio prilijepljen uz razdjelnik, jer traka nema lijevu marginu.
+    var besideList = false
 
     @State private var scale: CGFloat = 1
     @State private var origin: CGPoint = .zero
@@ -50,7 +53,7 @@ struct HallView: View {
             }
             .background(Theme.background)
             .navigationTitle("Sala")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(besideList ? .inline : .large)
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
                     Button { settingUpHall = true } label: {
@@ -59,6 +62,7 @@ struct HallView: View {
                     Button { addingTable = true } label: {
                         Label("Dodaj stol", systemImage: "plus")
                     }
+                    .keyboardShortcut("n", modifiers: [.command, .option])
                     Button { arranging.toggle() } label: {
                         Label(arranging ? "Gotovo s premještanjem" : "Premjesti stolove",
                               systemImage: arranging ? "checkmark.circle.fill" : "arrow.up.and.down.and.arrow.left.and.right")
@@ -257,8 +261,14 @@ struct HallView: View {
     private func controls(size: CGSize) -> some View {
         VStack(spacing: 10) {
             roundButton("plus") { zoom(by: 1.25, size: size) }
+                .keyboardShortcut("+", modifiers: .command)
+                .accessibilityLabel("Povećaj")
             roundButton("minus") { zoom(by: 0.8, size: size) }
+                .keyboardShortcut("-", modifiers: .command)
+                .accessibilityLabel("Smanji")
             roundButton("arrow.up.left.and.arrow.down.right") { adjusted = false }
+                .keyboardShortcut("0", modifiers: .command)
+                .accessibilityLabel("Cijela sala")
         }
         .padding(16)
     }
@@ -272,6 +282,7 @@ struct HallView: View {
                 .background(Theme.surface, in: Circle())
                 .overlay(Circle().stroke(Theme.border))
         }
+        .hoverEffect(.lift)
     }
 
     private func zoom(by factor: CGFloat, size: CGSize) {

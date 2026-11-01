@@ -92,6 +92,7 @@ struct SeatingView: View {
                         Label("Složi automatski", systemImage: "wand.and.stars")
                     }
                     .labelStyle(.titleAndIcon)
+                    .keyboardShortcut("r", modifiers: [.command, .shift])
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {

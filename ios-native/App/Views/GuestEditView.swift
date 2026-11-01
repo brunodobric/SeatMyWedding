@@ -85,7 +85,7 @@ struct GuestEditView: View {
             .navigationTitle(guestId == nil ? "Dodaj gosta" : "Uredi gosta")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Odustani") { dismiss() }.keyboardShortcut(.cancelAction) }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Spremi") {
                         let id = store.saveGuest(id: guestId, name: name, categoryId: categoryId, notes: notes, locked: locked, maybe: maybe)
@@ -96,6 +96,7 @@ struct GuestEditView: View {
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .keyboardShortcut("s", modifiers: .command)
                 }
             }
             .confirmationDialog("Obrisati gosta?", isPresented: $confirmDelete, titleVisibility: .visible) {

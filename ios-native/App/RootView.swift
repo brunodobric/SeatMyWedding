@@ -27,7 +27,8 @@ enum AppSection: String, CaseIterable, Identifiable {
 struct RootView: View {
     @Environment(WeddingStore.self) private var store
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @State private var section: AppSection = .dashboard
+    /// Odabrani dio pamti se po prozoru (iPad može imati više prozora i vraća ih nakon gašenja).
+    @SceneStorage("section") private var section: AppSection = .dashboard
 
     private var wide: Bool { sizeClass == .regular }
 
@@ -99,7 +100,7 @@ private struct GuestsWithHall: View {
                     GuestsView()
                         .frame(width: max(240, min(width * 0.34, 380)))
                     Divider()
-                    HallView()
+                    HallView(besideList: true)
                 }
             } else {
                 HallView()
@@ -121,7 +122,7 @@ private struct SeatingWithHall: View {
                     SeatingView()
                         .frame(width: min(width * 0.4, 420))
                     Divider()
-                    HallView()
+                    HallView(besideList: true)
                 }
             } else {
                 SeatingView()
