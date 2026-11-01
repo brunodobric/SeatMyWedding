@@ -277,14 +277,19 @@ final class WeddingStore {
         var number = 1
     }
 
-    /// Redni broj stola: upisani broj, a stolovi bez njega dobivaju redoslijed dodavanja.
+    /// Redni broj stola: upisani broj; stol mladenaca bez broja je 0, a ostali
+    /// stolovi bez broja dobivaju redoslijed dodavanja (prvi za goste je 1).
     func tableNumber(_ table: Record) -> Double {
         if let n = table.number("number") { return n }
-        return Double((tables.firstIndex { $0.id == table.id } ?? tables.count) + 1)
+        if table.string("shape") == "head" { return 0 }
+        let regular = tables.filter { $0.string("shape") != "head" }
+        return Double((regular.firstIndex { $0.id == table.id } ?? regular.count) + 1)
     }
 
-    /// Sljedeći slobodni redni broj (za novi stol).
-    var nextTableNumber: Int { Int(tables.map { tableNumber($0) }.max() ?? 0) + 1 }
+    /// Sljedeći slobodni redni broj za stol gostiju (stol mladenaca se ne računa).
+    var nextTableNumber: Int {
+        Int(tables.filter { $0.string("shape") != "head" }.map { tableNumber($0) }.max() ?? 0) + 1
+    }
 
     func tableRecord(_ form: TableForm, existing: Record?) -> Record {
         var seats = form.seats, seatsLong: Int?, seatsEnd: Int?

@@ -93,6 +93,13 @@ struct TableEditView: View {
                 Text("Gosti za ovim stolom ostaju bez mjesta.")
             }
             .onAppear(perform: load)
+            .onChange(of: form.shape) { _, shape in
+                // Novi stol mladenaca je broj 0, ostali slijede redoslijed.
+                guard existing == nil, loaded else { return }
+                let wasDefault = form.name == "Stol \(form.number)"
+                form.number = shape == "head" ? 0 : store.nextTableNumber
+                if wasDefault { form.name = shape == "head" ? "Stol mladenaca" : "Stol \(form.number)" }
+            }
         }
     }
 
