@@ -242,6 +242,7 @@ private struct OnboardingView: View {
                 } footer: {
                     Text("Kume i pratnju možeš dodati poslije na Dashboardu.")
                 }
+                    .listRowBackground(Theme.surface)
                 Section {
                     Toggle("Znam datum vjenčanja", isOn: $hasDate.animation())
                     if hasDate {
@@ -249,6 +250,7 @@ private struct OnboardingView: View {
                             .environment(\.locale, Locale(identifier: "hr_HR"))
                     }
                 }
+                    .listRowBackground(Theme.surface)
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)
@@ -311,6 +313,7 @@ private struct SettingsView: View {
                 } footer: {
                     Text("Automatski prati postavku telefona.")
                 }
+                    .listRowBackground(Theme.surface)
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)

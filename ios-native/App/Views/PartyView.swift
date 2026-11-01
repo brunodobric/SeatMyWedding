@@ -19,6 +19,7 @@ struct PartyView: View {
                 } footer: {
                     Text("Redom slijeva nadesno za stolom mladenaca. Prazno polje znači da te osobe nema.")
                 }
+                    .listRowBackground(Theme.surface)
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)
@@ -74,6 +75,7 @@ struct GuestImportView: View {
                 } footer: {
                     Text("Jedan redak po gostu. „Ana i Marko Horvat” ili „Ivo, Mia, Lea Kovač” sjede zajedno, „Petar Marić +1” dodaje pratnju, a „Ana Horvat;Prijatelji” određuje kategoriju.")
                 }
+                    .listRowBackground(Theme.surface)
                 Section {
                     Toggle("Prezime je prvo", isOn: Binding(get: { surnameFirst }, set: { surnameFirst = $0; surnameTouched = true }))
                     Picker("Kategorija", selection: $categoryId) {
@@ -82,6 +84,7 @@ struct GuestImportView: View {
                     }
                     Toggle("Uvezi i imena koja već postoje", isOn: $includeExisting)
                 }
+                    .listRowBackground(Theme.surface)
                 if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Section("Pregled") {
                         Text("Dodat će se \(preview.guests) gostiju" + (preview.groups > 0 ? ", \(preview.groups) skupina sjedi zajedno" : "") + ".")
@@ -89,6 +92,7 @@ struct GuestImportView: View {
                             Text("Preskočeno \(preview.skipped) (već su na popisu).").foregroundStyle(.secondary)
                         }
                     }
+                        .listRowBackground(Theme.surface)
                 }
             }
             .scrollContentBackground(.hidden)

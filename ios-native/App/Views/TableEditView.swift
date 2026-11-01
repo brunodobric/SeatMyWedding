@@ -35,6 +35,7 @@ struct TableEditView: View {
             Form {
                 Section {
                     TextField("Naziv stola", text: $form.name)
+                        .textInputAutocapitalization(.words)
                     Stepper("Redni broj: \(form.number)", value: $form.number, in: 0...999)
                     if !isHead {
                         Picker("Oblik", selection: $form.shape) {
@@ -42,6 +43,7 @@ struct TableEditView: View {
                         }
                     }
                 }
+                    .listRowBackground(Theme.surface)
                 Section {
                     switch form.shape {
                     case "round":
@@ -61,10 +63,12 @@ struct TableEditView: View {
                 } footer: {
                     Text("Ukupno: \(total) mjesta")
                 }
+                    .listRowBackground(Theme.surface)
                 if tableId != nil && !isHead {
                     Section {
                         Button("Obriši stol", role: .destructive) { confirmDelete = true }
                     }
+                        .listRowBackground(Theme.surface)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -158,6 +162,7 @@ struct HallSetupView: View {
                         }
                     }
                 }
+                    .listRowBackground(Theme.surface)
                 Section {
                     Stepper("Gostiju: \(guestCount)", value: $guestCount, in: 0...1000, step: 5)
                     Stepper("Mjesta po stolu: \(perTable)", value: $perTable, in: 2...30)
@@ -170,6 +175,7 @@ struct HallSetupView: View {
                 } footer: {
                     Text(summary)
                 }
+                    .listRowBackground(Theme.surface)
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)

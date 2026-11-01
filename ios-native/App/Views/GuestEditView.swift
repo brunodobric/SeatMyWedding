@@ -27,6 +27,7 @@ struct GuestEditView: View {
             Form {
                 Section {
                     TextField("Ime i prezime", text: $name)
+                        .textInputAutocapitalization(.words)
                         .font(Theme.ui(17))
                     Picker("Kategorija", selection: $categoryId) {
                         Text("Bez kategorije").tag(String?.none)
@@ -35,10 +36,12 @@ struct GuestEditView: View {
                         }
                     }
                 }
+                    .listRowBackground(Theme.surface)
                 Section {
                     Toggle("Još nije potvrđeno (možda)", isOn: $maybe)
                     Toggle("Zaključaj mjesto", isOn: $locked)
                 }
+                    .listRowBackground(Theme.surface)
                 Section {
                     GuestMultiPicker(title: "Sjedi zajedno s", selection: $together, exclude: guestId)
                     GuestMultiPicker(title: "Odvojeno od", selection: $apart, exclude: guestId)
@@ -62,14 +65,17 @@ struct GuestEditView: View {
                 } footer: {
                     Text("Automatsko slaganje pazi na ova pravila.")
                 }
+                    .listRowBackground(Theme.surface)
                 Section("Bilješka") {
                     TextField("Npr. alergije, dječja stolica", text: $notes, axis: .vertical)
                         .lineLimit(2...5)
                 }
+                    .listRowBackground(Theme.surface)
                 if guestId != nil {
                     Section {
                         Button("Obriši gosta", role: .destructive) { confirmDelete = true }
                     }
+                        .listRowBackground(Theme.surface)
                 }
             }
             .scrollContentBackground(.hidden)
