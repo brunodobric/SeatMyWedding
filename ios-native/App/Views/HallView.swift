@@ -52,17 +52,18 @@ struct HallView: View {
             .navigationTitle("Sala")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button("Dodaj stol", systemImage: "plus") { addingTable = true }
-                        Button("Složi salu", systemImage: "square.grid.3x3") { settingUpHall = true }
-                        Button(arranging ? "Gotovo s premještanjem" : "Premjesti stolove", systemImage: "arrow.up.and.down.and.arrow.left.and.right") {
-                            arranging.toggle()
-                        }
-                        .disabled(store.tables.isEmpty)
-                    } label: {
-                        Image(systemName: arranging ? "checkmark.circle.fill" : "ellipsis.circle")
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button { settingUpHall = true } label: {
+                        Label("Složi salu", systemImage: "square.grid.3x3")
                     }
+                    Button { addingTable = true } label: {
+                        Label("Dodaj stol", systemImage: "plus")
+                    }
+                    Button { arranging.toggle() } label: {
+                        Label(arranging ? "Gotovo s premještanjem" : "Premjesti stolove",
+                              systemImage: arranging ? "checkmark.circle.fill" : "arrow.up.and.down.and.arrow.left.and.right")
+                    }
+                    .disabled(store.tables.isEmpty)
                 }
             }
             .sheet(item: $openTable) { ref in
