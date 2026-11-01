@@ -21,15 +21,13 @@ enum AppSection: String, CaseIterable, Identifiable {
     }
 }
 
-/// Uski zaslon (zatvoren preklopni iPhone, običan iPhone): donja traka tabova.
-/// Široki zaslon (otvoreni preklopni iPhone, iPad): bočni izbornik slijeva.
+/// Standardni TabView: sustav sam postavlja traku (dolje na uskom zaslonu, sa strane na
+/// vanjskom zaslonu iPhone Duoa) i pretvara je u bočni izbornik na širokom zaslonu.
 /// Odabrani dio ostaje isti kad se zaslon sklopi ili otvori.
 struct RootView: View {
     @Environment(WeddingStore.self) private var store
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var section: AppSection = .dashboard
-
-    private var wide: Bool { sizeClass == .regular }
 
     @ViewBuilder
     private func content(_ s: AppSection) -> some View {
@@ -37,47 +35,60 @@ struct RootView: View {
         case .dashboard: DashboardView()
         case .guests: GuestsView()
         case .hall: HallView()
-        case .seating: SeatingView()
+        case .seating: SeatingWithHall()
         }
     }
 
     var body: some View {
-        Group {
-            if wide {
-                NavigationSplitView {
-                    List(AppSection.allCases, selection: Binding<AppSection?>(
-                        get: { section }, set: { if let v = $0 { section = v } }
-                    )) { s in
-                        Label(s.title, systemImage: s.icon)
-                            .font(Theme.ui(17))
-                            .tag(s)
-                    }
-                    .navigationTitle("SeatMyWedding")
-                    .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 300)
-                    .scrollContentBackground(.hidden)
-                    .background(Theme.background)
-                } detail: {
-                    content(section)
+        tabs
+            .overlay(alignment: .bottom) {
+                if let toast = store.toast {
+                    ToastBar(toast: toast)
+                        .padding(.bottom, sizeClass == .regular ? 16 : 64)
+                        .padding(.horizontal, 16)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: store.toast?.id)
+    }
+
+    @ViewBuilder
+    private var tabs: some View {
+        if #available(iOS 18.0, *) {
+            TabView(selection: $section) {
+                ForEach(AppSection.allCases) { s in
+                    Tab(s.title, systemImage: s.icon, value: s) { content(s) }
+                }
+            }
+            .tabViewStyle(.sidebarAdaptable)
+        } else {
+            TabView(selection: $section) {
+                ForEach(AppSection.allCases) { s in
+                    content(s)
+                        .tabItem { Label(s.title, systemImage: s.icon) }
+                        .tag(s)
+                }
+            }
+        }
+    }
+}
+
+/// Raspored: na užem prostoru samo popis; kad ima mjesta (otvoreni iPhone Duo, iPad),
+/// popis stolova i tlocrt jedno uz drugo, s istim stanjem i funkcijama.
+private struct SeatingWithHall: View {
+    var body: some View {
+        GeometryReader { geo in
+            if geo.size.width >= 820 {
+                HStack(spacing: 0) {
+                    SeatingView()
+                        .frame(width: min(geo.size.width * 0.4, 420))
+                    Divider()
+                    HallView()
                 }
             } else {
-                TabView(selection: $section) {
-                    ForEach(AppSection.allCases) { s in
-                        content(s)
-                            .tabItem { Label(s.title, systemImage: s.icon) }
-                            .tag(s)
-                    }
-                }
+                SeatingView()
             }
         }
-        .overlay(alignment: .bottom) {
-            if let toast = store.toast {
-                ToastBar(toast: toast)
-                    .padding(.bottom, wide ? 16 : 64)
-                    .padding(.horizontal, 16)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-        }
-        .animation(.easeInOut(duration: 0.2), value: store.toast?.id)
     }
 }
 
