@@ -307,8 +307,7 @@ final class WeddingStore {
         var table = tableRecord(form, existing: existing)
         if existing == nil { table = data.placeNewTable(table) }
         put("tables", [table])
-        var wedding = data
-        let moved = wedding.reseatOverflowGuests(table: table)
+        let moved = data.reseatOverflowGuests(table: table)
         if !moved.isEmpty { put("guests", moved) }
     }
 
