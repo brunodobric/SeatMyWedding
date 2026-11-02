@@ -57,7 +57,7 @@ struct HallView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
                     Button { settingUpHall = true } label: {
-                        Label("Složi salu", systemImage: "wand.and.stars")
+                        Label("Složi salu", systemImage: "rectangle.3.group")
                     }
                     Button { addingTable = true } label: {
                         Label("Dodaj stol", systemImage: "plus")

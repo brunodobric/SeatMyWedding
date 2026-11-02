@@ -166,9 +166,6 @@ struct JSONExport: Transferable {
 /// Izbornik za izvoz, dijeljenje i ispis rasporeda.
 struct ExportMenu: View {
     @Environment(WeddingStore.self) private var store
-    /// U izborniku preljeva prikazuje se kao podizbornik s tekstom, a ne samo ikonom.
-    var asSubmenu = false
-
     var body: some View {
         let wedding = store.data
         Menu {
@@ -187,11 +184,7 @@ struct ExportMenu: View {
                 Label("Sigurnosna kopija (JSON)", systemImage: "externaldrive")
             }
         } label: {
-            if asSubmenu {
-                Label("Izvoz i ispis", systemImage: "square.and.arrow.up")
-            } else {
-                Image(systemName: "square.and.arrow.up")
-            }
+            Image(systemName: "square.and.arrow.up")
         }
         .disabled(store.guests.isEmpty)
     }

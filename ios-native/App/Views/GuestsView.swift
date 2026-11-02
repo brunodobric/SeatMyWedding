@@ -80,7 +80,7 @@ struct GuestsView: View {
             .navigationTitle("Gosti")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                // Uvijek vidljivo: Dodaj gosta. Ostalo je u izborniku preljeva.
+                // Dodaj gosta i sortiranje imaju svoje gumbe; uvoz je u izborniku preljeva.
                 ToolbarItem(placement: .primaryAction) {
                     Button { editing = GuestSheet(id: nil) } label: {
                         Label("Dodaj gosta", systemImage: "plus")
@@ -92,6 +92,13 @@ struct GuestsView: View {
                         Picker("Sortiranje", selection: $sort) {
                             ForEach(GuestSort.allCases) { Text($0.label).tag($0) }
                         }
+                    } label: {
+                        Image(systemName: "arrow.up.arrow.down")
+                    }
+                    .accessibilityLabel("Sortiraj")
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
                         Button("Uvezi popis (tekst)", systemImage: "text.badge.plus") { pasting = true }
                         Button("Mladenci i kumovi", systemImage: "heart") { party = true }
                         Button("Uvezi kopiju", systemImage: "square.and.arrow.down") { importing = true }
