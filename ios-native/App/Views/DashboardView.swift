@@ -287,6 +287,7 @@ private struct SettingsView: View {
     @Environment(WeddingStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @Environment(CloudSync.self) private var cloud
+    @Environment(Diagnostics.self) private var diagnostics
     @AppStorage("appearance") private var appearance = AppearanceChoice.system
     @State private var title = ""
     @State private var loaded = false
@@ -333,6 +334,23 @@ private struct SettingsView: View {
                         .listRowBackground(Theme.surface)
                 }
                 Section {
+                    if let latest = diagnostics.reports.first {
+                        ShareLink(item: latest) {
+                            Label("Podijeli izvještaj o rušenju", systemImage: "square.and.arrow.up")
+                        }
+                        Button("Obriši izvještaje (\(diagnostics.reports.count))", role: .destructive) {
+                            diagnostics.deleteAll()
+                        }
+                    } else {
+                        Text("Nema zabilježenih rušenja.").foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("Dijagnostika")
+                } footer: {
+                    Text("Ako se aplikacija sruši, iOS sljedeći dan dostavi izvještaj koji se čuva samo na ovom uređaju. Ne sadrži goste ni stolove, a šalje se samo ako ga sam podijeliš.")
+                }
+                    .listRowBackground(Theme.surface)
+                Section {
                     Button("Obriši sve podatke", role: .destructive) { confirmErase = true }
                 } header: {
                     Text("Podaci")
@@ -367,6 +385,7 @@ private struct SettingsView: View {
                 }
             }
             .onAppear {
+                diagnostics.refresh()
                 guard !loaded else { return }
                 loaded = true
                 title = store.weddingTitle

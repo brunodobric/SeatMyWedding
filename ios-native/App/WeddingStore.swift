@@ -69,17 +69,18 @@ final class WeddingStore {
     // MARK: Učitavanje i spremanje
 
     private func load() {
-        guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
-        do {
-            let bytes = try Data(contentsOf: fileURL)
-            sync = SyncState(json: try JSONDecoder().decode(JSONValue.self, from: bytes))
+        switch LocalFile.load(from: fileURL) {
+        case .missing:
+            break
+        case .loaded(let state, let migratedFrom):
+            sync = state
             repair()
-        } catch {
-            // Nečitljivu datoteku sačuvaj sa strane: inače bi je prvo spremanje prepisalo praznim stanjem.
-            let aside = fileURL.deletingLastPathComponent()
-                .appendingPathComponent("wedding-nečitljivo-\(Int(Date().timeIntervalSince1970)).json")
-            try? FileManager.default.moveItem(at: fileURL, to: aside)
+            // Migrirana datoteka se odmah sprema u novom obliku.
+            if migratedFrom != nil { persist(notify: false) }
+        case .unreadable:
             loadError = "Spremljeni podaci se ne mogu pročitati."
+        case .tooNew:
+            loadError = "Podaci su spremljeni novijom verzijom aplikacije. Ažuriraj aplikaciju; podaci nisu obrisani."
         }
     }
 
@@ -113,10 +114,7 @@ final class WeddingStore {
     private func persist(notify: Bool = true) {
         defer { if notify { onLocalChange?() } }
         do {
-            let bytes = try JSONEncoder().encode(sync.toJSON())
-            try FileManager.default.createDirectory(
-                at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try bytes.write(to: fileURL, options: .atomic)
+            try LocalFile.save(sync, to: fileURL)
         } catch {
             loadError = "Podaci se ne mogu spremiti."
             show("Podaci se ne mogu spremiti.", isError: true)
@@ -140,22 +138,12 @@ final class WeddingStore {
     /// kreće iz početka (uvodni ekran). Obrisani zapisi dobivaju nadgrobne oznake, pa se
     /// brisanje preko iClouda prenosi i na ostale uređaje. Ne može se poništiti.
     func eraseAll() {
-        let t = Self.now()
-        var next = sync
-        for key in SyncState.stores where key != "settings" {
-            next.remove(key, ids: (next.records[key] ?? []).compactMap { $0.id }, now: t)
-        }
-        next.put("settings", [WeddingData().settings], now: t)
-        sync = next
+        sync = sync.erasedAll(now: Self.now())
         autoSeatingUndo = nil
         toast = nil
         loadError = nil
-        // Nečitljive datoteke sačuvane sa strane su također podaci vjenčanja.
-        let dir = fileURL.deletingLastPathComponent()
-        for name in (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []
-        where name.hasPrefix("wedding-nečitljivo-") {
-            try? FileManager.default.removeItem(at: dir.appendingPathComponent(name))
-        }
+        // Datoteke sačuvane sa strane također su podaci vjenčanja.
+        LocalFile.removeAside(near: fileURL)
         ExportFiles.cleanUp()
         persist()
     }

@@ -33,6 +33,20 @@ ispravno) opisana su na vrhu `DataCleaning.swift`.
 U Terminalu: `cd ios-native/SeatingCore && swift test`. U Xcodeu: File → Open i
 odaberi mapu `ios-native/SeatingCore`, pa ⌘U.
 
+## Podaci na uređaju
+
+`wedding.json` ima oznaku `formatVersion` (`SeatingCore/LocalFile.swift`). Datoteka bez oznake je
+verzija 0 i migrira se pri učitavanju. Kad se oblik promijeni: podigni `LocalFile.formatVersion`,
+dodaj korak u `LocalFile.migrate` i test u `LocalFileTests`. Nečitljiva datoteka, kao i ona iz novije
+verzije aplikacije, premješta se sa strane (`wedding-nečitljivo-*`, `wedding-novija-verzija-*`) i ne
+prepisuje se.
+
+## Prijava rušenja
+
+`App/Diagnostics.swift` prima izvještaje od iOS-a (MetricKit), čuva ih lokalno i nudi ih u
+Postavkama → Dijagnostika za dijeljenje. Bez vanjskih servisa; ništa se ne šalje samo.
+Na simulatoru izvještaji ne stižu; Xcode: Debug → Simulate MetricKit Payloads.
+
 ## iCloud (CloudKit)
 
 Sinkronizacija koristi privatnu CloudKit bazu korisnika (bez prijave u aplikaciju).
