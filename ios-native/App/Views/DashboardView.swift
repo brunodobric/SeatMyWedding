@@ -317,19 +317,21 @@ private struct SettingsView: View {
                     Text("Automatski prati postavku telefona.")
                 }
                     .listRowBackground(Theme.surface)
-                Section {
-                    Toggle("Sinkroniziraj s iCloudom", isOn: Binding(
-                        get: { cloud.isEnabled }, set: { cloud.isEnabled = $0 }))
-                    if cloud.isEnabled {
-                        Button("Sinkroniziraj sada") { cloud.syncNow() }
-                            .disabled(cloud.status == .syncing)
+                if CloudSync.isAvailable {
+                    Section {
+                        Toggle("Sinkroniziraj s iCloudom", isOn: Binding(
+                            get: { cloud.isEnabled }, set: { cloud.isEnabled = $0 }))
+                        if cloud.isEnabled {
+                            Button("Sinkroniziraj sada") { cloud.syncNow() }
+                                .disabled(cloud.status == .syncing)
+                        }
+                    } header: {
+                        Text("iCloud")
+                    } footer: {
+                        Text(cloud.statusText)
                     }
-                } header: {
-                    Text("iCloud")
-                } footer: {
-                    Text(cloud.statusText)
+                        .listRowBackground(Theme.surface)
                 }
-                    .listRowBackground(Theme.surface)
                 Section {
                     Button("Obriši sve podatke", role: .destructive) { confirmErase = true }
                 } header: {

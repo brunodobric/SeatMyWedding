@@ -14,7 +14,7 @@ Nativna Swift verzija aplikacije. Plan: https://claude.ai/artifact/SotoqrU2oQsWr
 
 - `App/` i `project.yml`: SwiftUI aplikacija (Dashboard, Gosti, Sala, Raspored,
   mladenci i kumovi, uvoz popisa i JSON kopije, izvoz i ispis, povlačenje gostiju
-  na stolove, tamna tema, iPhone Duo i iPad; lokalno spremanje uz iCloud sinkronizaciju, brisanje svih podataka). Xcode projekt se generira alatom
+  na stolove, tamna tema, iPhone Duo i iPad; lokalno spremanje, brisanje svih podataka; iCloud sinkronizacija je pripremljena, ali isključena). Xcode projekt se generira alatom
   XcodeGen: `brew install xcodegen && cd ios-native && xcodegen generate && open SeatMyWedding.xcodeproj`.
 
 ## Je li Swift isti kao JavaScript
@@ -39,7 +39,8 @@ Sinkronizacija koristi privatnu CloudKit bazu korisnika (bez prijave u aplikacij
 Cijelo vjenčanje je jedan zapis `Wedding` u zoni `Wedding` s JSON dokumentom istog
 oblika kao na webu; spajanje je zapis po zapis, pobjeđuje zadnja promjena (`App/CloudSync.swift`).
 
-Ručno, jednom:
+Zasad je isključena (`CloudSync.isAvailable = false`) jer traži plaćeni Apple Developer račun.
+Za uključivanje: stavi `isAvailable = true`, odkomentiraj iCloud blok u `project.yml`, pa ručno, jednom:
 
 1. U Xcodeu, Signing & Capabilities: odaberi svoj Team (plaćeni Apple Developer račun).
    Xcode tada sam registrira iCloud spremnik `iCloud.com.seatmywedding.app` i push obavijesti.

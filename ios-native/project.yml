@@ -57,18 +57,20 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         UIRequiredDeviceCapabilities:
           - arm64
-        # Tiha obavijest iz iClouda kad se podaci promijene na drugom uređaju.
-        UIBackgroundModes:
-          - remote-notification
-    # iCloud (CloudKit) za sinkronizaciju; spremnik mora postojati u Apple Developer računu.
-    entitlements:
-      path: App/SeatMyWedding.entitlements
-      properties:
-        aps-environment: development
-        com.apple.developer.icloud-container-identifiers:
-          - iCloud.com.seatmywedding.app
-        com.apple.developer.icloud-services:
-          - CloudKit
+    # iCloud (CloudKit) je pripremljen, ali isključen dok nema plaćenog Apple Developer računa
+    # (CloudSync.isAvailable = false). Za uključivanje odkomentiraj ovo (UIBackgroundModes ide
+    # pod info.properties) i stavi isAvailable = true:
+    #
+    #     UIBackgroundModes:
+    #       - remote-notification
+    # entitlements:
+    #   path: App/SeatMyWedding.entitlements
+    #   properties:
+    #     aps-environment: development
+    #     com.apple.developer.icloud-container-identifiers:
+    #       - iCloud.com.seatmywedding.app
+    #     com.apple.developer.icloud-services:
+    #       - CloudKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.seatmywedding.app

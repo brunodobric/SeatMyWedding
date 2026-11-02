@@ -20,6 +20,9 @@ final class CloudSync {
         case failed(String)
     }
 
+    /// Isključeno dok ne postoji plaćeni Apple Developer račun: bez iCloud ovlasti (entitlements)
+    /// CloudKit ruši aplikaciju. Za uključivanje: stavi `true` i vrati iCloud blok u project.yml.
+    static let isAvailable = false
     static let containerID = "iCloud.com.seatmywedding.app"
     private static let zoneID = CKRecordZone.ID(zoneName: "Wedding", ownerName: CKCurrentUserDefaultName)
     private static let recordID = CKRecord.ID(recordName: "wedding", zoneID: zoneID)
@@ -43,7 +46,7 @@ final class CloudSync {
     @ObservationIgnored private var again = false
     @ObservationIgnored private var debounce: Task<Void, Never>?
 
-    var isEnabled: Bool = UserDefaults.standard.object(forKey: CloudSync.enabledKey) as? Bool ?? true {
+    var isEnabled: Bool = CloudSync.isAvailable && (UserDefaults.standard.object(forKey: CloudSync.enabledKey) as? Bool ?? true) {
         didSet {
             UserDefaults.standard.set(isEnabled, forKey: Self.enabledKey)
             if isEnabled { syncNow() } else { debounce?.cancel(); status = .off }
@@ -67,7 +70,7 @@ final class CloudSync {
     }
 
     func syncNow() {
-        guard isEnabled else { status = .off; return }
+        guard Self.isAvailable, isEnabled else { status = .off; return }
         if running { again = true; return }
         running = true
         Task {
@@ -183,7 +186,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        application.registerForRemoteNotifications()
+        if CloudSync.isAvailable { application.registerForRemoteNotifications() }
         return true
     }
 
