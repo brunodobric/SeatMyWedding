@@ -425,6 +425,19 @@ final class WeddingStore {
         put("settings", [settings])
     }
 
+    // MARK: Naslov vjenčanja
+
+    var weddingTitle: String { data.settings.string("weddingTitle") ?? "" }
+
+    /// Bilo koji tekst (npr. "Ana i Ivo" ili "Naše vjenčanje"); prazno = zadani naslov.
+    func setWeddingTitle(_ value: String) {
+        let title = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard title != weddingTitle else { return }
+        var settings = data.settings
+        settings["weddingTitle"] = .string(title)
+        put("settings", [settings])
+    }
+
     // MARK: Prvo pokretanje
 
     /// Treba li pokazati uvodni ekran: novo vjenčanje bez naslova koje korisnik nije preskočio.
@@ -458,7 +471,16 @@ final class WeddingStore {
 
     func saveWeddingParty(names: [String]) {
         var after = data
+        let before = partyNames()
         after.saveWeddingParty(names: names)
+        // Promijene li se imena mladenaca, naslov postaje "Mladenka i Mladoženja".
+        func couple(_ n: [String]) -> [String] {
+            [2, 3].map { $0 < n.count ? n[$0].trimmingCharacters(in: .whitespacesAndNewlines) : "" }
+        }
+        let newCouple = couple(names)
+        if newCouple != couple(before), newCouple.contains(where: { !$0.isEmpty }) {
+            after.settings["weddingTitle"] = .string(newCouple.filter { !$0.isEmpty }.joined(separator: " i "))
+        }
         let undo = commit(after)
         show("Mladenci i kumovi su spremljeni", undo: undo)
     }
