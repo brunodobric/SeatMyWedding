@@ -37,7 +37,7 @@ struct TableSheet: View {
                             Text("\(seat + 1)")
                                 .font(Theme.uiBold(13))
                                 .frame(width: 26, height: 26)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(HallView.seatText(occupant(seat)))
                                 .background(HallView.seatColor(occupant(seat)) ?? Theme.border, in: Circle())
                             if let g = occupant(seat) {
                                 Text(g.string("name") ?? "")
@@ -119,7 +119,7 @@ struct GuestPicker: View {
                                 Text(cat.string("name") ?? "")
                                     .font(Theme.ui(12))
                                     .padding(.horizontal, 10).padding(.vertical, 4)
-                                    .foregroundStyle(.white)
+                                    .foregroundStyle(Theme.onAccent)
                                     .background(Color(cssHex: cat.string("color")), in: Capsule())
                             }
                         }

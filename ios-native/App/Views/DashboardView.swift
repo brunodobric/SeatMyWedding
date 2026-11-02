@@ -232,7 +232,7 @@ private struct OnboardingView: View {
                 } header: {
                     Text("Tko se vjenča?")
                 } footer: {
-                    Text("Kume i pratnju možeš dodati poslije na Dashboardu.")
+                    Text("Kume i pratnju možeš dodati poslije na Pregledu.")
                 }
                     .listRowBackground(Theme.surface)
                 Section {

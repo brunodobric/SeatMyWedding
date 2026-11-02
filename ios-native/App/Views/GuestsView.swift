@@ -146,8 +146,11 @@ struct GuestsView: View {
                 .font(Theme.ui(14))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .foregroundStyle(selected ? Color.white : Theme.ink)
+                .foregroundStyle(selected ? Theme.onAccent : Theme.ink)
                 .background(selected ? color : Theme.champagne, in: Capsule())
+                // Pločica je niska, ali dodirna površina je 44 pt (Apple HIG).
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .hoverEffect(.highlight)
@@ -208,7 +211,7 @@ private struct GuestRow: View {
                     .font(Theme.ui(12))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.onAccent)
                     .background(Color(cssHex: cat.string("color")), in: Capsule())
             }
         }

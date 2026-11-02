@@ -39,7 +39,7 @@ struct HallView: View {
                         } description: {
                             Text("Složi salu po predlošku ili dodaj stolove jedan po jedan.")
                         } actions: {
-                            Button("Složi salu") { settingUpHall = true }.buttonStyle(.borderedProminent).tint(Theme.gold)
+                            Button("Složi salu") { settingUpHall = true }.buttonStyle(.borderedProminent).tint(Theme.gold).foregroundStyle(Theme.onAccent)
                             Button("Dodaj stol") { addingTable = true }
                         }
                     } else {
@@ -57,7 +57,7 @@ struct HallView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
                     Button { settingUpHall = true } label: {
-                        Label("Složi salu", systemImage: "square.grid.3x3")
+                        Label("Složi salu", systemImage: "wand.and.stars")
                     }
                     Button { addingTable = true } label: {
                         Label("Dodaj stol", systemImage: "plus")
@@ -109,6 +109,16 @@ struct HallView: View {
         .onTapGesture { location in
             guard !arranging else { return }
             if let id = hitTable(at: location) { openTable = TableRef(id: id) }
+        }
+        // VoiceOver: tlocrt je slika, pa svaki stol postaje gumb koji otvara popis mjesta.
+        .accessibilityLabel("Tlocrt sale")
+        .accessibilityChildren {
+            ForEach(tables, id: \.id) { table in
+                let seated = guests.filter { $0.string("tableId") == table.id }.count
+                Button("\(table.string("name") ?? "Stol"), \(seated) od \(table.number("seats")?.safeInt ?? 0) mjesta") {
+                    if let id = table.id { openTable = TableRef(id: id) }
+                }
+            }
         }
         .gesture(
             DragGesture(minimumDistance: 4)
@@ -180,7 +190,7 @@ struct HallView: View {
                 ? hypot(local.x, local.y) <= FloorGeometry.roundRadius
                 : abs(local.x) <= d.w / 2 && abs(local.y) <= d.h / 2
             if onTable { return table.id }
-            for seat in FloorGeometry.seatPositions(table) where hypot(local.x - seat.x, local.y - seat.y) <= 14 {
+            for seat in FloorGeometry.seatPositions(table) where hypot(local.x - seat.x, local.y - seat.y) <= max(14, 22 / view.scale) {
                 return table.id
             }
         }
@@ -237,7 +247,8 @@ struct HallView: View {
             local.stroke(circle, with: .color(color ?? Theme.border), lineWidth: 1.5)
             if let guest = guest {
                 local.draw(
-                    Text(verbatim: Self.initials(guest.string("name") ?? "")).font(Theme.fixed(7, weight: .semibold)).foregroundStyle(.white),
+                    Text(verbatim: Self.initials(guest.string("name") ?? "")).font(Theme.fixed(7, weight: .semibold))
+                        .foregroundStyle(Self.seatText(guest)),
                     at: p, anchor: .center)
             }
         }
@@ -248,6 +259,12 @@ struct HallView: View {
         let party = guest.string("party")
         if party == "couple" { return Theme.seatCouple }
         return guest.isTruthy("party") ? Theme.seatKumovi : Theme.gold
+    }
+
+    /// Tekst na krugu mjesta: tamni na zlatnoj (gosti), bijeli na ljubičastoj i plavoj, tamni na praznom.
+    static func seatText(_ guest: Record?) -> Color {
+        guard let guest else { return Theme.ink }
+        return seatColor(guest) == Theme.gold ? Theme.onAccent : .white
     }
 
     static func initials(_ name: String) -> String {
@@ -277,7 +294,7 @@ struct HallView: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
-                .frame(width: 40, height: 40)
+                .frame(width: 44, height: 44)
                 .foregroundStyle(Theme.goldDeep)
                 .background(Theme.surface, in: Circle())
                 .overlay(Circle().stroke(Theme.border))
