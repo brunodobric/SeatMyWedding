@@ -11,10 +11,12 @@ enum Theme {
     static let champagne = dynamic(light: 0xF5EBDD, dark: 0x3A342B)
     static let border = dynamic(light: 0xE8DCC8, dark: 0x48423A)
     static let gold = Color(hex: 0xC9A24B)
-    static let goldDeep = dynamic(light: 0xA17C33, dark: 0xD8B565)
+    static let goldDeep = dynamic(light: 0x866420, dark: 0xD8B565)
     static let bronze = dynamic(light: 0x6B5836, dark: 0xCDB892)
     static let ink = Color(inkUI)
-    static let muted = dynamic(light: 0x8A7F70, dark: 0xA39A8C)
+    static let muted = dynamic(light: 0x6E6458, dark: 0xB0A799)
+    /// Tekst na zlatnoj i na bojama kategorija: bijeli tekst tu ima kontrast samo oko 2,4:1.
+    static let onAccent = Color(hex: 0x1A1612)
     /// Pun stol u tlocrtu.
     static let tableFull = dynamic(light: 0xF3F8F1, dark: 0x2F3A2F)
 

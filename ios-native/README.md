@@ -14,7 +14,7 @@ Nativna Swift verzija aplikacije. Plan: https://claude.ai/artifact/SotoqrU2oQsWr
 
 - `App/` i `project.yml`: SwiftUI aplikacija (Dashboard, Gosti, Sala, Raspored,
   mladenci i kumovi, uvoz popisa i JSON kopije, izvoz i ispis, povlačenje gostiju
-  na stolove, tamna tema, iPhone Duo i iPad; lokalno spremanje, bez oblaka i prijave). Xcode projekt se generira alatom
+  na stolove, tamna tema, iPhone Duo i iPad; lokalno spremanje, brisanje svih podataka; iCloud sinkronizacija je pripremljena, ali isključena). Xcode projekt se generira alatom
   XcodeGen: `brew install xcodegen && cd ios-native && xcodegen generate && open SeatMyWedding.xcodeproj`.
 
 ## Je li Swift isti kao JavaScript
@@ -32,3 +32,34 @@ ispravno) opisana su na vrhu `DataCleaning.swift`.
 
 U Terminalu: `cd ios-native/SeatingCore && swift test`. U Xcodeu: File → Open i
 odaberi mapu `ios-native/SeatingCore`, pa ⌘U.
+
+## Podaci na uređaju
+
+`wedding.json` ima oznaku `formatVersion` (`SeatingCore/LocalFile.swift`). Datoteka bez oznake je
+verzija 0 i migrira se pri učitavanju. Kad se oblik promijeni: podigni `LocalFile.formatVersion`,
+dodaj korak u `LocalFile.migrate` i test u `LocalFileTests`. Nečitljiva datoteka, kao i ona iz novije
+verzije aplikacije, premješta se sa strane (`wedding-nečitljivo-*`, `wedding-novija-verzija-*`) i ne
+prepisuje se.
+
+## Prijava rušenja
+
+`App/Diagnostics.swift` prima izvještaje od iOS-a (MetricKit), čuva ih lokalno i nudi ih u
+Postavkama → Dijagnostika za dijeljenje. Bez vanjskih servisa; ništa se ne šalje samo.
+Na simulatoru izvještaji ne stižu; Xcode: Debug → Simulate MetricKit Payloads.
+
+## iCloud (CloudKit)
+
+Sinkronizacija koristi privatnu CloudKit bazu korisnika (bez prijave u aplikaciju).
+Cijelo vjenčanje je jedan zapis `Wedding` u zoni `Wedding` s JSON dokumentom istog
+oblika kao na webu; spajanje je zapis po zapis, pobjeđuje zadnja promjena (`App/CloudSync.swift`).
+
+Zasad je isključena (`CloudSync.isAvailable = false`) jer traži plaćeni Apple Developer račun.
+Za uključivanje: stavi `isAvailable = true`, odkomentiraj iCloud blok u `project.yml`, pa ručno, jednom:
+
+1. U Xcodeu, Signing & Capabilities: odaberi svoj Team (plaćeni Apple Developer račun).
+   Xcode tada sam registrira iCloud spremnik `iCloud.com.seatmywedding.app` i push obavijesti.
+2. Na simulatoru ili uređaju prijavi se u iCloud (Settings → Apple račun).
+3. Prije izlaska na App Store: u CloudKit Consoleu (icloud.developer.apple.com) napravi
+   "Deploy Schema Changes" iz Development u Production, i promijeni `aps-environment` u `production`
+   (Xcode to radi sam kod arhiviranja za App Store).
+

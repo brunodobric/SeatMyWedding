@@ -57,6 +57,20 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         UIRequiredDeviceCapabilities:
           - arm64
+    # iCloud (CloudKit) je pripremljen, ali isključen dok nema plaćenog Apple Developer računa
+    # (CloudSync.isAvailable = false). Za uključivanje odkomentiraj ovo (UIBackgroundModes ide
+    # pod info.properties) i stavi isAvailable = true:
+    #
+    #     UIBackgroundModes:
+    #       - remote-notification
+    # entitlements:
+    #   path: App/SeatMyWedding.entitlements
+    #   properties:
+    #     aps-environment: development
+    #     com.apple.developer.icloud-container-identifiers:
+    #       - iCloud.com.seatmywedding.app
+    #     com.apple.developer.icloud-services:
+    #       - CloudKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.seatmywedding.app

@@ -232,7 +232,7 @@ private struct OnboardingView: View {
                 } header: {
                     Text("Tko se vjenča?")
                 } footer: {
-                    Text("Kume i pratnju možeš dodati poslije na Dashboardu.")
+                    Text("Kume i pratnju možeš dodati poslije na Pregledu.")
                 }
                     .listRowBackground(Theme.surface)
                 Section {
@@ -286,9 +286,12 @@ enum AppearanceChoice: String, CaseIterable, Identifiable {
 private struct SettingsView: View {
     @Environment(WeddingStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(CloudSync.self) private var cloud
+    @Environment(Diagnostics.self) private var diagnostics
     @AppStorage("appearance") private var appearance = AppearanceChoice.system
     @State private var title = ""
     @State private var loaded = false
+    @State private var confirmErase = false
 
     var body: some View {
         NavigationStack {
@@ -315,6 +318,58 @@ private struct SettingsView: View {
                     Text("Automatski prati postavku telefona.")
                 }
                     .listRowBackground(Theme.surface)
+                if CloudSync.isAvailable {
+                    Section {
+                        Toggle("Sinkroniziraj s iCloudom", isOn: Binding(
+                            get: { cloud.isEnabled }, set: { cloud.isEnabled = $0 }))
+                        if cloud.isEnabled {
+                            Button("Sinkroniziraj sada") { cloud.syncNow() }
+                                .disabled(cloud.status == .syncing)
+                        }
+                    } header: {
+                        Text("iCloud")
+                    } footer: {
+                        Text(cloud.statusText)
+                    }
+                        .listRowBackground(Theme.surface)
+                }
+                Section {
+                    if let latest = diagnostics.reports.first {
+                        ShareLink(item: latest) {
+                            Label("Podijeli izvještaj o rušenju", systemImage: "square.and.arrow.up")
+                        }
+                        Button("Obriši izvještaje (\(diagnostics.reports.count))", role: .destructive) {
+                            diagnostics.deleteAll()
+                        }
+                    } else {
+                        Text("Nema zabilježenih rušenja.").foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("Dijagnostika")
+                } footer: {
+                    Text("Ako se aplikacija sruši, iOS sljedeći dan dostavi izvještaj koji se čuva samo na ovom uređaju. Ne sadrži goste ni stolove, a šalje se samo ako ga sam podijeliš.")
+                }
+                    .listRowBackground(Theme.surface)
+                Section {
+                    Button("Obriši sve podatke", role: .destructive) { confirmErase = true }
+                } header: {
+                    Text("Podaci")
+                } footer: {
+                    Text("Briše goste, stolove, kategorije, pravila i postavke vjenčanja, pa aplikacija kreće ispočetka.")
+                }
+                    .listRowBackground(Theme.surface)
+            }
+            .alert("Obrisati sve podatke?", isPresented: $confirmErase) {
+                Button("Obriši sve", role: .destructive) {
+                    store.eraseAll()
+                    title = ""
+                    dismiss()
+                }
+                Button("Odustani", role: .cancel) {}
+            } message: {
+                Text(cloud.isEnabled
+                     ? "Svi gosti, stolovi i raspored bit će obrisani na ovom uređaju i na tvojim ostalim uređajima povezanima s iCloudom. Ovo se ne može poništiti. Ako želiš kopiju, prvo je izvezi."
+                     : "Svi gosti, stolovi i raspored bit će obrisani. Ovo se ne može poništiti. Ako želiš kopiju, prvo je izvezi.")
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)
@@ -330,6 +385,7 @@ private struct SettingsView: View {
                 }
             }
             .onAppear {
+                diagnostics.refresh()
                 guard !loaded else { return }
                 loaded = true
                 title = store.weddingTitle

@@ -80,7 +80,7 @@ struct GuestsView: View {
             .navigationTitle("Gosti")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                // Uvijek vidljivo: Dodaj gosta. Ostalo je u izborniku preljeva.
+                // Dodaj gosta i sortiranje imaju svoje gumbe; uvoz je u izborniku preljeva.
                 ToolbarItem(placement: .primaryAction) {
                     Button { editing = GuestSheet(id: nil) } label: {
                         Label("Dodaj gosta", systemImage: "plus")
@@ -92,6 +92,13 @@ struct GuestsView: View {
                         Picker("Sortiranje", selection: $sort) {
                             ForEach(GuestSort.allCases) { Text($0.label).tag($0) }
                         }
+                    } label: {
+                        Image(systemName: "arrow.up.arrow.down")
+                    }
+                    .accessibilityLabel("Sortiraj")
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
                         Button("Uvezi popis (tekst)", systemImage: "text.badge.plus") { pasting = true }
                         Button("Mladenci i kumovi", systemImage: "heart") { party = true }
                         Button("Uvezi kopiju", systemImage: "square.and.arrow.down") { importing = true }
@@ -146,8 +153,11 @@ struct GuestsView: View {
                 .font(Theme.ui(14))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .foregroundStyle(selected ? Color.white : Theme.ink)
+                .foregroundStyle(selected ? Theme.onAccent : Theme.ink)
                 .background(selected ? color : Theme.champagne, in: Capsule())
+                // Pločica je niska, ali dodirna površina je 44 pt (Apple HIG).
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .hoverEffect(.highlight)
@@ -208,7 +218,7 @@ private struct GuestRow: View {
                     .font(Theme.ui(12))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.onAccent)
                     .background(Color(cssHex: cat.string("color")), in: Capsule())
             }
         }

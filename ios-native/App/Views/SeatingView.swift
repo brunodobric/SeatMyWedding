@@ -86,7 +86,7 @@ struct SeatingView: View {
             .navigationTitle("Raspored")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                // Uvijek vidljivo: Složi automatski. Ostalo je u izborniku preljeva.
+                // Svaka radnja ima svoj gumb: složi automatski, sortiraj, izvoz.
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: runAutoSeat) {
                         Label("Složi automatski", systemImage: "wand.and.stars")
@@ -99,11 +99,13 @@ struct SeatingView: View {
                         Picker("Sortiranje stolova", selection: $tableSort) {
                             ForEach(TableSort.allCases) { Text($0.label).tag($0) }
                         }
-                        ExportMenu(asSubmenu: true)
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Image(systemName: "arrow.up.arrow.down")
                     }
-                    .accessibilityLabel("Više")
+                    .accessibilityLabel("Sortiraj")
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    ExportMenu().accessibilityLabel("Izvoz i ispis")
                 }
             }
             .sheet(item: $tableSheet) { ref in TableSheet(tableId: ref.id) }
