@@ -286,9 +286,11 @@ enum AppearanceChoice: String, CaseIterable, Identifiable {
 private struct SettingsView: View {
     @Environment(WeddingStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(CloudSync.self) private var cloud
     @AppStorage("appearance") private var appearance = AppearanceChoice.system
     @State private var title = ""
     @State private var loaded = false
+    @State private var confirmErase = false
 
     var body: some View {
         NavigationStack {
@@ -315,6 +317,39 @@ private struct SettingsView: View {
                     Text("Automatski prati postavku telefona.")
                 }
                     .listRowBackground(Theme.surface)
+                Section {
+                    Toggle("Sinkroniziraj s iCloudom", isOn: Binding(
+                        get: { cloud.isEnabled }, set: { cloud.isEnabled = $0 }))
+                    if cloud.isEnabled {
+                        Button("Sinkroniziraj sada") { cloud.syncNow() }
+                            .disabled(cloud.status == .syncing)
+                    }
+                } header: {
+                    Text("iCloud")
+                } footer: {
+                    Text(cloud.statusText)
+                }
+                    .listRowBackground(Theme.surface)
+                Section {
+                    Button("Obriši sve podatke", role: .destructive) { confirmErase = true }
+                } header: {
+                    Text("Podaci")
+                } footer: {
+                    Text("Briše goste, stolove, kategorije, pravila i postavke vjenčanja, pa aplikacija kreće ispočetka.")
+                }
+                    .listRowBackground(Theme.surface)
+            }
+            .alert("Obrisati sve podatke?", isPresented: $confirmErase) {
+                Button("Obriši sve", role: .destructive) {
+                    store.eraseAll()
+                    title = ""
+                    dismiss()
+                }
+                Button("Odustani", role: .cancel) {}
+            } message: {
+                Text(cloud.isEnabled
+                     ? "Svi gosti, stolovi i raspored bit će obrisani na ovom uređaju i na tvojim ostalim uređajima povezanima s iCloudom. Ovo se ne može poništiti. Ako želiš kopiju, prvo je izvezi."
+                     : "Svi gosti, stolovi i raspored bit će obrisani. Ovo se ne može poništiti. Ako želiš kopiju, prvo je izvezi.")
             }
             .scrollContentBackground(.hidden)
             .background(Theme.background)

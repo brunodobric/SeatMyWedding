@@ -5,13 +5,16 @@ import SeatingCore
 /// Stanje aplikacije: cijelo vjenčanje i nadgrobni zapisi, spremljeni kao JSON
 /// datoteka na uređaju (radi i bez prijave i bez interneta). Svaka izmjena
 /// stavlja `updatedAt` i briše tako da se kasnije može spojiti s oblakom
-/// (faza 5), isto kao js/db.js na webu.
+/// (iCloud, `CloudSync`), isto kao js/db.js na webu.
 @MainActor
 @Observable
 final class WeddingStore {
     private(set) var sync = SyncState()
     private(set) var loadError: String?
     private let fileURL: URL
+
+    /// Poziva se nakon svake lokalne izmjene (ne i nakon spajanja s oblakom), da sync pošalje promjene.
+    var onLocalChange: (() -> Void)?
 
     /// Kratka poruka na dnu ekrana (npr. "Ana i Ivo su zamijenili mjesta"), s gumbom Poništi.
     struct Toast: Identifiable {
@@ -107,7 +110,8 @@ final class WeddingStore {
         show("Podaci su vraćeni iz kopije", undo: undo)
     }
 
-    private func persist() {
+    private func persist(notify: Bool = true) {
+        defer { if notify { onLocalChange?() } }
         do {
             let bytes = try JSONEncoder().encode(sync.toJSON())
             try FileManager.default.createDirectory(
@@ -117,6 +121,43 @@ final class WeddingStore {
             loadError = "Podaci se ne mogu spremiti."
             show("Podaci se ne mogu spremiti.", isError: true)
         }
+    }
+
+    // MARK: Oblak
+
+    /// Stanje spojeno s oblakom; sprema se samo ako se nešto promijenilo i ne šalje se natrag kao lokalna izmjena.
+    func applyMerged(_ merged: SyncState) {
+        guard !merged.isEquivalent(to: sync) else { return }
+        sync = merged
+        autoSeatingUndo = nil
+        persist(notify: false)
+        repair()
+    }
+
+    // MARK: Brisanje svega
+
+    /// Briše sve: goste, stolove, kategorije, pravila i postavke vjenčanja, pa aplikacija
+    /// kreće iz početka (uvodni ekran). Obrisani zapisi dobivaju nadgrobne oznake, pa se
+    /// brisanje preko iClouda prenosi i na ostale uređaje. Ne može se poništiti.
+    func eraseAll() {
+        let t = Self.now()
+        var next = sync
+        for key in SyncState.stores where key != "settings" {
+            next.remove(key, ids: (next.records[key] ?? []).compactMap { $0.id }, now: t)
+        }
+        next.put("settings", [WeddingData().settings], now: t)
+        sync = next
+        autoSeatingUndo = nil
+        toast = nil
+        loadError = nil
+        // Nečitljive datoteke sačuvane sa strane su također podaci vjenčanja.
+        let dir = fileURL.deletingLastPathComponent()
+        for name in (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []
+        where name.hasPrefix("wedding-nečitljivo-") {
+            try? FileManager.default.removeItem(at: dir.appendingPathComponent(name))
+        }
+        ExportFiles.cleanUp()
+        persist()
     }
 
     // MARK: Izmjene

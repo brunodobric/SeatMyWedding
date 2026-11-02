@@ -14,7 +14,7 @@ Nativna Swift verzija aplikacije. Plan: https://claude.ai/artifact/SotoqrU2oQsWr
 
 - `App/` i `project.yml`: SwiftUI aplikacija (Dashboard, Gosti, Sala, Raspored,
   mladenci i kumovi, uvoz popisa i JSON kopije, izvoz i ispis, povlačenje gostiju
-  na stolove, tamna tema, iPhone Duo i iPad; lokalno spremanje, bez oblaka i prijave). Xcode projekt se generira alatom
+  na stolove, tamna tema, iPhone Duo i iPad; lokalno spremanje uz iCloud sinkronizaciju, brisanje svih podataka). Xcode projekt se generira alatom
   XcodeGen: `brew install xcodegen && cd ios-native && xcodegen generate && open SeatMyWedding.xcodeproj`.
 
 ## Je li Swift isti kao JavaScript
@@ -32,3 +32,19 @@ ispravno) opisana su na vrhu `DataCleaning.swift`.
 
 U Terminalu: `cd ios-native/SeatingCore && swift test`. U Xcodeu: File → Open i
 odaberi mapu `ios-native/SeatingCore`, pa ⌘U.
+
+## iCloud (CloudKit)
+
+Sinkronizacija koristi privatnu CloudKit bazu korisnika (bez prijave u aplikaciju).
+Cijelo vjenčanje je jedan zapis `Wedding` u zoni `Wedding` s JSON dokumentom istog
+oblika kao na webu; spajanje je zapis po zapis, pobjeđuje zadnja promjena (`App/CloudSync.swift`).
+
+Ručno, jednom:
+
+1. U Xcodeu, Signing & Capabilities: odaberi svoj Team (plaćeni Apple Developer račun).
+   Xcode tada sam registrira iCloud spremnik `iCloud.com.seatmywedding.app` i push obavijesti.
+2. Na simulatoru ili uređaju prijavi se u iCloud (Settings → Apple račun).
+3. Prije izlaska na App Store: u CloudKit Consoleu (icloud.developer.apple.com) napravi
+   "Deploy Schema Changes" iz Development u Production, i promijeni `aps-environment` u `production`
+   (Xcode to radi sam kod arhiviranja za App Store).
+
