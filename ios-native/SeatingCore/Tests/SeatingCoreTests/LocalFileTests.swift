@@ -121,14 +121,13 @@ final class LocalFileTests: XCTestCase {
         }
     }
 
-    func testNewerFileIsNotTouchedByMigrationAndIsKeptAside() throws {
+    func testNewerFileStaysInPlaceUntouched() throws {
         let newer = "{\"formatVersion\":99,\"records\":{\"guests\":[{\"id\":\"g1\",\"name\":\"Ana\"}]}}"
         try Data(newer.utf8).write(to: file)
-        XCTAssertEqual(LocalFile.load(from: file, now: Date(timeIntervalSince1970: 7)), .tooNew(99))
-        let aside = asideFiles(prefix: "wedding-novija-verzija-")
-        XCTAssertEqual(aside, ["wedding-novija-verzija-7.json"])
-        XCTAssertEqual(try String(contentsOf: dir.appendingPathComponent(aside[0]), encoding: .utf8), newer,
-                       "sadržaj novije datoteke mora ostati netaknut")
+        XCTAssertEqual(LocalFile.load(from: file), .tooNew(99))
+        XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), newer,
+                       "novija datoteka ostaje na mjestu i netaknuta, da je ažurirana aplikacija može učitati")
+        XCTAssertEqual(asideFiles(prefix: "wedding"), ["wedding.json"])
     }
 
     // MARK: Brisanje svega
@@ -155,7 +154,6 @@ final class LocalFileTests: XCTestCase {
 
     func testRemoveAsideDeletesOnlyKeptCopies() throws {
         try Data("x".utf8).write(to: dir.appendingPathComponent("wedding-nečitljivo-1.json"))
-        try Data("x".utf8).write(to: dir.appendingPathComponent("wedding-novija-verzija-2.json"))
         try LocalFile.save(sampleState(), to: file)
         LocalFile.removeAside(near: file)
         XCTAssertEqual(asideFiles(prefix: "wedding"), ["wedding.json"])

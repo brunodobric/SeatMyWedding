@@ -53,6 +53,18 @@ struct RootView: View {
     }
 
     var body: some View {
+        if store.lockedByNewerVersion {
+            ContentUnavailableView {
+                Label("Ažuriraj aplikaciju", systemImage: "arrow.down.app")
+            } description: {
+                Text("Podaci su spremljeni novijom verzijom SeatMyWedding. Ništa nije obrisano: nakon ažuriranja sve će biti na mjestu.")
+            }
+        } else {
+            main
+        }
+    }
+
+    private var main: some View {
         tabs
             .overlay(alignment: .bottom) {
                 if let toast = store.toast {

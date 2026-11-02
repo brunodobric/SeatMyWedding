@@ -11,6 +11,8 @@ import SeatingCore
 final class WeddingStore {
     private(set) var sync = SyncState()
     private(set) var loadError: String?
+    /// Datoteku je spremila novija verzija aplikacije: ništa se ne sprema i ne briše dok se ne ažurira.
+    private(set) var lockedByNewerVersion = false
     private let fileURL: URL
 
     /// Poziva se nakon svake lokalne izmjene (ne i nakon spajanja s oblakom), da sync pošalje promjene.
@@ -80,7 +82,7 @@ final class WeddingStore {
         case .unreadable:
             loadError = "Spremljeni podaci se ne mogu pročitati."
         case .tooNew:
-            loadError = "Podaci su spremljeni novijom verzijom aplikacije. Ažuriraj aplikaciju; podaci nisu obrisani."
+            lockedByNewerVersion = true
         }
     }
 
@@ -112,6 +114,7 @@ final class WeddingStore {
     }
 
     private func persist(notify: Bool = true) {
+        guard !lockedByNewerVersion else { return }
         defer { if notify { onLocalChange?() } }
         do {
             try LocalFile.save(sync, to: fileURL)
