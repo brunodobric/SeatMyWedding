@@ -37,9 +37,9 @@ odaberi mapu `ios-native/SeatingCore`, pa ⌘U.
 
 `wedding.json` ima oznaku `formatVersion` (`SeatingCore/LocalFile.swift`). Datoteka bez oznake je
 verzija 0 i migrira se pri učitavanju. Kad se oblik promijeni: podigni `LocalFile.formatVersion`,
-dodaj korak u `LocalFile.migrate` i test u `LocalFileTests`. Nečitljiva datoteka, kao i ona iz novije
-verzije aplikacije, premješta se sa strane (`wedding-nečitljivo-*`, `wedding-novija-verzija-*`) i ne
-prepisuje se.
+dodaj korak u `LocalFile.migrate` i test u `LocalFileTests`. Nečitljiva datoteka premješta se sa strane (`wedding-nečitljivo-*`) i ne prepisuje se. Datoteku iz
+novije verzije aplikacije ne diramo: app pokaže "Ažuriraj aplikaciju" i ništa ne sprema dok se ne
+ažurira.
 
 ## Prijava rušenja
 

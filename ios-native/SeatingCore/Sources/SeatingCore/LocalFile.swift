@@ -11,7 +11,6 @@ public enum LocalFile {
     public static let formatVersion = 1
     static let formatKey = "formatVersion"
     static let unreadablePrefix = "wedding-nečitljivo-"
-    static let newerPrefix = "wedding-novija-verzija-"
 
     public enum LoadResult: Equatable {
         /// Datoteke još nema (prvo pokretanje).
@@ -20,7 +19,8 @@ public enum LocalFile {
         case loaded(SyncState, migratedFrom: Int?)
         /// Datoteka se ne može pročitati; sačuvana je sa strane.
         case unreadable
-        /// Datoteku je napisala novija verzija aplikacije; ne diramo je, sačuvana je sa strane.
+        /// Datoteku je napisala novija verzija aplikacije. Ostaje na mjestu, netaknuta, a spremanje
+        /// se mora zaustaviti dok se aplikacija ne ažurira; inače bi je prepisali praznim stanjem.
         case tooNew(Int)
     }
 
@@ -70,8 +70,8 @@ public enum LocalFile {
 
     // MARK: Datoteka
 
-    /// Učitava datoteku. Nečitljivu ili noviju datoteku premješta sa strane, da je prvo
-    /// spremanje ne prepiše praznim stanjem.
+    /// Učitava datoteku. Nečitljivu datoteku premješta sa strane, da je prvo spremanje ne prepiše
+    /// praznim stanjem. Noviju datoteku ne dira (vidi `LoadResult.tooNew`).
     public static func load(from url: URL, now: Date = Date()) -> LoadResult {
         guard FileManager.default.fileExists(atPath: url.path) else { return .missing }
         guard let bytes = try? Data(contentsOf: url) else {
@@ -84,7 +84,6 @@ public enum LocalFile {
             moveAside(url, prefix: unreadablePrefix, now: now)
             return .unreadable
         case .tooNew(let v):
-            moveAside(url, prefix: newerPrefix, now: now)
             return .tooNew(v)
         }
     }
@@ -100,7 +99,7 @@ public enum LocalFile {
     public static func removeAside(near url: URL) {
         let dir = url.deletingLastPathComponent()
         let names = (try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? []
-        for name in names where name.hasPrefix(unreadablePrefix) || name.hasPrefix(newerPrefix) {
+        for name in names where name.hasPrefix(unreadablePrefix) {
             try? FileManager.default.removeItem(at: dir.appendingPathComponent(name))
         }
     }
