@@ -284,12 +284,26 @@ enum AppearanceChoice: String, CaseIterable, Identifiable {
 }
 
 private struct SettingsView: View {
+    @Environment(WeddingStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @AppStorage("appearance") private var appearance = AppearanceChoice.system
+    @State private var title = ""
+    @State private var loaded = false
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    TextField("Moje Vjenčanje", text: $title)
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.done)
+                        .onSubmit { store.setWeddingTitle(title) }
+                } header: {
+                    Text("Naslov vjenčanja")
+                } footer: {
+                    Text("Može biti bilo koji tekst. Kad promijeniš imena mladenaca, naslov postaje njihova imena.")
+                }
+                    .listRowBackground(Theme.surface)
                 Section {
                     Picker("Izgled", selection: $appearance) {
                         ForEach(AppearanceChoice.allCases) { Text($0.label).tag($0) }
@@ -306,7 +320,22 @@ private struct SettingsView: View {
             .background(Theme.background)
             .navigationTitle("Postavke")
             .navigationBarTitleDisplayMode(.large)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Gotovo") { dismiss() }.keyboardShortcut(.defaultAction) } }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Gotovo") {
+                        store.setWeddingTitle(title)
+                        dismiss()
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+            }
+            .onAppear {
+                guard !loaded else { return }
+                loaded = true
+                title = store.weddingTitle
+            }
+            // Zatvaranje povlačenjem prema dolje također sprema naslov.
+            .onDisappear { store.setWeddingTitle(title) }
         }
         // Prozor sa sheetom ne preuzima odmah promjenu s korijena, pa izgled postavljamo i ovdje.
         .preferredColorScheme(appearance.scheme)
