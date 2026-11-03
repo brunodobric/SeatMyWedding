@@ -179,7 +179,7 @@ private struct ToastBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(toast.isError ? Theme.error : Color(hex: 0x2B2622), in: RoundedRectangle(cornerRadius: 12))
+        .background(toast.isError ? Theme.error : Color(hex: 0x2B2622), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .shadow(radius: 6, y: 2)
     }
 }

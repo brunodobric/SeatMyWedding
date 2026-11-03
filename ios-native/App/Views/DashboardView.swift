@@ -140,7 +140,7 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
-        .background(Theme.champagne, in: RoundedRectangle(cornerRadius: 10))
+        .background(Theme.champagne, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     fileprivate static func store(_ d: Date) -> String { storageFormat.string(from: d) }
@@ -171,8 +171,8 @@ private struct Card<Content: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Theme.border))
     }
 }
 
