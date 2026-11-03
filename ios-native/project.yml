@@ -76,6 +76,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.seatmywedding.app
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1,2"
+        # Tvoj Personal Team: bez ovoga XcodeGen pri svakom generiranju briše odabir tima u Xcodeu.
+        DEVELOPMENT_TEAM: Z66L4S538M
+        CODE_SIGN_STYLE: Automatic
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         GENERATE_INFOPLIST_FILE: NO
