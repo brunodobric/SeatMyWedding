@@ -54,8 +54,8 @@ function setupAppUpdates() {
     location.reload();
   });
   const offer = worker => {
-    showToast('Dostupna je nova verzija aplikacije', false, {
-      label: 'Osvježi',
+    showToast(tr('Dostupna je nova verzija aplikacije'), false, {
+      label: tr('Osvježi'),
       duration: 0,
       onClick: () => { reloadOnChange = true; worker.postMessage('SKIP_WAITING'); }
     });
@@ -135,7 +135,7 @@ function setupHeader() {
   });
   const input = document.getElementById('wedding-title-input');
   input.addEventListener('blur', async () => {
-    await saveSettings({ weddingTitle: input.value.trim() || 'Moje Vjenčanje' });
+    await saveSettings({ weddingTitle: input.value.trim() || tr('Moje Vjenčanje') });
     input.style.display = 'none';
     document.getElementById('wedding-title-display').style.display = '';
     updateHeader();
@@ -145,7 +145,7 @@ function setupHeader() {
 
 function updateHeader() {
   const titleEl = document.getElementById('wedding-title-display');
-  titleEl.textContent = state.settings.weddingTitle || 'Moje Vjenčanje';
+  titleEl.textContent = state.settings.weddingTitle || tr('Moje Vjenčanje');
 }
 
 function updateMonogram() {
@@ -180,19 +180,19 @@ function closeOptions() {
 
 const SCREEN_OPTIONS = {
   sala: () => [
-    { id: 'party', icon: 'rings', label: 'Mladenci i kumovi', run: openPartyModal },
-    { id: 'hall', icon: 'sparkles', label: 'Složi salu', run: () => openHallModal(null) },
-    { id: 'add-table', icon: 'plus', label: 'Dodaj stol', run: () => openTableModal(null) },
-    { id: 'unseat-all', icon: 'user-x', label: 'Makni sve goste sa stolova', danger: true,
+    { id: 'party', icon: 'rings', label: tr('Mladenci i kumovi'), run: openPartyModal },
+    { id: 'hall', icon: 'sparkles', label: tr('Složi salu'), run: () => openHallModal(null) },
+    { id: 'add-table', icon: 'plus', label: tr('Dodaj stol'), run: () => openTableModal(null) },
+    { id: 'unseat-all', icon: 'user-x', label: tr('Makni sve goste sa stolova'), danger: true,
       disabled: !state.guests.some(g => g.tableId && !g.locked), run: unseatAllConfirmed },
-    { id: 'start-over', icon: 'undo', label: 'Kreni ispočetka', danger: true, run: startOver }
+    { id: 'start-over', icon: 'undo', label: tr('Kreni ispočetka'), danger: true, run: startOver }
   ],
   gosti: () => [
-    { id: 'categories', icon: 'palette', label: 'Kategorije', run: openCategoryManager },
-    { id: 'delete-guests', icon: 'trash', label: 'Obriši sve goste', danger: true, disabled: !invitedGuests().length, run: deleteAllGuestsConfirmed }
+    { id: 'categories', icon: 'palette', label: tr('Kategorije'), run: openCategoryManager },
+    { id: 'delete-guests', icon: 'trash', label: tr('Obriši sve goste'), danger: true, disabled: !invitedGuests().length, run: deleteAllGuestsConfirmed }
   ],
 };
-const SCREEN_NAMES = { sala: 'Sala', gosti: 'Gosti' };
+const SCREEN_NAMES = { sala: tr('Sala'), gosti: tr('Gosti') };
 
 function renderOptions() {
   document.getElementById('opt-guide').hidden = !state.settings.guideDismissed;
@@ -208,7 +208,23 @@ function renderOptions() {
   }));
 }
 
+// Each language is named in its own language; picking one reloads the app in it.
+function renderLanguageOptions() {
+  const box = document.getElementById('lang-options');
+  if (!box) return;
+  box.innerHTML = I18N.LANGUAGES.map(l => {
+    const on = l.code === I18N.lang;
+    return `<button class="menu-item${on ? ' active' : ''}" data-lang="${l.code}" lang="${l.code}" aria-pressed="${on}">${icon(on ? 'check' : 'globe')} ${esc(l.name)}</button>`;
+  }).join('');
+  box.querySelectorAll('[data-lang]').forEach(btn => btn.addEventListener('click', () => {
+    if (btn.dataset.lang === I18N.lang) { closeOptions(); return; }
+    I18N.setLang(btn.dataset.lang);
+    location.reload();
+  }));
+}
+
 function setupOptions() {
+  renderLanguageOptions();
   document.getElementById('btn-options').addEventListener('click', e => {
     e.stopPropagation();
     if (document.getElementById('options-panel').hidden) openOptions(); else closeOptions();
@@ -237,7 +253,7 @@ function setupOptions() {
   });
   document.getElementById('btn-save-wedding').addEventListener('click', async () => {
     await saveSettings({
-      weddingTitle: document.getElementById('wedding-edit-title').value.trim() || 'Moje Vjenčanje',
+      weddingTitle: document.getElementById('wedding-edit-title').value.trim() || tr('Moje Vjenčanje'),
       monogram: document.getElementById('wedding-edit-monogram').value.trim() || '♡'
     });
     document.getElementById('modal-wedding').style.display = 'none';
@@ -251,26 +267,29 @@ function openCategoryManager() {
   document.getElementById('modal-categories').style.display = 'flex';
 }
 
-const guestCountLabel = n => `${n} ${n % 10 === 1 && n % 100 !== 11 ? 'gost' : 'gostiju'}`;
+const guestCountLabel = n => trn(n, { one: '{n} gost', few: '{n} gosta', other: '{n} gostiju' });
+const guestCountStrong = n => trn(n, { one: '<strong>{n}</strong> gost', few: '<strong>{n}</strong> gosta', other: '<strong>{n}</strong> gostiju' });
+const tableCountLabel = n => trn(n, { one: '{n} stol', few: '{n} stola', other: '{n} stolova' });
+const groupsTogetherLabel = n => trn(n, { one: '{n} par ili obitelj sjedi zajedno', few: '{n} para ili obitelji sjede zajedno', other: '{n} parova i obitelji sjedi zajedno' });
 
 async function deleteAllGuestsConfirmed() {
   const n = invitedGuests().length;
-  if (!n || !confirm(`Obrisati sve goste (${guestCountLabel(n)})? Brišu se i njihova mjesta i želje. Stolovi i kategorije ostaju.`)) return;
-  await withUndo(`Obrisano: ${guestCountLabel(n)}`, () => deleteAllGuests());
+  if (!n || !confirm(tr('Obrisati sve goste ({count})? Brišu se i njihova mjesta i želje. Stolovi i kategorije ostaju.', { count: guestCountLabel(n) }))) return;
+  await withUndo(tr('Obrisano: {count}', { count: guestCountLabel(n) }), () => deleteAllGuests());
 }
 
 async function unseatAllConfirmed() {
   const seated = state.guests.filter(g => g.tableId && !g.locked);
   const locked = state.guests.filter(g => g.tableId && g.locked).length;
-  if (!seated.length || !confirm(`Maknuti ${guestCountLabel(seated.length)} sa stolova?${locked ? ` Zaključana mjesta (${locked}) ostaju.` : ''}`)) return;
-  await withUndo(`${guestCountLabel(seated.length)} je bez mjesta`,
+  if (!seated.length || !confirm(tr('Maknuti {count} sa stolova?', { count: guestCountLabel(seated.length) }) + (locked ? ' ' + tr('Zaključana mjesta ({n}) ostaju.', { n: locked }) : ''))) return;
+  await withUndo(trn(seated.length, { one: '{n} gost je bez mjesta', few: '{n} gosta su bez mjesta', other: '{n} gostiju je bez mjesta' }),
     () => placeGuests(seated.map(g => ({ id: g.id, tableId: null, seatIndex: null }))));
 }
 
 async function startOver() {
-  if (!confirm('Krenuti ispočetka? Brišu se svi gosti, stolovi, kategorije i naslov, i otvaraju se uvodni koraci.')) return;
+  if (!confirm(tr('Krenuti ispočetka? Brišu se svi gosti, stolovi, kategorije i naslov, i otvaraju se uvodni koraci.'))) return;
   const settings = { ...state.settings };
-  await withUndo('Sve je obrisano', () => clearWeddingData(), {
+  await withUndo(tr('Sve je obrisano'), () => clearWeddingData(), {
     onUndo: async () => {
       await saveSettings({ weddingTitle: settings.weddingTitle, monogram: settings.monogram, guideDismissed: settings.guideDismissed });
       document.getElementById('modal-onboarding').style.display = 'none';
@@ -319,7 +338,9 @@ function showOnboarding() {
     const perTable = Math.max(2, parseInt(document.getElementById('ob-seats').value) || 8);
     const n = tablesNeeded(guests, perTable);
     document.getElementById('ob-summary').innerHTML =
-      `${listedGuests() ? `Za ${guests} ${guests === 1 ? 'gosta' : 'gostiju'} s popisa s` : 'S'}ložit ćemo <strong>${n} ${n === 1 ? 'stol' : n > 1 && n < 5 ? 'stola' : 'stolova'}</strong> po ${perTable} mjesta i stol mladenaca.`;
+      (listedGuests()
+        ? tr('Za {guests} s popisa složit ćemo <strong>{tables}</strong> po {seats} mjesta i stol mladenaca.', { guests: trn(guests, { one: '{n} gosta', few: '{n} gosta', other: '{n} gostiju' }), tables: tableCountLabel(n), seats: perTable })
+        : tr('Složit ćemo <strong>{tables}</strong> po {seats} mjesta i stol mladenaca.', { tables: tableCountLabel(n), seats: perTable }));
   };
   const listEl = document.getElementById('ob-guest-list');
   renderHallTemplates(document.getElementById('ob-templates'), template, key => {
@@ -333,7 +354,7 @@ function showOnboarding() {
   listEl.addEventListener('input', () => {
     const p = previewGuestImport(listedRows());
     document.getElementById('ob-guest-preview').innerHTML = p.guests
-      ? `<p><strong>${p.guests}</strong> ${p.guests === 1 ? 'gost' : 'gostiju'}${p.groups ? ` · ${p.groups} ${p.groups === 1 ? 'par ili obitelj' : 'parova i obitelji'} sjedi zajedno` : ''}</p>`
+      ? `<p>${guestCountStrong(p.guests)}${p.groups ? ' · ' + groupsTogetherLabel(p.groups) : ''}</p>`
       : '';
   });
 
@@ -385,7 +406,7 @@ function showOnboarding() {
       const first = id => document.getElementById(id).value.trim().split(/\s+/)[0] || '';
       const names = [first('ob-bride'), first('ob-groom')].filter(Boolean);
       await saveSettings({
-        weddingTitle: names.length ? names.join(' i ') : 'Moje Vjenčanje',
+        weddingTitle: names.length ? names.join(tr(' i ')) : tr('Moje Vjenčanje'),
         monogram: names.length ? names.map(n => n[0].toUpperCase()).join('&') : '♡'
       });
       for (const c of DEFAULT_CATEGORIES) await saveCategory({ id: crypto.randomUUID(), ...c });
@@ -411,10 +432,10 @@ function showOnboarding() {
 // Sides and circles most weddings sort guests by (the wedding party itself is
 // not a category: it sits at the bridal table from the start).
 const DEFAULT_CATEGORIES = [
-  { name: 'Mladenkina strana', color: '#B07B72', atHeadTable: false },
-  { name: 'Mladoženjina strana', color: '#7A8FA6', atHeadTable: false },
-  { name: 'Obitelj', color: '#7B9E87', atHeadTable: false },
-  { name: 'Prijatelji', color: '#C4956A', atHeadTable: false }
+  { name: tr('Mladenkina strana'), color: '#B07B72', atHeadTable: false },
+  { name: tr('Mladoženjina strana'), color: '#7A8FA6', atHeadTable: false },
+  { name: tr('Obitelj'), color: '#7B9E87', atHeadTable: false },
+  { name: tr('Prijatelji'), color: '#C4956A', atHeadTable: false }
 ];
 
 // The bridal table, left to right: the kuma's partner, kuma, bride, groom, kum,
@@ -431,12 +452,12 @@ const OB_PARTY_FIELDS = [
 // What someone of the wedding party is, for the export and the printouts
 // ('' for guests). Older records have no slot, only couple / kumovi.
 const PARTY_ROLES = {
-  bride: 'Mladenka', groom: 'Mladoženja', kuma: 'Kuma', kum: 'Kum',
-  'kuma-plus': 'Pratnja kume', 'kum-plus': 'Pratnja kuma'
+  bride: tr('Mladenka'), groom: tr('Mladoženja'), kuma: tr('Kuma'), kum: tr('Kum'),
+  'kuma-plus': tr('Pratnja kume'), 'kum-plus': tr('Pratnja kuma')
 };
 function partyRole(g) {
   if (!isWeddingParty(g)) return '';
-  return PARTY_ROLES[g.partySlot] || (g.party === 'couple' ? 'Mladenci' : 'Kumovi');
+  return PARTY_ROLES[g.partySlot] || (g.party === 'couple' ? tr('Mladenci') : tr('Kumovi'));
 }
 
 // The person of the wedding party in a slot (older records have no slot: they
@@ -523,7 +544,7 @@ function openPartyModal() {
 function setupPartyModal() {
   document.getElementById('btn-save-party').addEventListener('click', async () => {
     document.getElementById('modal-party').style.display = 'none';
-    await withUndo('Mladenci i kumovi su spremljeni', () => saveWeddingParty('pt'));
+    await withUndo(tr('Mladenci i kumovi su spremljeni'), () => saveWeddingParty('pt'));
   });
   document.getElementById('btn-table-guests-party').addEventListener('click', () => {
     document.getElementById('modal-table-guests').style.display = 'none';
@@ -537,7 +558,7 @@ function showOnboardingStep(step) {
   });
   document.querySelectorAll('.ob-dots [data-dot]').forEach(d => d.classList.toggle('active', parseInt(d.dataset.dot) <= step));
   document.querySelector('.modal-onboarding').classList.toggle('wide', step > 1);
-  document.getElementById('onboarding-next').textContent = step === 3 ? 'Počni' : 'Dalje →';
+  document.getElementById('onboarding-next').textContent = step === 3 ? tr('Počni') : tr('Dalje →');
   document.getElementById('onboarding-skip').style.display = step === 2 ? '' : 'none';
 }
 
@@ -545,9 +566,9 @@ function showOnboardingStep(step) {
 
 function guideSteps() {
   return [
-    { nav: 'sala', label: 'Složi salu', done: state.tables.some(t => !isHeadTable(t)) },
-    { nav: 'gosti', label: 'Dodaj goste', done: invitedGuests().length > 0 },
-    { nav: 'sala', label: 'Predloži raspored', done: state.guests.some(g => g.status === 'assigned') }
+    { nav: 'sala', label: tr('Složi salu'), done: state.tables.some(t => !isHeadTable(t)) },
+    { nav: 'gosti', label: tr('Dodaj goste'), done: invitedGuests().length > 0 },
+    { nav: 'sala', label: tr('Predloži raspored'), done: state.guests.some(g => g.status === 'assigned') }
   ];
 }
 
@@ -561,12 +582,12 @@ function renderGuide() {
   }
   const current = steps.findIndex(s => !s.done);
   el.hidden = false;
-  el.innerHTML = `<span class="guide-title">Prvi koraci</span>
+  el.innerHTML = `<span class="guide-title">${tr('Prvi koraci')}</span>
     <div class="guide-steps">${steps.map((s, i) => `
       <button class="guide-step${s.done ? ' done' : ''}${i === current ? ' current' : ''}" data-guide="${s.nav}">
         <span class="guide-num">${s.done ? icon('check') : i + 1}</span><span class="guide-label">${s.label}</span>
       </button>`).join('<span class="guide-sep"></span>')}</div>
-    <button class="btn-icon guide-close" id="guide-close" title="Sakrij">${icon('x')}</button>`;
+    <button class="btn-icon guide-close" id="guide-close" title="${tr('Sakrij')}">${icon('x')}</button>`;
   el.querySelectorAll('[data-guide]').forEach(btn => btn.addEventListener('click', () => navigateTo(btn.dataset.guide)));
   document.getElementById('guide-close').addEventListener('click', () => saveSettings({ guideDismissed: true }));
 }
@@ -639,13 +660,16 @@ function updateHallSummary() {
   const el = document.getElementById('hall-summary');
   const seats = plan.create.filter(t => !isHeadTable(t)).reduce((n, t) => n + t.seats, 0);
   if (form.mode === 'add' && plan.count === 0) {
-    el.innerHTML = `${icon('check')} Već imate dovoljno mjesta za ${form.guestCount} gostiju.`;
+    el.innerHTML = `${icon('check')} ` + trn(form.guestCount, { one: 'Već imate dovoljno mjesta za {n} gosta.', few: 'Već imate dovoljno mjesta za {n} gosta.', other: 'Već imate dovoljno mjesta za {n} gostiju.' });
     el.className = 'hall-summary ok';
     btn.disabled = true;
     return;
   }
-  const verb = form.mode === 'add' ? 'Dodat će se' : 'Trebate';
-  el.innerHTML = `${verb} <strong>${plan.count} ${plan.count === 1 ? 'stol' : plan.count < 5 ? 'stola' : 'stolova'}</strong> po ${plan.perTable} mjesta (${seats} mjesta)${plan.create.some(isHeadTable) ? ' i stol mladenaca' : ''}.`;
+  const p = { tables: tableCountLabel(plan.count), per: plan.perTable, seats };
+  const withHead = plan.create.some(isHeadTable);
+  el.innerHTML = form.mode === 'add'
+    ? (withHead ? tr('Dodat će se <strong>{tables}</strong> po {per} mjesta ({seats} mjesta) i stol mladenaca.', p) : tr('Dodat će se <strong>{tables}</strong> po {per} mjesta ({seats} mjesta).', p))
+    : (withHead ? tr('Trebate <strong>{tables}</strong> po {per} mjesta ({seats} mjesta) i stol mladenaca.', p) : tr('Trebate <strong>{tables}</strong> po {per} mjesta ({seats} mjesta).', p));
   el.className = 'hall-summary';
   btn.disabled = plan.count === 0 && !plan.create.length;
 }
@@ -658,7 +682,7 @@ function setupHallModal() {
     const seated = form.mode === 'rebuild'
       ? state.guests.filter(g => g.tableId && !isHeadTable(state.tables.find(t => t.id === g.tableId) || {})).length
       : 0;
-    await withUndo(seated ? `Sala je složena, ${seated} gostiju je bez mjesta` : 'Sala je složena',
+    await withUndo(seated ? trn(seated, { one: 'Sala je složena, {n} gost je bez mjesta', few: 'Sala je složena, {n} gosta su bez mjesta', other: 'Sala je složena, {n} gostiju je bez mjesta' }) : tr('Sala je složena'),
       () => applyHallPlan(planHall(form)));
     document.getElementById('modal-hall').style.display = 'none';
     if (floorPlanAssign) floorPlanAssign._fitted = false;
@@ -672,11 +696,11 @@ function updateSeatsUI(shape) {
   document.getElementById('seats-per-side-group').style.display = isSided ? 'flex' : 'none';
   document.getElementById('seats-end-group').style.display = shape === 'square' ? 'none' : '';
   const longLabel = document.getElementById('label-seats-long');
-  if (shape === 'square') longLabel.textContent = 'Mjesta po strani';
-  else if (shape === 'head') longLabel.textContent = 'Mjesta (prednja strana)';
-  else longLabel.textContent = 'Mjesta po dužoj strani';
+  if (shape === 'square') longLabel.textContent = tr('Mjesta po strani');
+  else if (shape === 'head') longLabel.textContent = tr('Mjesta (prednja strana)');
+  else longLabel.textContent = tr('Mjesta po dužoj strani');
   const endLabel = document.querySelector('label[for="table-seats-end"]');
-  if (endLabel) endLabel.textContent = 'Mjesta po čelu (kraća strana)';
+  if (endLabel) endLabel.textContent = tr('Mjesta po čelu (kraća strana)');
   updateSeatsTotalDisplay(shape);
 }
 
@@ -687,16 +711,16 @@ function updateSeatsTotalDisplay(shape) {
   if (shape === 'square') total = nLong * 4;
   else if (shape === 'head') total = nLong + nEnd * 2;
   else total = nLong * 2 + nEnd * 2;
-  document.getElementById('seats-total-computed').textContent = `Ukupno: ${total} mjesta`;
+  document.getElementById('seats-total-computed').textContent = trn(total, { one: 'Ukupno: {n} mjesto', few: 'Ukupno: {n} mjesta', other: 'Ukupno: {n} mjesta' });
 }
 
 function openTableModal(id) {
   const table = id ? state.tables.find(t => t.id === id) : null;
   const modal = document.getElementById('modal-table');
   const title = document.getElementById('modal-table-title');
-  title.textContent = table ? 'Uredi stol' : 'Dodaj stol';
+  title.textContent = table ? tr('Uredi stol') : tr('Dodaj stol');
 
-  document.getElementById('table-name').value = (table ? table.name : undefined) || `Stol ${state.tables.length + 1}`;
+  document.getElementById('table-name').value = (table ? table.name : undefined) || tr('Stol {n}', { n: state.tables.length + 1 });
   const shape = (table ? table.shape : undefined) || 'round';
   document.querySelectorAll('.shape-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.shape === shape);
@@ -772,7 +796,7 @@ function setupTableModal() {
 
     let table = {
       id,
-      name: document.getElementById('table-name').value.trim() || 'Stol',
+      name: document.getElementById('table-name').value.trim() || tr('Stol'),
       shape,
       seats,
       seatsLong,
@@ -791,7 +815,7 @@ function setupTableModal() {
     const id = modal.dataset.editId;
     const table = state.tables.find(t => t.id === id);
     if (table && !isHeadTable(table)) {
-      await withUndo(`Obrisano: ${table.name}`, () => deleteTable(id));
+      await withUndo(tr('Obrisano: {name}', { name: table.name }), () => deleteTable(id));
       modal.style.display = 'none';
       renderSala();
     }
@@ -802,7 +826,7 @@ function setupTableModal() {
     const id = modal.dataset.editId;
     const orig = state.tables.find(t => t.id === id);
     if (!orig) return;
-    const newTable = placeNewTable({ ...orig, id: crypto.randomUUID(), name: orig.name + ' (kopija)' });
+    const newTable = placeNewTable({ ...orig, id: crypto.randomUUID(), name: tr('{name} (kopija)', { name: orig.name }) });
     await saveTable(newTable);
     modal.style.display = 'none';
     renderSala();
@@ -835,11 +859,11 @@ function guestHasViolation(g) {
 function guestRelationLine(g) {
   const rel = getGuestRelations(g.id);
   const parts = [];
-  if (rel.together.length) parts.push(`<span title="Sjedi s">${icon('together')} ${esc(rel.together.map(nameOf).join(', '))}</span>`);
-  if (rel.apart.length) parts.push(`<span title="Ne sjedi s">${icon('apart')} ${esc(rel.apart.map(nameOf).join(', '))}</span>`);
+  if (rel.together.length) parts.push(`<span title="${tr('Sjedi s')}">${icon('together')} ${esc(rel.together.map(nameOf).join(', '))}</span>`);
+  if (rel.apart.length) parts.push(`<span title="${tr('Ne sjedi s')}">${icon('apart')} ${esc(rel.apart.map(nameOf).join(', '))}</span>`);
   if (rel.fixed) {
     const t = state.tables.find(x => x.id === rel.fixed.tableId);
-    parts.push(`<span title="Uvijek za stolom">${icon('pin')} ${esc(t ? t.name : '?')}${rel.fixed.seatIndex !== null ? `, mj. ${rel.fixed.seatIndex + 1}` : ''}</span>`);
+    parts.push(`<span title="${tr('Uvijek za stolom')}">${icon('pin')} ${esc(t ? t.name : '?')}${rel.fixed.seatIndex !== null ? ', ' + tr('mj. {n}', { n: rel.fixed.seatIndex + 1 }) : ''}</span>`);
   }
   return parts.length ? `<span class="guest-rel">${parts.join('')}</span>` : '';
 }
@@ -853,7 +877,7 @@ function renderGosti() {
   const vBtn = document.getElementById('btn-filter-violated');
   vBtn.style.display = violated ? '' : 'none';
   vBtn.classList.toggle('active', guestViolationFilter);
-  vBtn.innerHTML = `${icon('alert')} ${violated} ${violated === 1 ? 'gost ima neispunjen zahtjev' : 'gostiju ima neispunjen zahtjev'}`;
+  vBtn.innerHTML = `${icon('alert')} ` + trn(violated, { one: '{n} gost ima neispunjen zahtjev', few: '{n} gosta imaju neispunjen zahtjev', other: '{n} gostiju ima neispunjen zahtjev' });
 }
 
 function renderCategoryChips() {
@@ -861,8 +885,8 @@ function renderCategoryChips() {
   if (!container) return;
   const unseated = unseatedGuests().length;
   if (!unseated) guestUnseatedFilter = false;
-  container.innerHTML = `<button class="chip${!guestCategoryFilter ? ' active' : ''}" data-cat="">Svi</button>` +
-    (unseated ? `<button class="chip chip-unseated${guestUnseatedFilter ? ' active' : ''}" id="chip-unseated">Bez mjesta (${unseated})</button>` : '') +
+  container.innerHTML = `<button class="chip${!guestCategoryFilter ? ' active' : ''}" data-cat="">${tr('Svi')}</button>` +
+    (unseated ? `<button class="chip chip-unseated${guestUnseatedFilter ? ' active' : ''}" id="chip-unseated">${tr('Bez mjesta')} (${unseated})</button>` : '') +
     state.categories.map(c =>
       `<button class="chip${guestCategoryFilter === c.id ? ' active' : ''}" data-cat="${c.id}" style="--cat-color:${c.color}">${esc(c.name)}</button>`
     ).join('');
@@ -898,25 +922,25 @@ function renderGuestList() {
   guests.sort((a, b) => a.name.localeCompare(b.name));
   if (invitedGuests().length === 0) {
     list.innerHTML = `<div class="empty-state">
-      <p><strong>Još nema gostiju.</strong><br>Upiši ime gore ili zalijepi cijeli popis odjednom.<br>Parovi i obitelji u istom redu sjedit će zajedno.</p>
-      <button class="btn-primary" id="btn-empty-import">${icon('import')} Zalijepi popis gostiju</button>
+      <p><strong>${tr('Još nema gostiju.')}</strong><br>${tr('Upiši ime gore ili zalijepi cijeli popis odjednom.')}<br>${tr('Parovi i obitelji u istom redu sjedit će zajedno.')}</p>
+      <button class="btn-primary" id="btn-empty-import">${icon('import')} ${tr('Zalijepi popis gostiju')}</button>
     </div>`;
     document.getElementById('btn-empty-import').addEventListener('click', () => openImportModal(''));
     return;
   }
   if (guests.length === 0) {
-    list.innerHTML = '<div class="empty-state"><p>Nema gostiju koji odgovaraju filtru.</p></div>';
+    list.innerHTML = `<div class="empty-state"><p>${tr('Nema gostiju koji odgovaraju filtru.')}</p></div>`;
     return;
   }
   list.innerHTML = guests.map(g => {
     const cat = state.categories.find(c => c.id === g.categoryId);
     const table = g.tableId ? state.tables.find(t => t.id === g.tableId) : null;
-    const statusLabel = g.status === 'maybe' ? '<span class="status-badge maybe">Možda</span>'
+    const statusLabel = g.status === 'maybe' ? `<span class="status-badge maybe">${tr('Možda')}</span>`
       : guestSeatSelect(g, table);
     return `<div class="guest-row${guestHasViolation(g) ? ' violated' : ''}" data-id="${g.id}">
       <div class="guest-row-main">
         <div class="guest-row-text">
-          <span class="guest-name">${esc(g.name)}${guestHasViolation(g) ? ` <span class="rel-bad" title="Zahtjev nije ispunjen">${icon('alert')}</span>` : ''}</span>
+          <span class="guest-name">${esc(g.name)}${guestHasViolation(g) ? ` <span class="rel-bad" title="${tr('Zahtjev nije ispunjen')}">${icon('alert')}</span>` : ''}</span>
           ${guestRelationLine(g)}
         </div>
         ${cat ? `<span class="cat-chip" style="background:${cat.color}">${esc(cat.name)}</span>` : ''}
@@ -937,7 +961,7 @@ function renderGuestList() {
     const guestId = sel.dataset.guest;
     if (!sel.value) { await unassignGuest(guestId); return; }
     const seat = firstFreeSeat(state.tables.find(t => t.id === sel.value));
-    if (seat < 0) { alert('Za tim stolom više nema mjesta.'); renderGuestList(); return; }
+    if (seat < 0) { alert(tr('Za tim stolom više nema mjesta.')); renderGuestList(); return; }
     await assignGuest(guestId, sel.value, seat);
   }));
 }
@@ -947,12 +971,12 @@ function guestSeatSelect(g, table) {
   const used = {};
   state.guests.forEach(x => { if (x.tableId) used[x.tableId] = (used[x.tableId] || 0) + 1; });
   const seated = g.status === 'assigned' && table;
-  return `<select class="status-badge seat-select ${seated ? 'assigned' : 'unassigned'}" data-guest="${g.id}" aria-label="Stol za: ${esc(g.name)}">
-    <option value="">Bez mjesta</option>
+  return `<select class="status-badge seat-select ${seated ? 'assigned' : 'unassigned'}" data-guest="${g.id}" aria-label="${esc(tr('Stol za: {name}', { name: g.name }))}">
+    <option value="">${tr('Bez mjesta')}</option>
     ${state.tables.map(t => {
       const mine = seated && t.id === table.id;
       const left = t.seats - (used[t.id] || 0);
-      return `<option value="${t.id}"${mine ? ' selected' : ''}${!mine && left <= 0 ? ' disabled' : ''}>${esc(t.name)}${mine ? '' : ` (${left} slob.)`}</option>`;
+      return `<option value="${t.id}"${mine ? ' selected' : ''}${!mine && left <= 0 ? ' disabled' : ''}>${esc(t.name)}${mine ? '' : ' (' + tr('{n} slob.', { n: left }) + ')'}</option>`;
     }).join('')}
   </select>`;
 }
@@ -968,15 +992,15 @@ function setupGostiEvents() {
     input.value = '';
     if (result.skipped && !result.guests) {
       const name = result.duplicates[0];
-      showToast(`${name} je već na popisu`, false, {
-        label: 'Dodaj ipak',
+      showToast(tr('{name} je već na popisu', { name }), false, {
+        label: tr('Dodaj ipak'),
         onClick: async () => {
           await importGuestRows(rows, categoryId, { includeExisting: true });
-          showToast(`Dodan još jedan gost: ${name}`);
+          showToast(tr('Dodan još jedan gost: {name}', { name }));
         }
       });
     }
-    else if (result.guests > 1) showToast(`Dodano ${result.guests} gostiju, sjede zajedno`);
+    else if (result.guests > 1) showToast(trn(result.guests, { one: 'Dodan {n} gost', few: 'Dodana {n} gosta, sjede zajedno', other: 'Dodano {n} gostiju, sjede zajedno' }));
   });
   // Pasting several lines into the quick-add field opens the full import.
   input.addEventListener('paste', (e) => {
@@ -1005,7 +1029,7 @@ function setupGostiEvents() {
       { includeExisting: document.getElementById('import-include-existing').checked });
     document.getElementById('modal-import').style.display = 'none';
     document.getElementById('import-textarea').value = '';
-    showToast(`Dodano ${result.guests} gostiju`);
+    showToast(trn(result.guests, { one: 'Dodan {n} gost', few: 'Dodana {n} gosta', other: 'Dodano {n} gostiju' }));
   });
 
   document.getElementById('guest-search').addEventListener('input', (e) => {
@@ -1025,7 +1049,7 @@ function openImportModal(text) {
   document.getElementById('import-textarea').value = text || '';
   document.getElementById('import-surname-first').checked = detectSurnameFirst(text);
   document.getElementById('import-include-existing').checked = false;
-  document.getElementById('import-category').innerHTML = '<option value="">— bez kategorije —</option>' +
+  document.getElementById('import-category').innerHTML = `<option value="">${tr('— bez kategorije —')}</option>` +
     state.categories.map(c => `<option value="${c.id}"${c.id === guestCategoryFilter ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
   updateImportPreview();
   document.getElementById('modal-import').style.display = 'flex';
@@ -1047,18 +1071,18 @@ function updateImportPreview() {
       const cat = state.categories.find(c => c.id === (state.guests.find(g => g.name.toLowerCase() === n.toLowerCase()) || {}).categoryId);
       return `<em>${esc(n)}</em>${cat ? ` (${esc(cat.name)})` : ''}`;
     }).join(', ');
-    const more = p.duplicates.length > 4 ? ` i još ${p.duplicates.length - 4}` : '';
+    const more = p.duplicates.length > 4 ? ' ' + tr('i još {n}', { n: p.duplicates.length - 4 }) : '';
     document.getElementById('import-dup-label').innerHTML =
-      `${p.duplicates.length === 1 ? 'Već je na popisu' : `Već su na popisu (${p.duplicates.length})`}: ${shown}${more}. <strong>Dodaj ih ipak</strong> kao nove goste (npr. imenjaci).`;
+      `${p.duplicates.length === 1 ? tr('Već je na popisu') : tr('Već su na popisu ({n})', { n: p.duplicates.length })}: ${shown}${more}. ${tr('<strong>Dodaj ih ipak</strong> kao nove goste (npr. imenjaci).')}`;
   }
   if (!p.guests && !p.skipped) { el.innerHTML = ''; return; }
-  const summary = [`<strong>${p.guests}</strong> ${p.guests === 1 ? 'gost' : 'gostiju'}`];
-  if (p.groups) summary.push(`${p.groups} ${p.groups === 1 ? 'par ili obitelj' : 'parova i obitelji'} sjedi zajedno`);
-  if (p.skipped) summary.push(`${p.skipped} preskočeno`);
+  const summary = [guestCountStrong(p.guests)];
+  if (p.groups) summary.push(groupsTogetherLabel(p.groups));
+  if (p.skipped) summary.push(tr('{n} preskočeno', { n: p.skipped }));
   const sample = p.rows.slice(0, 6).map(r =>
     `<li>${r.names.map(n => `<span class="pp-chip">${esc(n)}</span>`).join(r.names.length > 1 ? `<span class="import-link">${icon('together')}</span>` : '')}${r.category ? ` <span class="muted">· ${esc(r.category)}</span>` : ''}</li>`
   ).join('');
-  el.innerHTML = `<p>${summary.join(' · ')}</p>${sample ? `<ul>${sample}</ul>` : ''}${p.rows.length > 6 ? `<p class="muted">… i još ${p.rows.length - 6} redaka</p>` : ''}`;
+  el.innerHTML = `<p>${summary.join(' · ')}</p>${sample ? `<ul>${sample}</ul>` : ''}${p.rows.length > 6 ? `<p class="muted">… ${trn(p.rows.length - 6, { one: 'i još {n} redak', few: 'i još {n} retka', other: 'i još {n} redaka' })}</p>` : ''}`;
 }
 
 function renderCategoryManager() {
@@ -1068,15 +1092,15 @@ function renderCategoryManager() {
     `<div class="cat-manager-row" style="--cat-color:${c.color}">
       <span class="cat-swatch" style="background:${c.color}"></span>
       <span class="cat-manager-name">${esc(c.name)}</span>
-      <button class="btn-icon" data-edit-cat="${c.id}" title="Uredi">${icon('edit')}</button>
-      <button class="btn-icon danger" data-del-cat="${c.id}" title="Obriši">${icon('trash')}</button>
+      <button class="btn-icon" data-edit-cat="${c.id}" title="${tr('Uredi')}">${icon('edit')}</button>
+      <button class="btn-icon danger" data-del-cat="${c.id}" title="${tr('Obriši')}">${icon('trash')}</button>
     </div>`
-  ).join('') || '<p class="muted">Nema kategorija.</p>';
+  ).join('') || `<p class="muted">${tr('Nema kategorija.')}</p>`;
   list.querySelectorAll('[data-del-cat]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const cat = state.categories.find(c => c.id === btn.dataset.delCat);
       if (!cat) return;
-      await withUndo(`Kategorija ${cat.name} je obrisana`, () => deleteCategory(cat.id));
+      await withUndo(tr('Kategorija {name} je obrisana', { name: cat.name }), () => deleteCategory(cat.id));
       renderCategoryManager();
       renderGosti();
     });
@@ -1134,7 +1158,7 @@ class PeoplePicker {
     this.exclude = options.exclude || (() => []);
     this.onChange = options.onChange || (() => {});
     this.value = [];
-    el.innerHTML = `<div class="pp-box"><span class="pp-chips"></span><input class="pp-input" type="text" autocomplete="off" placeholder="${esc(el.dataset.placeholder || 'Dodaj…')}"></div><div class="pp-suggest"></div>`;
+    el.innerHTML = `<div class="pp-box"><span class="pp-chips"></span><input class="pp-input" type="text" autocomplete="off" placeholder="${esc(el.dataset.placeholder || tr('Dodaj…'))}"></div><div class="pp-suggest"></div>`;
     this.chips = el.querySelector('.pp-chips');
     this.input = el.querySelector('.pp-input');
     this.suggest = el.querySelector('.pp-suggest');
@@ -1166,7 +1190,7 @@ class PeoplePicker {
 
   render() {
     this.chips.innerHTML = this.value.map(id =>
-      `<span class="pp-chip">${esc(nameOf(id))}<button type="button" data-remove="${id}" aria-label="Ukloni">${icon('x')}</button></span>`
+      `<span class="pp-chip">${esc(nameOf(id))}<button type="button" data-remove="${id}" aria-label="${tr('Ukloni')}">${icon('x')}</button></span>`
     ).join('');
     this.chips.querySelectorAll('[data-remove]').forEach(btn => btn.addEventListener('click', e => {
       e.stopPropagation();
@@ -1212,19 +1236,19 @@ function renderTogetherNote() {
     const extra = group.guestIds.filter(g => !known.has(g));
     if (!extra.length) continue;
     extra.forEach(g => known.add(g));
-    lines.push(`${esc(nameOf(id))} već sjedi s: <strong>${extra.map(g => esc(nameOf(g))).join(', ')}</strong>`);
+    lines.push(tr('{name} već sjedi s: <strong>{others}</strong>', { name: esc(nameOf(id)), others: extra.map(g => esc(nameOf(g))).join(', ') }));
   }
   note.hidden = !lines.length;
   note.innerHTML = lines.length
-    ? `${icon('together')}<span>${lines.join('<br>')}<br>Spremanjem će svi sjediti zajedno.</span>`
+    ? `${icon('together')}<span>${lines.join('<br>')}<br>${tr('Spremanjem će svi sjediti zajedno.')}</span>`
     : '';
 }
 
 function fillFixedSeatOptions(tableId, selected) {
   const table = state.tables.find(t => t.id === tableId);
   const seatSel = document.getElementById('guest-edit-fixed-seat');
-  seatSel.innerHTML = '<option value="">bilo koje mjesto</option>' +
-    (table ? Array.from({ length: table.seats }, (_, i) => `<option value="${i}"${selected === i ? ' selected' : ''}>Mjesto ${i + 1}</option>`).join('') : '');
+  seatSel.innerHTML = `<option value="">${tr('bilo koje mjesto')}</option>` +
+    (table ? Array.from({ length: table.seats }, (_, i) => `<option value="${i}"${selected === i ? ' selected' : ''}>${tr('Mjesto {n}', { n: i + 1 })}</option>`).join('') : '');
   seatSel.disabled = !table;
 }
 
@@ -1232,14 +1256,14 @@ function openGuestModal(id) {
   const guest = id ? state.guests.find(g => g.id === id) : null;
   if (isWeddingParty(guest)) { openPartyModal(); return; }
   const modal = document.getElementById('modal-guest');
-  document.getElementById('modal-guest-title').textContent = guest ? 'Uredi gosta' : 'Dodaj gosta';
+  document.getElementById('modal-guest-title').textContent = guest ? tr('Uredi gosta') : tr('Dodaj gosta');
   document.getElementById('guest-edit-name').value = (guest ? guest.name : undefined) || '';
   document.getElementById('guest-edit-notes').value = (guest ? guest.notes : undefined) || '';
   document.getElementById('guest-edit-locked').checked = (guest ? guest.locked : undefined) || false;
   document.getElementById('guest-edit-maybe').checked = !!(guest && guest.status === 'maybe');
 
   const catSel = document.getElementById('guest-edit-category');
-  catSel.innerHTML = '<option value="">— bez kategorije —</option>' +
+  catSel.innerHTML = `<option value="">${tr('— bez kategorije —')}</option>` +
     state.categories.map(c => `<option value="${c.id}"${(guest ? guest.categoryId : undefined) === c.id ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
 
   const rel = guest ? getGuestRelations(guest.id) : { together: [], apart: [], fixed: null };
@@ -1248,7 +1272,7 @@ function openGuestModal(id) {
   ppApart.setValue(rel.apart);
   renderTogetherNote();
   const fixedTableId = rel.fixed ? rel.fixed.tableId : '';
-  document.getElementById('guest-edit-fixed-table').innerHTML = '<option value="">— bilo koji —</option>' +
+  document.getElementById('guest-edit-fixed-table').innerHTML = `<option value="">${tr('— bilo koji —')}</option>` +
     state.tables.map(t => `<option value="${t.id}"${t.id === fixedTableId ? ' selected' : ''}>${esc(t.name)}</option>`).join('');
   fillFixedSeatOptions(fixedTableId, rel.fixed ? rel.fixed.seatIndex : null);
 
@@ -1308,7 +1332,7 @@ function setupGuestModal() {
     if (!id) return;
     const g = state.guests.find(x => x.id === id);
     if (g) {
-      await withUndo(`Obrisano s popisa: ${g.name}`, () => deleteGuest(id));
+      await withUndo(tr('Obrisano s popisa: {name}', { name: g.name }), () => deleteGuest(id));
       modal.style.display = 'none';
       refreshCurrentSection();
     }
@@ -1372,14 +1396,14 @@ function renderSeatingProgress() {
   const maybe = state.guests.filter(g => g.status === 'maybe').length;
   const pct = stats.total ? Math.round(stats.assigned / stats.total * 100) : 0;
   const notes = [];
-  if (unseated > 0) notes.push(`<button class="progress-link" data-progress="unseated">${unseated} bez mjesta</button>`);
-  if (stats.violated > 0) notes.push(`<button class="progress-link bad" data-progress="violated">${icon('alert')} ${stats.violated} ${stats.violated === 1 ? 'neispunjen zahtjev' : 'neispunjenih zahtjeva'}</button>`);
+  if (unseated > 0) notes.push(`<button class="progress-link" data-progress="unseated">${tr('{n} bez mjesta', { n: unseated })}</button>`);
+  if (stats.violated > 0) notes.push(`<button class="progress-link bad" data-progress="violated">${icon('alert')} ${trn(stats.violated, { one: '{n} neispunjen zahtjev', few: '{n} neispunjena zahtjeva', other: '{n} neispunjenih zahtjeva' })}</button>`);
   const cap = capacityInfo();
-  if (cap.missing > 0) notes.push(`<button class="progress-link bad" data-progress="capacity">${icon('alert')} fali ${cap.missing} mjesta</button>`);
-  if (maybe > 0) notes.push(`<span class="progress-note">${maybe} možda</span>`);
-  if (stats.total > 0 && unseated === 0 && stats.violated === 0) notes.push(`<span class="progress-note ok">${icon('check')} Svi su smješteni</span>`);
+  if (cap.missing > 0) notes.push(`<button class="progress-link bad" data-progress="capacity">${icon('alert')} ${trn(cap.missing, { one: 'fali {n} mjesto', few: 'fale {n} mjesta', other: 'fali {n} mjesta' })}</button>`);
+  if (maybe > 0) notes.push(`<span class="progress-note">${tr('{n} možda', { n: maybe })}</span>`);
+  if (stats.total > 0 && unseated === 0 && stats.violated === 0) notes.push(`<span class="progress-note ok">${icon('check')} ${tr('Svi su smješteni')}</span>`);
   el.innerHTML = `
-    <div class="progress-label"><strong>${stats.assigned}</strong> od ${stats.total} gostiju smješteno</div>
+    <div class="progress-label">${trn(stats.total, { one: '<strong>{done}</strong> od {n} gosta smješteno', few: '<strong>{done}</strong> od {n} gosta smješteno', other: '<strong>{done}</strong> od {n} gostiju smješteno' }, { done: stats.assigned })}</div>
     <div class="progress-track"><div class="progress-fill${pct === 100 ? ' done' : ''}" style="width:${pct}%"></div></div>
     <div class="progress-notes">${notes.join('')}</div>`;
   el.querySelectorAll('[data-progress]').forEach(btn => btn.addEventListener('click', () => {
@@ -1416,17 +1440,17 @@ function renderUnassignedPanel() {
   document.getElementById('unassigned-count').textContent = all.length ? `(${all.length})` : '';
   const hint = document.getElementById('unassigned-hint');
   if (selectedGuestForAssign) {
-    hint.innerHTML = `Dodirni mjesto za: <strong>${esc(nameOf(selectedGuestForAssign))}</strong> <button class="btn-text hint-cancel" id="btn-cancel-select">Odustani</button>`;
+    hint.innerHTML = `${tr('Dodirni mjesto za: <strong>{name}</strong>', { name: esc(nameOf(selectedGuestForAssign)) })} <button class="btn-text hint-cancel" id="btn-cancel-select">${tr('Odustani')}</button>`;
     hint.classList.add('selecting');
     document.getElementById('btn-cancel-select').addEventListener('click', () => clearGuestSelection());
   } else {
-    hint.textContent = all.length ? 'Povuci gosta na mjesto ili stol, ili ga dodirni pa dodirni mjesto.' : '';
+    hint.textContent = all.length ? tr('Povuci gosta na mjesto ili stol, ili ga dodirni pa dodirni mjesto.') : '';
     hint.classList.remove('selecting');
   }
   const list = document.getElementById('unassigned-list');
   panel.classList.toggle('all-seated', all.length === 0);
   if (guests.length === 0) {
-    list.innerHTML = `<div class="empty-state small"><p>${all.length ? 'Nema rezultata.' : 'Svi gosti imaju mjesto.'}</p></div>`;
+    list.innerHTML = `<div class="empty-state small"><p>${all.length ? tr('Nema rezultata.') : tr('Svi gosti imaju mjesto.')}</p></div>`;
     return;
   }
   list.innerHTML = guests.map(g => {
@@ -1464,25 +1488,25 @@ function firstFreeSeat(table) {
 function renderTablesView() {
   const container = document.getElementById('raspored-list');
   if (state.tables.length === 0) {
-    container.innerHTML = `<div class="empty-state"><p>Još nema stolova.</p><button class="btn-primary" id="btn-empty-hall">${icon('sparkles')} Složi salu automatski</button></div>`;
+    container.innerHTML = `<div class="empty-state"><p>${tr('Još nema stolova.')}</p><button class="btn-primary" id="btn-empty-hall">${icon('sparkles')} ${tr('Složi salu automatski')}</button></div>`;
     document.getElementById('btn-empty-hall').addEventListener('click', () => openHallModal(null));
     return;
   }
   const violated = getViolatedTableIds();
   const tables = [...state.tables].sort((a, b) =>
-    (isHeadTable(b) - isHeadTable(a)) || a.name.localeCompare(b.name, 'hr', { numeric: true }));
+    (isHeadTable(b) - isHeadTable(a)) || a.name.localeCompare(b.name, I18N.lang, { numeric: true }));
   container.innerHTML = `<div class="table-cards">${tables.map(t => {
     const guests = state.guests.filter(g => g.tableId === t.id).sort((a, b) => (a.seatIndex || 0) - (b.seatIndex || 0));
     const free = t.seats - guests.length;
     // Only offered while a guest is picked: otherwise drag or tap a seat.
     const addBtn = free > 0 && selectedGuestForAssign
-      ? `<button class="table-card-add${selectedGuestForAssign ? ' ready' : ''}" data-add="${t.id}">${icon('plus')} ${selectedGuestForAssign ? `Smjesti ${esc(nameOf(selectedGuestForAssign))} ovdje` : 'Dodaj gosta'}</button>`
+      ? `<button class="table-card-add${selectedGuestForAssign ? ' ready' : ''}" data-add="${t.id}">${icon('plus')} ${selectedGuestForAssign ? tr('Smjesti {name} ovdje', { name: esc(nameOf(selectedGuestForAssign)) }) : tr('Dodaj gosta')}</button>`
       : '';
     return `<div class="table-card${violated.has(t.id) ? ' violated' : ''}" data-table-card="${t.id}">
       <div class="table-card-head">
         <h3>${esc(t.name)}</h3>
         <span class="table-card-count${free === 0 ? ' full' : ''}">${guests.length}/${t.seats}</span>
-        <button class="btn-icon table-card-edit" data-edit-table="${t.id}" title="Uredi stol">${icon('edit')}</button>
+        <button class="btn-icon table-card-edit" data-edit-table="${t.id}" title="${tr('Uredi stol')}">${icon('edit')}</button>
       </div>
       <ol class="table-card-guests">${guests.map(g => {
         const cat = state.categories.find(c => c.id === g.categoryId);
@@ -1497,7 +1521,7 @@ function renderTablesView() {
       ${addBtn}
     </div>`;
   }).join('')}
-    <button class="table-card table-card-new" id="btn-table-card-new">${icon('plus')} Dodaj stol</button>
+    <button class="table-card table-card-new" id="btn-table-card-new">${icon('plus')} ${tr('Dodaj stol')}</button>
   </div>`;
   container.querySelectorAll('[data-edit-table]').forEach(btn => btn.addEventListener('click', () => openTableModal(btn.dataset.editTable)));
   document.getElementById('btn-table-card-new').addEventListener('click', () => openTableModal(null));
@@ -1547,7 +1571,7 @@ async function handleTableOpen(tableId) {
   if (!table) return;
   if (selectedGuestForAssign) {
     const seat = firstFreeSeat(table);
-    if (seat < 0) { showToast(`${table.name} je pun`); return; }
+    if (seat < 0) { showToast(tr('{table} je pun', { table: table.name })); return; }
     const id = selectedGuestForAssign;
     selectedGuestForAssign = null;
     await dropGuest(id, { kind: 'seat', tableId, seatIndex: seat });
@@ -1576,7 +1600,7 @@ function openTableGuests(tableId) {
       ? `<li><button data-seat="${i}" data-guest="${g.id}"><span class="seat-no">${i + 1}</span>
           ${dot ? `<span class="chip-dot" style="background:${dot}"></span>` : ''}
           <span class="tg-name">${esc(g.name)}</span>${g.locked ? `<span class="lock-badge">${icon('lock')}</span>` : ''}</button></li>`
-      : `<li><button class="free" data-seat="${i}"><span class="seat-no">${i + 1}</span><span class="tg-name">slobodno</span>${icon('plus')}</button></li>`);
+      : `<li><button class="free" data-seat="${i}"><span class="seat-no">${i + 1}</span><span class="tg-name">${tr('slobodno')}</span>${icon('plus')}</button></li>`);
   }
   const list = document.getElementById('table-guests-list');
   list.innerHTML = rows.join('');
@@ -1594,9 +1618,9 @@ function openTableGuests(tableId) {
 function showAssignSeatModal(tableId, seatIndex) {
   const modal = document.getElementById('modal-assign-seat');
   const table = state.tables.find(t => t.id === tableId);
-  document.getElementById('assign-seat-label').textContent = `${(table ? table.name : undefined) || 'Stol'} — Mjesto ${seatIndex + 1}`;
+  document.getElementById('assign-seat-label').textContent = `${(table ? table.name : undefined) || tr('Stol')} — ${tr('Mjesto {n}', { n: seatIndex + 1 })}`;
   const sel = document.getElementById('assign-guest-select');
-  sel.innerHTML = '<option value="">— odaberi gosta —</option>' +
+  sel.innerHTML = `<option value="">${tr('— odaberi gosta —')}</option>` +
     unseatedGuests().sort((a, b) => a.name.localeCompare(b.name)).map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
   modal.dataset.tableId = tableId;
   modal.dataset.seatIndex = seatIndex;
@@ -1616,13 +1640,13 @@ function setupAssignSeatModal() {
 function showSeatOptionsModal(tableId, seatIndex, guest) {
   const modal = document.getElementById('modal-seat-options');
   const table = state.tables.find(t => t.id === tableId);
-  document.getElementById('seat-options-label').textContent = `${guest.name} — ${(table ? table.name : undefined) || 'Stol'}, Mj. ${seatIndex + 1}`;
-  document.getElementById('btn-seat-lock').innerHTML = guest.locked ? `${icon('unlock')} Otključaj` : `${icon('lock')} Zaključaj`;
+  document.getElementById('seat-options-label').textContent = `${guest.name} — ${(table ? table.name : undefined) || tr('Stol')}, ${tr('Mj. {n}', { n: seatIndex + 1 })}`;
+  document.getElementById('btn-seat-lock').innerHTML = guest.locked ? `${icon('unlock')} ${tr('Otključaj')}` : `${icon('lock')} ${tr('Zaključaj')}`;
   // The wedding party always keeps its seat and is edited in "Mladenci i kumovi".
   const party = isWeddingParty(guest);
   document.getElementById('btn-seat-unassign').style.display = party ? 'none' : '';
   document.getElementById('btn-seat-lock').style.display = party ? 'none' : '';
-  document.getElementById('btn-seat-edit-guest').innerHTML = party ? `${icon('rings')} Mladenci i kumovi` : `${icon('edit')} Uredi gosta`;
+  document.getElementById('btn-seat-edit-guest').innerHTML = party ? `${icon('rings')} ${tr('Mladenci i kumovi')}` : `${icon('edit')} ${tr('Uredi gosta')}`;
   modal.dataset.guestId = guest.id;
   modal.style.display = 'flex';
 }
@@ -1639,7 +1663,7 @@ function setupSeatOptionsModal() {
     const modal = document.getElementById('modal-seat-options');
     modal.style.display = 'none';
     const guest = state.guests.find(g => g.id === modal.dataset.guestId);
-    if (guest) await withUndo(`${guest.name} je sada bez mjesta`, () => unassignGuest(guest.id));
+    if (guest) await withUndo(tr('{name} je sada bez mjesta', { name: guest.name }), () => unassignGuest(guest.id));
   });
 
   document.getElementById('btn-seat-lock').addEventListener('click', async () => {
@@ -1659,7 +1683,7 @@ function setupSeatOptionsModal() {
 
 function setupAutoSeating() {
   document.getElementById('btn-suggest-seating').addEventListener('click', async () => {
-    if (state.tables.length === 0) { alert('Najprije dodaj stolove u Sali.'); return; }
+    if (state.tables.length === 0) { alert(tr('Najprije dodaj stolove u Sali.')); return; }
     lastSeatingSnapshot = state.guests.map(g => ({ ...g }));
     const result = suggestSeating(state.tables, state.guests, state.rules, state.categories);
     await applySeatingResult(result.assignments);
@@ -1671,14 +1695,14 @@ function showSeatingResultModal(result) {
   const modal = document.getElementById('modal-seating-result');
   const total = result.assignments.length;
   const placed = result.assignments.filter(a => a.tableId).length;
-  let html = `<p><strong>${placed}/${total}</strong> gostiju raspoređeno.</p>`;
-  if (placed < total) html += `<p class="muted">Za ${total - placed} gostiju nema dovoljno mjesta. Dodaj stolove u Sali.</p>`;
+  let html = `<p>${trn(total, { one: '<strong>{placed}/{n}</strong> gost raspoređen.', few: '<strong>{placed}/{n}</strong> gosta raspoređeno.', other: '<strong>{placed}/{n}</strong> gostiju raspoređeno.' }, { placed })}</p>`;
+  if (placed < total) html += `<p class="muted">${trn(total - placed, { one: 'Za {n} gosta nema dovoljno mjesta. Dodaj stolove u Sali.', few: 'Za {n} gosta nema dovoljno mjesta. Dodaj stolove u Sali.', other: 'Za {n} gostiju nema dovoljno mjesta. Dodaj stolove u Sali.' })}</p>`;
   if (result.violations.length > 0) {
-    html += `<p class="text-error">${icon('alert')} ${result.violations.length} zahtjev(a) nije moguće ispuniti:</p><ul>`;
+    html += `<p class="text-error">${icon('alert')} ${trn(result.violations.length, { one: '{n} zahtjev nije moguće ispuniti:', few: '{n} zahtjeva nije moguće ispuniti:', other: '{n} zahtjeva nije moguće ispuniti:' })}</p><ul>`;
     result.violations.forEach(v => { html += `<li>${esc(v.reason)}</li>`; });
     html += '</ul>';
   } else {
-    html += `<p class="text-success">${icon('check')} Svi posebni zahtjevi su ispunjeni.</p>`;
+    html += `<p class="text-success">${icon('check')} ${tr('Svi posebni zahtjevi su ispunjeni.')}</p>`;
   }
   document.getElementById('seating-result-body').innerHTML = html;
   modal.style.display = 'flex';
@@ -1720,7 +1744,7 @@ function setupRasporedEvents() {
   document.getElementById('btn-zoom-reset-assign').addEventListener('click', () => floorPlanAssign && floorPlanAssign.resetView());
 
   document.getElementById('btn-print').addEventListener('click', () => {
-    if (!state.guests.some(g => g.tableId)) { showToast('Još nitko nema mjesto'); return; }
+    if (!state.guests.some(g => g.tableId)) { showToast(tr('Još nitko nema mjesto')); return; }
     document.getElementById('modal-print').style.display = 'flex';
   });
   document.getElementById('btn-print-go').addEventListener('click', () => {
@@ -1733,15 +1757,15 @@ function setupRasporedEvents() {
     buildPrintArea(parts);
     // Let the print layout render (fonts) before the dialog opens.
     setTimeout(() => {
-      if (isNativeApp) nativePrint('Raspored sjedenja').catch(() => showToast('Ispis nije uspio', true));
+      if (isNativeApp) nativePrint(tr('Raspored sjedenja')).catch(() => showToast(tr('Ispis nije uspio'), true));
       else window.print();
     }, 150);
   });
   document.getElementById('btn-share').addEventListener('click', shareSeatingList);
 
   document.getElementById('btn-export-csv').addEventListener('click', () => {
-    const rows = [['Ime', 'Uloga', 'Kategorija', 'Stol', 'Mjesto', 'Status', 'Bilješka']];
-    const statusLabels = { assigned: 'Dodijeljen', unassigned: 'Nedodijeljen', maybe: 'Možda' };
+    const rows = [[tr('Ime'), tr('Uloga'), tr('Kategorija'), tr('Stol'), tr('Mjesto'), tr('Status'), tr('Bilješka')]];
+    const statusLabels = { assigned: tr('Dodijeljen'), unassigned: tr('Nedodijeljen'), maybe: tr('Možda') };
     [...state.guests].sort((a, b) => a.name.localeCompare(b.name)).forEach(g => {
       const catObj = state.categories.find(c => c.id === g.categoryId);
       const cat = catObj ? catObj.name : '';
@@ -1753,12 +1777,12 @@ function setupRasporedEvents() {
     const cell = c => { const v = String(c); return /^[=+\-@\t\r]/.test(v) ? "'" + v : v; };
     const csv = rows.map(r => r.map(c => `"${cell(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
     // BOM so Excel opens the UTF-8 file with č/ć/š/ž intact.
-    downloadFile('raspored-sjedenja.csv', 'text/csv;charset=utf-8', '﻿' + csv);
+    downloadFile(tr('raspored-sjedenja') + '.csv', 'text/csv;charset=utf-8', '﻿' + csv);
   });
 
   document.getElementById('btn-export-json').addEventListener('click', () => {
     const data = JSON.stringify({ settings: state.settings, tables: state.tables, categories: state.categories, guests: state.guests, rules: state.rules }, null, 2);
-    downloadFile('raspored-sjedenja.json', 'application/json', data);
+    downloadFile(tr('raspored-sjedenja') + '.json', 'application/json', data);
   });
 
   document.getElementById('btn-import-json').addEventListener('click', () => {
@@ -1772,14 +1796,14 @@ function setupRasporedEvents() {
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      if (confirm('Uvoz će zamijeniti sve trenutne podatke. Nastavi?')) {
+      if (confirm(tr('Uvoz će zamijeniti sve trenutne podatke. Nastavi?'))) {
         await importData(data);
         renderAll();
         navigateTo('sala');
-        showToast('Podaci su vraćeni iz kopije');
+        showToast(tr('Podaci su vraćeni iz kopije'));
       }
     } catch (e) {
-      alert('Neispravna JSON datoteka.');
+      alert(tr('Neispravna JSON datoteka.'));
     }
     e.target.value = '';
   });
@@ -1790,7 +1814,7 @@ function setupRasporedEvents() {
 function seatedGuestsSorted() {
   return state.guests
     .filter(g => g.tableId && state.tables.some(t => t.id === g.tableId))
-    .sort((a, b) => a.name.localeCompare(b.name, 'hr'));
+    .sort((a, b) => a.name.localeCompare(b.name, I18N.lang));
 }
 
 // " · Mladenka" after a name of the wedding party in the printouts.
@@ -1801,7 +1825,7 @@ function roleNote(g) {
 
 function buildPrintArea(parts) {
   const area = document.getElementById('print-area');
-  const title = esc(state.settings.weddingTitle || 'Moje Vjenčanje');
+  const title = esc(state.settings.weddingTitle || tr('Moje Vjenčanje'));
   const header = (sub) => `<header class="print-head">
       <div class="print-monogram">${esc(state.settings.monogram || '♡')}</div>
       <div class="print-title">${title}</div>
@@ -1809,7 +1833,7 @@ function buildPrintArea(parts) {
     </header>`;
   const pages = [];
   if (parts.tables) {
-    pages.push(`<section class="print-page">${header('Raspored sjedenja')}
+    pages.push(`<section class="print-page">${header(tr('Raspored sjedenja'))}
       <div class="print-tables">${state.tables.map(t => {
         const guests = state.guests.filter(g => g.tableId === t.id).sort((a, b) => (a.seatIndex || 0) - (b.seatIndex || 0));
         return `<div class="print-table">
@@ -1821,7 +1845,7 @@ function buildPrintArea(parts) {
   }
   if (parts.alpha) {
     const tableName = id => (state.tables.find(t => t.id === id) || {}).name || '';
-    pages.push(`<section class="print-page">${header('Gdje sjedim')}
+    pages.push(`<section class="print-page">${header(tr('Gdje sjedim'))}
       <div class="print-alpha">${seatedGuestsSorted().map(g =>
         `<div class="print-alpha-row"><span>${esc(g.name)}${roleNote(g)}</span><span class="print-dots"></span><strong>${esc(tableName(g.tableId))}</strong></div>`
       ).join('')}</div>
@@ -1833,8 +1857,8 @@ function buildPrintArea(parts) {
 async function shareSeatingList() {
   const tableName = id => (state.tables.find(t => t.id === id) || {}).name || '';
   const lines = seatedGuestsSorted().map(g => `${g.name}${partyRole(g) ? ` (${partyRole(g)})` : ''} – ${tableName(g.tableId)}`);
-  if (!lines.length) { showToast('Još nitko nema mjesto'); return; }
-  const title = `${state.settings.weddingTitle || 'Vjenčanje'} – gdje sjedim`;
+  if (!lines.length) { showToast(tr('Još nitko nema mjesto')); return; }
+  const title = tr('{title} – gdje sjedim', { title: state.settings.weddingTitle || tr('Vjenčanje') });
   const text = `${title}\n\n${lines.join('\n')}`;
   if (await nativeShareText(title, text)) return;
   if (navigator.share) {
@@ -1843,9 +1867,9 @@ async function shareSeatingList() {
   }
   try {
     await navigator.clipboard.writeText(text);
-    showToast('Popis je kopiran, zalijepi ga u poruku');
+    showToast(tr('Popis je kopiran, zalijepi ga u poruku'));
   } catch (e) {
-    downloadFile('gdje-sjedim.txt', 'text/plain;charset=utf-8', text);
+    downloadFile(tr('gdje-sjedim') + '.txt', 'text/plain;charset=utf-8', text);
   }
 }
 
@@ -1854,7 +1878,7 @@ async function downloadFile(filename, mime, content) {
     try {
       if (await nativeSaveFile(filename, content)) return;
     } catch (e) {
-      showToast('Spremanje nije uspjelo', true);
+      showToast(tr('Spremanje nije uspjelo'), true);
       return;
     }
   }

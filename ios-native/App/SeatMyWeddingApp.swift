@@ -10,6 +10,7 @@ struct SeatMyWeddingApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        AppLanguage.setUp()
         // Traka koristi zadani iOS izgled: naša neprozirna traka skrivala je veliki naslov.
         ExportFiles.cleanUp()
         let store = WeddingStore()

@@ -34,7 +34,7 @@ struct TableSheet: View {
                         if let g = occupant(seat) { actionsFor = g } else { pickingSeat = SeatRef(id: seat) }
                     } label: {
                         HStack {
-                            Text("\(seat + 1)")
+                            Text(verbatim: "\(seat + 1)")
                                 .font(Theme.uiBold(13))
                                 .frame(width: 26, height: 26)
                                 .foregroundStyle(HallView.seatText(occupant(seat)))
@@ -59,7 +59,7 @@ struct TableSheet: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .background(Theme.background)
-            .navigationTitle(table?.string("name") ?? "Stol")
+            .navigationTitle(table?.string("name") ?? String(localized: "Stol"))
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Uredi stol") { editing = true } }

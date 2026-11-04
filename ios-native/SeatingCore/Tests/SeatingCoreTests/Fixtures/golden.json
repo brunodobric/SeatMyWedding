@@ -310520,6 +310520,535 @@
      "duplicates": []
     }
    }
+  },
+  {
+   "name": "engleski 0",
+   "input": {
+    "text": "Anna and Mark Smith\nIvo, Mia, Lea Brown\nPeter Miller +1\nJohn AND Jane Doe;Friends",
+    "existing": [
+     "Anna Smith"
+    ]
+   },
+   "expected": {
+    "surnameFirst": false,
+    "rows": [
+     {
+      "names": [
+       "Anna Smith",
+       "Mark Smith"
+      ],
+      "category": null
+     },
+     {
+      "names": [
+       "Ivo Brown",
+       "Mia Brown",
+       "Lea Brown"
+      ],
+      "category": null
+     },
+     {
+      "names": [
+       "Peter Miller",
+       "Pratnja (Peter Miller)"
+      ],
+      "category": null
+     },
+     {
+      "names": [
+       "John Doe",
+       "Jane Doe"
+      ],
+      "category": "Friends"
+     }
+    ],
+    "rowsSF": [
+     {
+      "names": [
+       "Anna",
+       "Smith Mark"
+      ],
+      "category": null
+     },
+     {
+      "names": [
+       "Ivo",
+       "Mia",
+       "Brown Lea"
+      ],
+      "category": null
+     },
+     {
+      "names": [
+       "Miller Peter",
+       "Pratnja (Miller Peter)"
+      ],
+      "category": null
+     },
+     {
+      "names": [
+       "John",
+       "Doe Jane"
+      ],
+      "category": "Friends"
+     }
+    ],
+    "preview": {
+     "rows": [
+      {
+       "names": [
+        "Mark Smith"
+       ],
+       "category": null
+      },
+      {
+       "names": [
+        "Ivo Brown",
+        "Mia Brown",
+        "Lea Brown"
+       ],
+       "category": null
+      },
+      {
+       "names": [
+        "Peter Miller",
+        "Pratnja (Peter Miller)"
+       ],
+       "category": null
+      },
+      {
+       "names": [
+        "John Doe",
+        "Jane Doe"
+       ],
+       "category": "Friends"
+      }
+     ],
+     "guests": 8,
+     "groups": 3,
+     "skipped": 1,
+     "duplicates": [
+      "Anna Smith"
+     ]
+    },
+    "previewAll": {
+     "rows": [
+      {
+       "names": [
+        "Anna Smith",
+        "Mark Smith"
+       ],
+       "category": null
+      },
+      {
+       "names": [
+        "Ivo Brown",
+        "Mia Brown",
+        "Lea Brown"
+       ],
+       "category": null
+      },
+      {
+       "names": [
+        "Peter Miller",
+        "Pratnja (Peter Miller)"
+       ],
+       "category": null
+      },
+      {
+       "names": [
+        "John Doe",
+        "Jane Doe"
+       ],
+       "category": "Friends"
+      }
+     ],
+     "guests": 9,
+     "groups": 4,
+     "skipped": 0,
+     "duplicates": [
+      "Anna Smith"
+     ]
+    }
+   }
+  },
+  {
+   "name": "engleski 1",
+   "input": {
+    "text": "First name\tLast name\tGroup\nAnna\tSmith\tFamily\nMark\tMiller",
+    "existing": []
+   },
+   "expected": {
+    "surnameFirst": false,
+    "rows": [
+     {
+      "names": [
+       "Anna Smith"
+      ],
+      "category": "Family"
+     },
+     {
+      "names": [
+       "Mark Miller"
+      ],
+      "category": null
+     }
+    ],
+    "rowsSF": [
+     {
+      "names": [
+       "Anna Smith"
+      ],
+      "category": "Family"
+     },
+     {
+      "names": [
+       "Mark Miller"
+      ],
+      "category": null
+     }
+    ],
+    "preview": {
+     "rows": [
+      {
+       "names": [
+        "Anna Smith"
+       ],
+       "category": "Family"
+      },
+      {
+       "names": [
+        "Mark Miller"
+       ],
+       "category": null
+      }
+     ],
+     "guests": 2,
+     "groups": 0,
+     "skipped": 0,
+     "duplicates": []
+    },
+    "previewAll": {
+     "rows": [
+      {
+       "names": [
+        "Anna Smith"
+       ],
+       "category": "Family"
+      },
+      {
+       "names": [
+        "Mark Miller"
+       ],
+       "category": null
+      }
+     ],
+     "guests": 2,
+     "groups": 0,
+     "skipped": 0,
+     "duplicates": []
+    }
+   }
+  },
+  {
+   "name": "engleski 2",
+   "input": {
+    "text": "Last name, First name\nSmith, Anna\nBrown Mia and Lea",
+    "existing": []
+   },
+   "expected": {
+    "surnameFirst": true,
+    "rows": [
+     {
+      "names": [
+       "Anna Smith"
+      ],
+      "category": null
+     },
+     {
+      "names": [
+       "Mia Brown",
+       "Lea Brown"
+      ],
+      "category": null
+     }
+    ],
+    "rowsSF": [
+     {
+      "names": [
+       "Anna Smith"
+      ],
+      "category": null
+     },
+     {
+      "names": [
+       "Mia Brown",
+       "Lea Brown"
+      ],
+      "category": null
+     }
+    ],
+    "preview": {
+     "rows": [
+      {
+       "names": [
+        "Anna Smith"
+       ],
+       "category": null
+      },
+      {
+       "names": [
+        "Mia Brown",
+        "Lea Brown"
+       ],
+       "category": null
+      }
+     ],
+     "guests": 3,
+     "groups": 1,
+     "skipped": 0,
+     "duplicates": []
+    },
+    "previewAll": {
+     "rows": [
+      {
+       "names": [
+        "Anna Smith"
+       ],
+       "category": null
+      },
+      {
+       "names": [
+        "Mia Brown",
+        "Lea Brown"
+       ],
+       "category": null
+      }
+     ],
+     "guests": 3,
+     "groups": 1,
+     "skipped": 0,
+     "duplicates": []
+    }
+   }
+  },
+  {
+   "name": "engleski 3",
+   "input": {
+    "text": "Guest;Side\nAnna Smith;Bride\nMark & Ivo Brown;Groom",
+    "existing": []
+   },
+   "expected": {
+    "surnameFirst": false,
+    "rows": [
+     {
+      "names": [
+       "Anna Smith"
+      ],
+      "category": "Bride"
+     },
+     {
+      "names": [
+       "Mark Brown",
+       "Ivo Brown"
+      ],
+      "category": "Groom"
+     }
+    ],
+    "rowsSF": [
+     {
+      "names": [
+       "Smith Anna"
+      ],
+      "category": "Bride"
+     },
+     {
+      "names": [
+       "Mark",
+       "Brown Ivo"
+      ],
+      "category": "Groom"
+     }
+    ],
+    "preview": {
+     "rows": [
+      {
+       "names": [
+        "Anna Smith"
+       ],
+       "category": "Bride"
+      },
+      {
+       "names": [
+        "Mark Brown",
+        "Ivo Brown"
+       ],
+       "category": "Groom"
+      }
+     ],
+     "guests": 3,
+     "groups": 1,
+     "skipped": 0,
+     "duplicates": []
+    },
+    "previewAll": {
+     "rows": [
+      {
+       "names": [
+        "Anna Smith"
+       ],
+       "category": "Bride"
+      },
+      {
+       "names": [
+        "Mark Brown",
+        "Ivo Brown"
+       ],
+       "category": "Groom"
+      }
+     ],
+     "guests": 3,
+     "groups": 1,
+     "skipped": 0,
+     "duplicates": []
+    }
+   }
+  },
+  {
+   "name": "engleski 4",
+   "input": {
+    "text": "Surname\tFirst name\nSmith\tAnna",
+    "existing": []
+   },
+   "expected": {
+    "surnameFirst": false,
+    "rows": [
+     {
+      "names": [
+       "Anna Smith"
+      ],
+      "category": null
+     }
+    ],
+    "rowsSF": [
+     {
+      "names": [
+       "Anna Smith"
+      ],
+      "category": null
+     }
+    ],
+    "preview": {
+     "rows": [
+      {
+       "names": [
+        "Anna Smith"
+       ],
+       "category": null
+      }
+     ],
+     "guests": 1,
+     "groups": 0,
+     "skipped": 0,
+     "duplicates": []
+    },
+    "previewAll": {
+     "rows": [
+      {
+       "names": [
+        "Anna Smith"
+       ],
+       "category": null
+      }
+     ],
+     "guests": 1,
+     "groups": 0,
+     "skipped": 0,
+     "duplicates": []
+    }
+   }
+  },
+  {
+   "name": "engleski 5",
+   "input": {
+    "text": "Andrea Anderson\nMiranda and Sandra Andrić",
+    "existing": []
+   },
+   "expected": {
+    "surnameFirst": false,
+    "rows": [
+     {
+      "names": [
+       "Andrea Anderson"
+      ],
+      "category": null
+     },
+     {
+      "names": [
+       "Miranda Andrić",
+       "Sandra Andrić"
+      ],
+      "category": null
+     }
+    ],
+    "rowsSF": [
+     {
+      "names": [
+       "Anderson Andrea"
+      ],
+      "category": null
+     },
+     {
+      "names": [
+       "Miranda",
+       "Andrić Sandra"
+      ],
+      "category": null
+     }
+    ],
+    "preview": {
+     "rows": [
+      {
+       "names": [
+        "Andrea Anderson"
+       ],
+       "category": null
+      },
+      {
+       "names": [
+        "Miranda Andrić",
+        "Sandra Andrić"
+       ],
+       "category": null
+      }
+     ],
+     "guests": 3,
+     "groups": 1,
+     "skipped": 0,
+     "duplicates": []
+    },
+    "previewAll": {
+     "rows": [
+      {
+       "names": [
+        "Andrea Anderson"
+       ],
+       "category": null
+      },
+      {
+       "names": [
+        "Miranda Andrić",
+        "Sandra Andrić"
+       ],
+       "category": null
+      }
+     ],
+     "guests": 3,
+     "groups": 1,
+     "skipped": 0,
+     "duplicates": []
+    }
+   }
   }
  ]
 }

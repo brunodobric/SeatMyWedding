@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Prošlo je %lld dana</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Prošlo je %lld dan</string>
+			<key>few</key>
+			<string>Prošlo je %lld dana</string>
+			<key>other</key>
+			<string>Prošlo je %lld dana</string>
+		</dict>
+	</dict>
+	<key>Još %lld dana</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Još %lld dan</string>
+			<key>few</key>
+			<string>Još %lld dana</string>
+			<key>other</key>
+			<string>Još %lld dana</string>
+		</dict>
+	</dict>
+	<key>%lld gostiju</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld gost</string>
+			<key>few</key>
+			<string>%lld gosta</string>
+			<key>other</key>
+			<string>%lld gostiju</string>
+		</dict>
+	</dict>
+	<key>%lld skupina sjedi zajedno</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld skupina sjedi zajedno</string>
+			<key>few</key>
+			<string>%lld skupine sjede zajedno</string>
+			<key>other</key>
+			<string>%lld skupina sjedi zajedno</string>
+		</dict>
+	</dict>
+	<key>%lld pravila nije ispunjeno</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld pravilo nije ispunjeno</string>
+			<key>few</key>
+			<string>%lld pravila nisu ispunjena</string>
+			<key>other</key>
+			<string>%lld pravila nije ispunjeno</string>
+		</dict>
+	</dict>
+	<key>Za %lld gostiju nema dovoljno mjesta. Dodaj stolove u Sali.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Za %lld gosta nema dovoljno mjesta. Dodaj stolove u Sali.</string>
+			<key>few</key>
+			<string>Za %lld gosta nema dovoljno mjesta. Dodaj stolove u Sali.</string>
+			<key>other</key>
+			<string>Za %lld gostiju nema dovoljno mjesta. Dodaj stolove u Sali.</string>
+		</dict>
+	</dict>
+	<key>%lld zahtjeva nije moguće ispuniti:</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld zahtjev nije moguće ispuniti:</string>
+			<key>few</key>
+			<string>%lld zahtjeva nije moguće ispuniti:</string>
+			<key>other</key>
+			<string>%lld zahtjeva nije moguće ispuniti:</string>
+		</dict>
+	</dict>
+	<key>Ukupno: %lld mjesta</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Ukupno: %lld mjesto</string>
+			<key>few</key>
+			<string>Ukupno: %lld mjesta</string>
+			<key>other</key>
+			<string>Ukupno: %lld mjesta</string>
+		</dict>
+	</dict>
+	<key>Već imate dovoljno mjesta za %lld gostiju.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Već imate dovoljno mjesta za %lld gosta.</string>
+			<key>few</key>
+			<string>Već imate dovoljno mjesta za %lld gosta.</string>
+			<key>other</key>
+			<string>Već imate dovoljno mjesta za %lld gostiju.</string>
+		</dict>
+	</dict>
+	<key>%lld stolova</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld stol</string>
+			<key>few</key>
+			<string>%lld stola</string>
+			<key>other</key>
+			<string>%lld stolova</string>
+		</dict>
+	</dict>
+	<key>Sala je složena, %lld gostiju je bez mjesta</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Sala je složena, %lld gost je bez mjesta</string>
+			<key>few</key>
+			<string>Sala je složena, %lld gosta su bez mjesta</string>
+			<key>other</key>
+			<string>Sala je složena, %lld gostiju je bez mjesta</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

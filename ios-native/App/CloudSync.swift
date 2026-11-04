@@ -104,13 +104,13 @@ final class CloudSync {
             // Korisnik je obrisao podatke aplikacije u iCloudu: stvori zonu ponovno pri sljedećem pokušaju.
             UserDefaults.standard.set(false, forKey: Self.zoneReadyKey)
             UserDefaults.standard.set(false, forKey: Self.subscriptionKey)
-            status = .failed("Podaci u iCloudu su obrisani. Sinkroniziraj ponovno da se pošalju s ovog uređaja.")
+            status = .failed(String(localized: "Podaci u iCloudu su obrisani. Sinkroniziraj ponovno da se pošalju s ovog uređaja."))
         } catch let error as CKError where error.code == .notAuthenticated {
             status = .noAccount
         } catch let error as CKError where error.code == .networkUnavailable || error.code == .networkFailure {
-            status = .failed("Nema veze s internetom. Podaci su spremljeni na uređaju.")
+            status = .failed(String(localized: "Nema veze s internetom. Podaci su spremljeni na uređaju."))
         } catch {
-            status = .failed("iCloud trenutno nije dostupan.")
+            status = .failed(String(localized: "iCloud trenutno nije dostupan."))
         }
     }
 
@@ -170,11 +170,11 @@ final class CloudSync {
 
     var statusText: String {
         switch status {
-        case .off: return "Podaci se čuvaju samo na ovom uređaju."
-        case .noAccount: return "Prijavi se u iCloud u Postavkama uređaja da bi se podaci sinkronizirali."
-        case .syncing: return "Sinkroniziram…"
+        case .off: return String(localized: "Podaci se čuvaju samo na ovom uređaju.")
+        case .noAccount: return String(localized: "Prijavi se u iCloud u Postavkama uređaja da bi se podaci sinkronizirali.")
+        case .syncing: return String(localized: "Sinkroniziram…")
         case .synced(let date):
-            return "Sinkronizirano u \(date.formatted(.dateTime.hour().minute().locale(Locale(identifier: "hr_HR"))))."
+            return String(localized: "Sinkronizirano u \(date.formatted(.dateTime.hour().minute().locale(AppLanguage.locale))).")
         case .failed(let message): return message
         }
     }

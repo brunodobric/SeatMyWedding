@@ -115,7 +115,7 @@ struct HallView: View {
         .accessibilityChildren {
             ForEach(tables, id: \.id) { table in
                 let seated = guests.filter { $0.string("tableId") == table.id }.count
-                Button("\(table.string("name") ?? "Stol"), \(seated) od \(table.number("seats")?.safeInt ?? 0) mjesta") {
+                Button("\(table.string("name") ?? String(localized: "Stol")), \(seated) od \(table.number("seats")?.safeInt ?? 0) mjesta") {
                     if let id = table.id { openTable = TableRef(id: id) }
                 }
             }

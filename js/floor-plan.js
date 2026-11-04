@@ -255,7 +255,7 @@ class FloorPlan {
       g.appendChild(el('text', {
         x: 0, y: top + HEAD + LINE / 2 + 2, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'pointer-events': 'none',
         'font-family': 'Jost, system-ui, sans-serif', 'font-size': 11, 'font-style': 'italic', fill: '#A99D8C'
-      }, 'prazno'));
+      }, tr('prazno')));
     }
     guests.forEach((gg, i) => {
       const col = Math.floor(i / rows), row = i % rows;

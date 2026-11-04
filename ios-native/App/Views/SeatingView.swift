@@ -45,7 +45,7 @@ struct SeatingView: View {
                             Spacer()
                             Menu {
                                 ForEach(tableSort.sorted(store.tables, in: store), id: \.id) { table in
-                                    Button(table.string("name") ?? "Stol") {
+                                    Button(table.string("name") ?? String(localized: "Stol")) {
                                         if let gid = guest.id, let tid = table.id {
                                             store.drop(gid, onto: .table(tableId: tid))
                                         }
@@ -69,9 +69,9 @@ struct SeatingView: View {
                             if let id = table.id { tableSheet = TableRef(id: id) }
                         } label: {
                             HStack {
-                                Text(table.string("name") ?? "Stol").font(Theme.ui(16))
+                                Text(table.string("name") ?? String(localized: "Stol")).font(Theme.ui(16))
                                 Spacer()
-                                Text("\(occupied(table)) / \(FloorGeometry.count(table.number("seats")))")
+                                Text(verbatim: "\(occupied(table)) / \(FloorGeometry.count(table.number("seats")))")
                                     .foregroundStyle(.secondary)
                             }
                         }
@@ -117,7 +117,7 @@ struct SeatingView: View {
 
     private func runAutoSeat() {
         if store.tables.isEmpty {
-            store.show("Najprije dodaj stolove u Sali.", isError: true)
+            store.show(String(localized: "Najprije dodaj stolove u Sali."), isError: true)
         } else {
             result = store.autoSeat()
         }
@@ -156,7 +156,7 @@ private struct SeatingResultView: View {
                         Label("Svi posebni zahtjevi su ispunjeni.", systemImage: "checkmark.circle")
                             .foregroundStyle(Theme.success)
                     } else {
-                        Label("\(result.violations.count) zahtjev(a) nije moguće ispuniti:", systemImage: "exclamationmark.triangle")
+                        Label("\(result.violations.count) zahtjeva nije moguće ispuniti:", systemImage: "exclamationmark.triangle")
                             .foregroundStyle(Theme.error)
                         ForEach(result.violations.indices, id: \.self) { Text(result.violations[$0].reason) }
                     }

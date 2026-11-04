@@ -134,7 +134,7 @@ struct GuestsView: View {
     private var categoryChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                chip(title: "Svi", color: Theme.goldDeep, selected: categoryFilter == nil) { categoryFilter = nil }
+                chip(title: String(localized: "Svi"), color: Theme.goldDeep, selected: categoryFilter == nil) { categoryFilter = nil }
                 ForEach(store.categories, id: \.id) { cat in
                     chip(title: cat.string("name") ?? "", color: Color(cssHex: cat.string("color")),
                          selected: categoryFilter == cat.id) {
@@ -174,7 +174,7 @@ struct GuestsView: View {
             pendingBackup = try Data(contentsOf: url)
             if store.guests.isEmpty && store.tables.isEmpty { applyBackup() }
         } catch {
-            message = "Datoteka se ne može uvesti."
+            message = String(localized: "Datoteka se ne može uvesti.")
         }
     }
 
@@ -184,7 +184,7 @@ struct GuestsView: View {
         do {
             try store.importBackup(bytes)
         } catch {
-            message = "Datoteka se ne može uvesti."
+            message = String(localized: "Datoteka se ne može uvesti.")
         }
     }
 }
@@ -205,7 +205,7 @@ private struct GuestRow: View {
                 Text(guest.string("name") ?? "")
                     .font(Theme.ui(17))
                     .foregroundStyle(Theme.ink)
-                Text(maybe ? "Možda" : (store.tableName(guest.string("tableId")) ?? "bez mjesta"))
+                Text(maybe ? String(localized: "Možda") : (store.tableName(guest.string("tableId")) ?? String(localized: "bez mjesta")))
                     .font(Theme.ui(13))
                     .foregroundStyle(Theme.muted)
             }

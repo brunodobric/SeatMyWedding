@@ -17,7 +17,8 @@ let fakeNow = 0;
 class FakeDate extends Date { static now() { return fakeNow; } }
 const putCalls = [];
 const ctx = vm.createContext({ console, Date: FakeDate, JSON, Math, Number, Array, Object, Set, Map, Promise });
-for (const f of ['db.js', 'state.js', 'sync.js']) {
+// i18n.js first: state.js and sync.js use tr(); without a browser it stays Croatian.
+for (const f of ['i18n.js', 'db.js', 'state.js', 'sync.js']) {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', f), 'utf8'), ctx, { filename: f });
 }
 ctx.dbPutAll = async (store, items) => { putCalls.push([store, items.map(i => i.id)]); };
@@ -451,6 +452,25 @@ for (let i = 0; i < 150; i++) {
   const previewAll = clone(run(`previewGuestImport(parseGuestText(${JSON.stringify(text)}, { surnameFirst: ${surnameFirst} }), { includeExisting: true })`));
   out.guestImport.push({ name: 'nasumično ' + i, input: { text, existing }, expected: { surnameFirst, rows, rowsSF, preview, previewAll } });
 }
+// Popisi na engleskom ("and", zaglavlja First name / Last name), nakon nasumičnih da se oni ne mijenjaju.
+const ENGLISH_IMPORTS = [
+  'Anna and Mark Smith\nIvo, Mia, Lea Brown\nPeter Miller +1\nJohn AND Jane Doe;Friends',
+  'First name\tLast name\tGroup\nAnna\tSmith\tFamily\nMark\tMiller',
+  'Last name, First name\nSmith, Anna\nBrown Mia and Lea',
+  'Guest;Side\nAnna Smith;Bride\nMark & Ivo Brown;Groom',
+  'Surname\tFirst name\nSmith\tAnna',
+  'Andrea Anderson\nMiranda and Sandra Andrić'
+];
+ENGLISH_IMPORTS.forEach((text, i) => {
+  const existing = i === 0 ? ['Anna Smith'] : [];
+  ctx.state = { settings: {}, tables: [], categories: [], guests: existing.map((name, k) => ({ id: 'g-' + k, name })), rules: [] };
+  const surnameFirst = run(`detectSurnameFirst(${JSON.stringify(text)})`);
+  const rows = clone(run(`parseGuestText(${JSON.stringify(text)}, { surnameFirst: ${surnameFirst} })`));
+  const rowsSF = clone(run(`parseGuestText(${JSON.stringify(text)}, { surnameFirst: true })`));
+  const preview = clone(run(`previewGuestImport(parseGuestText(${JSON.stringify(text)}, { surnameFirst: ${surnameFirst} }), {})`));
+  const previewAll = clone(run(`previewGuestImport(parseGuestText(${JSON.stringify(text)}, { surnameFirst: ${surnameFirst} }), { includeExisting: true })`));
+  out.guestImport.push({ name: 'engleski ' + i, input: { text, existing }, expected: { surnameFirst, rows, rowsSF, preview, previewAll } });
+});
 
 // ── Zapis ────────────────────────────────────────────────────────────────────
 const text = JSON.stringify(out, null, 1) + '\n';

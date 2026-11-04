@@ -10,8 +10,14 @@
  *   Ime<TAB>Prezime header     → separate name and surname columns from Excel
  */
 
-const IMPORT_HEADER_NAMES = ['ime', 'ime i prezime', 'prezime i ime', 'gost', 'gosti', 'name'];
-const IMPORT_CATEGORY_HEADERS = ['kategorija', 'grupa', 'skupina', 'category', 'strana'];
+// Header words in every language of the app (Croatian and English).
+const IMPORT_HEADER_NAMES = ['ime', 'ime i prezime', 'prezime i ime', 'gost', 'gosti', 'name', 'full name', 'guest', 'guests', 'last name, first name'];
+const IMPORT_SURNAME_FIRST_HEADERS = ['prezime i ime', 'last name, first name'];
+const IMPORT_FIRST_NAME_HEADERS = ['ime', 'first name'];
+const IMPORT_SURNAME_HEADERS = ['prezime', 'last name', 'surname'];
+const IMPORT_CATEGORY_HEADERS = ['kategorija', 'grupa', 'skupina', 'category', 'strana', 'group', 'side'];
+// "Ana i Marko" / "Ana and Marko": the word that joins a couple.
+const AND_WORD = /\s+(?:i|and)\s+/i;
 
 // "Horvat Ana" → "Ana Horvat" (the first word is the surname).
 function swapSurname(name) {
@@ -23,9 +29,9 @@ function splitGroup(text, surnameFirst) {
   // "Horvat, Ana": with the surname first, a single comma separates surname and name.
   if (surnameFirst) {
     const m = text.match(/^\s*([^,&+\s]+)\s*,\s*([^,&+]+?)\s*$/);
-    if (m && !/\s+i\s+/i.test(m[2])) text = m[1] + ' ' + m[2];
+    if (m && !AND_WORD.test(m[2])) text = m[1] + ' ' + m[2];
   }
-  const parts = text.split(/\s*[,&+]\s*|\s+i\s+/i).map(p => p.trim()).filter(Boolean);
+  const parts = text.split(/\s*[,&+]\s*|\s+(?:i|and)\s+/i).map(p => p.trim()).filter(Boolean);
   let people = [];
   const companions = [];
   for (const p of parts) {
@@ -49,7 +55,7 @@ function splitGroup(text, surnameFirst) {
   }
   const host = people[0] || '';
   const extra = companions.reduce((n, c) => n + Math.min(c, 10), 0);
-  for (let i = 0; i < extra; i++) people.push(extra === 1 ? `Pratnja (${host})` : `Pratnja ${i + 1} (${host})`);
+  for (let i = 0; i < extra; i++) people.push(extra === 1 ? tr('Pratnja ({name})', { name: host }) : tr('Pratnja {n} ({name})', { n: i + 1, name: host }));
   return host ? people : [];
 }
 
@@ -61,12 +67,12 @@ function splitColumns(line) {
 // and whether the surname comes first ("Prezime i ime", or a "Prezime" column before "Ime").
 function readImportHeader(cols) {
   const lower = cols.map(c => c.toLowerCase());
-  const ime = lower.indexOf('ime');
-  const prezime = lower.indexOf('prezime');
+  const ime = lower.findIndex(c => IMPORT_FIRST_NAME_HEADERS.includes(c));
+  const prezime = lower.findIndex(c => IMPORT_SURNAME_HEADERS.includes(c));
   const category = lower.findIndex(c => IMPORT_CATEGORY_HEADERS.includes(c));
   if (ime >= 0 && prezime >= 0) return { ime, prezime, category, surnameFirst: false };
   if (IMPORT_HEADER_NAMES.includes(lower[0])) {
-    return { name: 0, category: category >= 0 ? category : 1, surnameFirst: lower[0] === 'prezime i ime' };
+    return { name: 0, category: category >= 0 ? category : 1, surnameFirst: IMPORT_SURNAME_FIRST_HEADERS.includes(lower[0]) };
   }
   return null;
 }

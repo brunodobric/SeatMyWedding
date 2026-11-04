@@ -150,18 +150,18 @@ async function dropGuest(guestId, target) {
   if (target.kind === 'table') {
     if (guest.tableId === table.id) return;
     const seat = firstFreeSeat(table);
-    if (seat < 0) { showToast(`${table.name} nema slobodnih mjesta`, true); return; }
+    if (seat < 0) { showToast(tr('{table} nema slobodnih mjesta', { table: table.name }), true); return; }
     await placeGuests([{ id: guestId, tableId: table.id, seatIndex: seat }]);
     return;
   }
   // A seat: take it, and swap with whoever sits there.
   const occupant = state.guests.find(g => g.tableId === table.id && g.seatIndex === target.seatIndex);
   if (occupant && occupant.id === guestId) return;
-  if (occupant && occupant.locked) { showToast(`${occupant.name} ima zaključano mjesto`, true); return; }
+  if (occupant && occupant.locked) { showToast(tr('{name} ima zaključano mjesto', { name: occupant.name }), true); return; }
   const changes = [{ id: guestId, tableId: table.id, seatIndex: target.seatIndex }];
   if (occupant) changes.push({ id: occupant.id, tableId: guest.tableId, seatIndex: guest.seatIndex });
   if (!occupant) { await placeGuests(changes); return; }
-  const message = guest.tableId ? `${guest.name} i ${occupant.name} su zamijenili mjesta` : `${occupant.name} je sada bez mjesta`;
+  const message = guest.tableId ? tr('{a} i {b} su zamijenili mjesta', { a: guest.name, b: occupant.name }) : tr('{name} je sada bez mjesta', { name: occupant.name });
   await withUndo(message, () => placeGuests(changes));
 }
 

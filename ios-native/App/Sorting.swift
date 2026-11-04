@@ -5,7 +5,7 @@ import SeatingCore
 enum GuestSort: String, CaseIterable, Identifiable {
     case name, surname
     var id: String { rawValue }
-    var label: String { self == .name ? "Abecedno po imenu" : "Abecedno po prezimenu" }
+    var label: String { self == .name ? String(localized: "Abecedno po imenu") : String(localized: "Abecedno po prezimenu") }
 
     /// Prezime je zadnja riječ imena; kod jednakih prezimena odlučuje ime.
     func sorted(_ guests: [Record]) -> [Record] {
@@ -26,10 +26,10 @@ enum TableSort: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var label: String {
         switch self {
-        case .number: return "Po rednom broju"
-        case .name: return "Abecedno po nazivu"
-        case .fullest: return "Najpopunjeniji prvo"
-        case .emptiest: return "Najpraznije prvo"
+        case .number: return String(localized: "Po rednom broju")
+        case .name: return String(localized: "Abecedno po nazivu")
+        case .fullest: return String(localized: "Najpopunjeniji prvo")
+        case .emptiest: return String(localized: "Najpraznije prvo")
         }
     }
 

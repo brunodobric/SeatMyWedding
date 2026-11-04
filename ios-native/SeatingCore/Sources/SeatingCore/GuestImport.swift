@@ -22,16 +22,22 @@ public struct ImportPreview: Equatable, Sendable {
 }
 
 public enum GuestImport {
-    private static let headerNames = ["ime", "ime i prezime", "prezime i ime", "gost", "gosti", "name"]
-    private static let categoryHeaders = ["kategorija", "grupa", "skupina", "category", "strana"]
+    // Riječi zaglavlja na svim jezicima aplikacije (hrvatski i engleski), kao u js/guest-import.js.
+    private static let headerNames = ["ime", "ime i prezime", "prezime i ime", "gost", "gosti", "name",
+                                      "full name", "guest", "guests", "last name, first name"]
+    private static let surnameFirstHeaders = ["prezime i ime", "last name, first name"]
+    private static let firstNameHeaders = ["ime", "first name"]
+    private static let surnameHeaders = ["prezime", "last name", "surname"]
+    private static let categoryHeaders = ["kategorija", "grupa", "skupina", "category", "strana", "group", "side"]
 
     private static func regex(_ pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression {
         // swiftlint:disable:next force_try
         try! NSRegularExpression(pattern: pattern, options: options)
     }
 
-    private static let separators = regex(#"\s*[,&+]\s*|\s+i\s+"#, options: [.caseInsensitive])
-    private static let andWord = regex(#"\s+i\s+"#, options: [.caseInsensitive])
+    // "Ana i Marko" / "Ana and Marko": riječ koja spaja par.
+    private static let separators = regex(#"\s*[,&+]\s*|\s+(?:i|and)\s+"#, options: [.caseInsensitive])
+    private static let andWord = regex(#"\s+(?:i|and)\s+"#, options: [.caseInsensitive])
     private static let commaPair = regex(#"^\s*([^,&+\s]+)\s*,\s*([^,&+]+?)\s*$"#)
     private static let whitespaceRuns = regex(#"\s+"#)
     private static let digits = regex(#"^[0-9]+$"#)
@@ -96,7 +102,7 @@ public enum GuestImport {
         let host = people.first ?? ""
         let extra = Int(companions.reduce(0) { $0 + min($1, 10) })
         for i in 0..<extra {
-            people.append(extra == 1 ? "Pratnja (\(host))" : "Pratnja \(i + 1) (\(host))")
+            people.append(extra == 1 ? CoreText.t("Pratnja (%@)", host) : CoreText.t("Pratnja %lld (%@)", i + 1, host))
         }
         return host.isEmpty ? [] : people
     }
@@ -121,14 +127,14 @@ public enum GuestImport {
 
     private static func readHeader(_ cols: [String]) -> Header? {
         let lower = cols.map { $0.lowercased() }
-        let ime = lower.firstIndex(of: "ime")
-        let prezime = lower.firstIndex(of: "prezime")
+        let ime = lower.firstIndex(where: { firstNameHeaders.contains($0) })
+        let prezime = lower.firstIndex(where: { surnameHeaders.contains($0) })
         let category = lower.firstIndex(where: { categoryHeaders.contains($0) })
         if let ime, let prezime {
             return Header(ime: ime, prezime: prezime, name: nil, category: category ?? -1, surnameFirst: false)
         }
         if let first = lower.first, headerNames.contains(first) {
-            return Header(ime: nil, prezime: nil, name: 0, category: category ?? 1, surnameFirst: first == "prezime i ime")
+            return Header(ime: nil, prezime: nil, name: 0, category: category ?? 1, surnameFirst: surnameFirstHeaders.contains(first))
         }
         return nil
     }

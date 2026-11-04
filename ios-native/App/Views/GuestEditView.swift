@@ -49,12 +49,12 @@ struct GuestEditView: View {
                         get: { fixedTableId },
                         set: { fixedTableId = $0; fixedSeat = nil })) {
                         Text("Bez ograničenja").tag(String?.none)
-                        ForEach(store.tables, id: \.id) { t in Text(t.string("name") ?? "Stol").tag(t.id) }
+                        ForEach(store.tables, id: \.id) { t in Text(t.string("name") ?? String(localized: "Stol")).tag(t.id) }
                     }
                     if let tid = fixedTableId, let table = store.tables.first(where: { $0.id == tid }) {
                         Picker("Mjesto", selection: $fixedSeat) {
                             Text("Bilo koje").tag(Int?.none)
-                            ForEach(0..<FloorGeometry.count(table.number("seats")), id: \.self) { Text("\($0 + 1)").tag(Int?.some($0)) }
+                            ForEach(0..<FloorGeometry.count(table.number("seats")), id: \.self) { Text(verbatim: "\($0 + 1)").tag(Int?.some($0)) }
                         }
                     }
                     if categoryId != nil {
@@ -130,7 +130,7 @@ struct GuestEditView: View {
 /// Odabir više gostiju za pravilo.
 struct GuestMultiPicker: View {
     @Environment(WeddingStore.self) private var store
-    let title: String
+    let title: LocalizedStringKey
     @Binding var selection: [String]
     let exclude: String?
 
@@ -140,7 +140,7 @@ struct GuestMultiPicker: View {
 
     private var summary: String {
         let names = selection.compactMap { id in store.guests.first { $0.id == id }?.string("name") }
-        return names.isEmpty ? "Nitko" : names.joined(separator: ", ")
+        return names.isEmpty ? String(localized: "Nitko") : names.joined(separator: ", ")
     }
 
     var body: some View {

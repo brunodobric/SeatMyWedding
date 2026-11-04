@@ -1774,3 +1774,7 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
 }
 .menu-item[hidden] { display: none; }
 .menu-item-danger, .menu-item-danger .ic { color: var(--color-error); }
+
+/* Language picker in Opcije */
+.lang-options .menu-item.active { font-weight: 600; }
+.lang-options .menu-item:not(.active) .ic { opacity: 0.55; }

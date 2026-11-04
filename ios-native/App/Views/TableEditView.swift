@@ -16,8 +16,9 @@ struct TableEditView: View {
     private var hasHead: Bool { store.tables.contains { $0.string("shape") == "head" } }
 
     private var shapes: [(String, String)] {
-        var all = [("round", "Okrugli"), ("square", "Kvadratni"), ("rectangular", "Pravokutni"), ("royal", "Kraljevski")]
-        if !hasHead { all.append(("head", "Mladenaca")) }
+        var all = [("round", String(localized: "Okrugli")), ("square", String(localized: "Kvadratni")),
+                   ("rectangular", String(localized: "Pravokutni")), ("royal", String(localized: "Kraljevski"))]
+        if !hasHead { all.append(("head", String(localized: "Mladenaca"))) }
         return all
     }
 
@@ -97,9 +98,9 @@ struct TableEditView: View {
             .onChange(of: form.shape) { _, shape in
                 // Novi stol mladenaca je broj 0, ostali slijede redoslijed.
                 guard existing == nil, loaded else { return }
-                let wasDefault = form.name == "Stol \(form.number)"
+                let wasDefault = form.name == WeddingStore.defaultTableName(form.number)
                 form.number = shape == "head" ? 0 : store.nextTableNumber
-                if wasDefault { form.name = shape == "head" ? "Stol mladenaca" : "Stol \(form.number)" }
+                if wasDefault { form.name = shape == "head" ? String(localized: "Stol mladenaca") : WeddingStore.defaultTableName(form.number) }
             }
         }
     }
@@ -109,7 +110,7 @@ struct TableEditView: View {
         loaded = true
         guard let t = existing else {
             form.number = store.nextTableNumber
-            form.name = "Stol \(form.number)"
+            form.name = WeddingStore.defaultTableName(form.number)
             return
         }
         form.name = t.string("name") ?? ""
@@ -143,11 +144,15 @@ struct HallSetupView: View {
     private var summary: String {
         let p = plan
         let seats = p.create.filter { $0.string("shape") != "head" }.reduce(0) { $0 + ($1.number("seats") ?? 0).safeInt }
-        if mode == .add && p.count == 0 { return "Već imate dovoljno mjesta za \(guestCount) gostiju." }
-        let word = p.count == 1 ? "stol" : (p.count < 5 ? "stola" : "stolova")
-        let verb = mode == .add ? "Dodat će se" : "Trebate"
-        let head = p.create.contains { $0.string("shape") == "head" } ? " i stol mladenaca" : ""
-        return "\(verb) \(p.count) \(word) po \(p.perTable) mjesta (\(seats) mjesta)\(head)."
+        if mode == .add && p.count == 0 { return String(localized: "Već imate dovoljno mjesta za \(guestCount) gostiju.") }
+        let head = p.create.contains { $0.string("shape") == "head" }
+        let tables = String(localized: "\(p.count) stolova")
+        switch (mode == .add, head) {
+        case (true, true): return String(localized: "Dodat će se \(tables) po \(p.perTable) mjesta (\(seats) mjesta) i stol mladenaca.")
+        case (true, false): return String(localized: "Dodat će se \(tables) po \(p.perTable) mjesta (\(seats) mjesta).")
+        case (false, true): return String(localized: "Trebate \(tables) po \(p.perTable) mjesta (\(seats) mjesta) i stol mladenaca.")
+        case (false, false): return String(localized: "Trebate \(tables) po \(p.perTable) mjesta (\(seats) mjesta).")
+        }
     }
 
     var body: some View {

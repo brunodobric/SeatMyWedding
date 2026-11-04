@@ -77,7 +77,7 @@ function nativeAuthCredential(providerId, result) {
 // account is deleted.
 async function nativeSignInCredential(providerId) {
   var fa = nativePlugin('FirebaseAuthentication');
-  if (!fa) throw new Error('Prijava nije dostupna u ovoj verziji aplikacije.');
+  if (!fa) throw new Error(tr('Prijava nije dostupna u ovoj verziji aplikacije.'));
   var result = providerId === 'apple.com'
     ? await fa.signInWithApple({ skipNativeAuth: true })
     : await fa.signInWithGoogle({ skipNativeAuth: true });

@@ -328,20 +328,20 @@ extension WeddingData {
                 let ids = guestIds(rule)
                 let placed = ids.compactMap { slots[$0] }
                 if placed.count >= 2 && Set(placed.map { $0.tableId }).count < placed.count {
-                    violations.append(RuleViolation(ruleId: rule.id, reason: "Gosti moraju biti odvojeni: \(ids.map(name).joined(separator: ", "))"))
+                    violations.append(RuleViolation(ruleId: rule.id, reason: CoreText.t("Gosti moraju biti odvojeni: %@", ids.map(name).joined(separator: ", "))))
                 }
             } else if type == "together" || type == "companion" {
                 let ids = guestIds(rule)
                 let placed = ids.compactMap { slots[$0] }
                 if placed.count >= 2 && Set(placed.map { $0.tableId }).count > 1 {
-                    violations.append(RuleViolation(ruleId: rule.id, reason: "Gosti moraju biti zajedno: \(ids.map(name).joined(separator: ", "))"))
+                    violations.append(RuleViolation(ruleId: rule.id, reason: CoreText.t("Gosti moraju biti zajedno: %@", ids.map(name).joined(separator: ", "))))
                 }
             } else if type == "category-together" {
                 let cat = rule.string("categoryId")
                 let placed = guests.filter { $0.string("categoryId") == cat && cat != nil }.compactMap { slots[gid($0)] }
                 if placed.count >= 2 && Set(placed.map { $0.tableId }).count > 1 {
                     let catName = categories.first { $0.id == cat }?.string("name") ?? cat ?? ""
-                    violations.append(RuleViolation(ruleId: rule.id, reason: "Kategorija \"\(catName)\" nije na istom stolu"))
+                    violations.append(RuleViolation(ruleId: rule.id, reason: CoreText.t("Kategorija \"%@\" nije na istom stolu", catName)))
                 }
             }
         }

@@ -482,7 +482,7 @@ function partyStaysAtHead(guest, tableId) {
   if (!isWeddingParty(guest)) return true;
   const table = tableId && state.tables.find(t => t.id === tableId);
   if (table && isHeadTable(table)) return true;
-  if (typeof showToast === 'function') showToast(`${guest.name} sjedi za stolom mladenaca`, true);
+  if (typeof showToast === 'function') showToast(tr('{name} sjedi za stolom mladenaca', { name: guest.name }), true);
   return false;
 }
 
@@ -583,7 +583,7 @@ async function withUndo(message, action, opts = {}) {
     if (restore.length || remove.length) changed = true;
   }
   if (changed && message) {
-    showToast(message, false, { label: 'Poništi', onClick: async () => {
+    showToast(message, false, { label: tr('Poništi'), onClick: async () => {
       await applyUndo(changes);
       if (opts.onUndo) await opts.onUndo();
     } });
@@ -610,7 +610,7 @@ async function applyUndo(changes) {
   }
   computeRuleStatus();
   for (const type of UNDO_STORES) emit(type);
-  showToast('Poništeno');
+  showToast(tr('Poništeno'));
 }
 
 function computeRuleStatus() {
