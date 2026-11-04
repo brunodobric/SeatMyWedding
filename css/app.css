@@ -1055,8 +1055,12 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
 /* ── Onboarding modal ────────────────────────────────────────────────────────── */
 .modal-onboarding { max-width: 420px; text-align: center; transition: max-width 0.2s; }
 .modal-onboarding.wide { max-width: 540px; }
-.onboarding-icon { font-size: 3.2rem; margin-bottom: 8px; color: var(--color-gold); line-height: 1; }
-.onboarding-icon .ic { stroke-width: 1; }
+.onboarding-icon { margin-bottom: 10px; line-height: 0; }
+.onboarding-icon img {
+  width: 64px; height: 64px;
+  border-radius: 22.5%;
+  box-shadow: 0 6px 16px rgba(122, 90, 34, 0.25);
+}
 .onboarding-title {
   font-family: var(--font-script);
   font-size: 2.5rem;
@@ -1557,8 +1561,10 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
 }
 
 /* ── Opening screen (see js/splash.js) ─────────────────────────────────────────
-   Starts from the same plain background as the iOS startup image, builds the
-   emblem in about 1.8s, then js/splash.js sends it into the header monogram. */
+   Starts from the same plain background as the iOS startup image, shows the
+   app icon and in 1.5s brings its chairs and bouquet to the table, then
+   js/splash.js sends it into the header monogram. The icon is stacked from
+   transparent layers of the same size (icons/splash-layers/). */
 #splash {
   position: fixed;
   inset: 0;
@@ -1585,7 +1591,36 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
   flex-direction: column;
   align-items: center;
 }
-.sp-emblem { width: 46vw; max-width: 220px; height: auto; overflow: visible; }
+.sp-emblem {
+  position: relative;
+  width: 44vw; max-width: 196px;
+  aspect-ratio: 1;
+  margin-bottom: 18px;
+  border-radius: 22.5%;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: 0 14px 34px rgba(122, 90, 34, 0.28), 0 2px 6px rgba(122, 90, 34, 0.18);
+  opacity: 0;
+  animation: sp-card 0.4s cubic-bezier(.2, .8, .2, 1) forwards;
+}
+.sp-l {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+}
+.sp-chair {
+  opacity: 0;
+  transform: translate(var(--x), var(--y));
+  animation: sp-chair 0.5s cubic-bezier(.2, .8, .25, 1) var(--d) forwards;
+}
+.sp-bouquet {
+  opacity: 0;
+  transform-origin: 50% 46%;
+  animation: sp-bouquet 0.5s cubic-bezier(.3, 1.5, .5, 1) 1s forwards;
+}
 .sp-title {
   margin: 4px 0 0;
   padding: 0 14px 6px;
@@ -1594,7 +1629,7 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
   white-space: nowrap;
   -webkit-clip-path: inset(0 100% 0 0);
   clip-path: inset(0 100% 0 0);
-  animation: sp-write 0.85s cubic-bezier(.45, .05, .35, 1) 0.7s forwards;
+  animation: sp-write 0.8s cubic-bezier(.45, .05, .35, 1) 0.5s forwards;
 }
 .sp-sub {
   margin: 4px 0 0;
@@ -1603,38 +1638,16 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
   color: #8A7F70;
   text-transform: uppercase;
   opacity: 0;
-  animation: sp-sub 0.6s ease-out 1.25s forwards;
+  animation: sp-sub 0.55s ease-out 0.95s forwards;
 }
-.sp-ring { opacity: 0; animation: 0.75s cubic-bezier(.2, .8, .2, 1) 0.05s forwards; }
-.sp-ring-a { animation-name: sp-ring-a; }
-.sp-ring-b { animation-name: sp-ring-b; }
-.sp-diamond {
-  opacity: 0;
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-  animation: sp-diamond 0.55s cubic-bezier(.3, 1.5, .5, 1) 0.6s forwards;
-}
-.sp-star {
-  opacity: 0;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: sp-twinkle 0.7s ease-out var(--d) forwards;
-}
-.sp-shine { transform: translateX(0); animation: sp-shine 0.8s ease-in-out 0.85s forwards; }
 
-@keyframes sp-ring-a { from { opacity: 0; transform: translateX(-70px); } to { opacity: 1; transform: none; } }
-@keyframes sp-ring-b { from { opacity: 0; transform: translateX(70px); } to { opacity: 1; transform: none; } }
-@keyframes sp-diamond {
-  from { opacity: 0; transform: translateY(-46px) scale(.85); }
-  60% { opacity: 1; }
+@keyframes sp-card { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
+@keyframes sp-chair { from { opacity: 0; transform: translate(var(--x), var(--y)); } 50% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes sp-bouquet {
+  from { opacity: 0; transform: translateY(-8%) scale(.4); }
+  50% { opacity: 1; }
   to { opacity: 1; transform: none; }
 }
-@keyframes sp-twinkle {
-  0% { opacity: 0; transform: scale(0) rotate(-45deg); }
-  55% { opacity: 1; transform: scale(1.35) rotate(0); }
-  100% { opacity: 1; transform: scale(1) rotate(0); }
-}
-@keyframes sp-shine { from { transform: translateX(0); } to { transform: translateX(400px); } }
 @keyframes sp-write {
   from { -webkit-clip-path: inset(0 100% 0 0); clip-path: inset(0 100% 0 0); }
   to { -webkit-clip-path: inset(0 0 0 0); clip-path: inset(0 0 0 0); }
@@ -1646,9 +1659,8 @@ button, .nav-item, .bottom-nav-item, .header-monogram {
 @keyframes sp-failsafe { to { opacity: 0; visibility: hidden; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .sp-ring, .sp-diamond, .sp-star, .sp-sub, .sp-title, .sp-shine { animation: none; opacity: 1; transform: none; }
+  .sp-emblem, .sp-chair, .sp-bouquet, .sp-sub, .sp-title { animation: none; opacity: 1; transform: none; }
   .sp-title { -webkit-clip-path: none; clip-path: none; }
-  .sp-shine { display: none; }
 }
 
 /* ── Opcije (header button + menu; a bottom sheet on phones) ─────────────────── */
