@@ -1055,8 +1055,12 @@ body.dragging-guest, body.dragging-guest * { cursor: grabbing !important; user-s
 /* ── Onboarding modal ────────────────────────────────────────────────────────── */
 .modal-onboarding { max-width: 420px; text-align: center; transition: max-width 0.2s; }
 .modal-onboarding.wide { max-width: 540px; }
-.onboarding-icon { font-size: 3.2rem; margin-bottom: 8px; color: var(--color-gold); line-height: 1; }
-.onboarding-icon .ic { stroke-width: 1; }
+.onboarding-icon { margin-bottom: 10px; line-height: 0; }
+.onboarding-icon img {
+  width: 64px; height: 64px;
+  border-radius: 22.5%;
+  box-shadow: 0 6px 16px rgba(122, 90, 34, 0.25);
+}
 .onboarding-title {
   font-family: var(--font-script);
   font-size: 2.5rem;
