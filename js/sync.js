@@ -296,11 +296,11 @@ async function pushToCloud() {
     console.error('[Sync] push failed', err);
     setSyncStatus('error');
     if (typeof showToast === 'function') {
-      var msg = err && err.message ? String(err.message) : 'mrežna greška';
+      var msg = err && err.message ? String(err.message) : tr('mrežna greška');
       if (msg.indexOf('undefined') !== -1 || msg.indexOf('invalid data') !== -1) {
-        msg = 'Podaci sadrže nepotpuna polja. Pokušaj ponovo nakon osvježavanja.';
+        msg = tr('Podaci sadrže nepotpuna polja. Pokušaj ponovo nakon osvježavanja.');
       }
-      showToast('Sinkronizacija nije uspjela: ' + msg, true);
+      showToast(tr('Sinkronizacija nije uspjela: {msg}', { msg: msg }), true);
     }
   } finally {
     _syncing = false;
@@ -370,12 +370,12 @@ async function onAuthForSync(user) {
     } else if (cloudHasData && cloudIsMergeable) {
       // Merge both ways: the push reads the cloud copy, merges and writes back.
       await pushToCloud();
-      if (!localHasData && typeof showToast === 'function') showToast('Podaci preuzeti iz clouda');
+      if (!localHasData && typeof showToast === 'function') showToast(tr('Podaci preuzeti iz clouda'));
     } else if (cloudHasData && !localHasData) {
       // Lokalno prazno – preuzmi cloud
       await applyCloudSnapshot(cloud);
       if (typeof renderAll === 'function') renderAll();
-      if (typeof showToast === 'function') showToast('Podaci preuzeti iz clouda');
+      if (typeof showToast === 'function') showToast(tr('Podaci preuzeti iz clouda'));
       await pushToCloud(); // rewrite it in the mergeable format
     } else if (cloudHasData && localHasData) {
       // Document from an older app version: the newer copy wins as a whole,
@@ -384,7 +384,7 @@ async function onAuthForSync(user) {
       if (cloudTs > Math.max(_lastPushedAt, getLocalUpdatedAt()) + 2000) {
         await applyCloudSnapshot(cloud);
         if (typeof renderAll === 'function') renderAll();
-        if (typeof showToast === 'function') showToast('Sinkronizirano s cloudom');
+        if (typeof showToast === 'function') showToast(tr('Sinkronizirano s cloudom'));
       }
       await pushToCloud();
     } else {
@@ -437,10 +437,10 @@ function setSyncStatus(status) {
   el.className = 'sync-status ' + status;
   const labels = {
     off: '',
-    synced: 'Sinkronizirano',
-    syncing: 'Sinkronizacija…',
-    offline: 'Izvan mreže',
-    error: 'Greška'
+    synced: tr('Sinkronizirano'),
+    syncing: tr('Sinkronizacija…'),
+    offline: tr('Izvan mreže'),
+    error: tr('Greška')
   };
   el.innerHTML = labels[status] ? `${icon('cloud')} ${labels[status]}` : '';
   el.title = labels[status] || '';
@@ -501,9 +501,9 @@ function setupSync() {
 /** Ručni sync (opcionalno – gumb) */
 async function forceSyncNow() {
   if (!currentUser) {
-    if (typeof showToast === 'function') showToast('Prijavite se za cloud sync');
+    if (typeof showToast === 'function') showToast(tr('Prijavite se za cloud sync'));
     return;
   }
   await pushToCloud();
-  if (typeof showToast === 'function') showToast('Podaci spremljeni u cloud');
+  if (typeof showToast === 'function') showToast(tr('Podaci spremljeni u cloud'));
 }

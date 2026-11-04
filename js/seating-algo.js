@@ -326,7 +326,7 @@ function suggestSeating(tables, guests, rules, categories) {
         const unique = new Set(tids);
         if (unique.size < tids.length) {
           const names = rule.guestIds.map(id => { const g = guests.find(x => x.id === id); return g ? g.name : id; });
-          violations.push({ ruleId: rule.id, reason: `Gosti moraju biti odvojeni: ${names.join(', ')}` });
+          violations.push({ ruleId: rule.id, reason: tr('Gosti moraju biti odvojeni: {names}', { names: names.join(', ') }) });
         }
       }
     } else if (rule.type === 'together' || rule.type === 'companion') {
@@ -335,7 +335,7 @@ function suggestSeating(tables, guests, rules, categories) {
         const tbls = new Set(placed.map(a => a.tableId));
         if (tbls.size > 1) {
           const names = rule.guestIds.map(id => { const g = guests.find(x => x.id === id); return g ? g.name : id; });
-          violations.push({ ruleId: rule.id, reason: `Gosti moraju biti zajedno: ${names.join(', ')}` });
+          violations.push({ ruleId: rule.id, reason: tr('Gosti moraju biti zajedno: {names}', { names: names.join(', ') }) });
         }
       }
     } else if (rule.type === 'category-together') {
@@ -346,7 +346,7 @@ function suggestSeating(tables, guests, rules, categories) {
         if (tbls.size > 1) {
           const catObj = categories.find(c => c.id === rule.categoryId);
           const catName = catObj ? catObj.name : rule.categoryId;
-          violations.push({ ruleId: rule.id, reason: `Kategorija "${catName}" nije na istom stolu` });
+          violations.push({ ruleId: rule.id, reason: tr('Kategorija "{name}" nije na istom stolu', { name: catName }) });
         }
       }
     }

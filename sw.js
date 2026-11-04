@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wedding-seating-v57';
+const CACHE_NAME = 'wedding-seating-v58';
 const ASSETS = [
   './',
   './index.html',
@@ -13,6 +13,8 @@ const ASSETS = [
   './fonts/jost-normal-latin-ext.woff2',
   './fonts/pinyon-latin.woff2',
   './fonts/pinyon-latin-ext.woff2',
+  './js/lang/en.js',
+  './js/i18n.js',
   './js/native.js',
   './js/icons.js',
   './js/db.js',
@@ -45,7 +47,9 @@ const ASSETS = [
   './icons/splash-layers/chair-right.png',
   './icons/splash-layers/chair-front-left.png',
   './icons/splash-layers/chair-front-right.png',
-  './icons/splash-layers/bouquet.png'
+  './icons/splash-layers/bouquet.png',
+  './privacy.html',
+  './privatnost.html'
 ];
 
 // Every deploy must bump CACHE_NAME: the whole app is cached as one version,

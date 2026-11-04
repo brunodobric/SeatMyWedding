@@ -17,7 +17,8 @@ let fakeNow = 0;
 class FakeDate extends Date { static now() { return fakeNow; } }
 const putCalls = [];
 const ctx = vm.createContext({ console, Date: FakeDate, JSON, Math, Number, Array, Object, Set, Map, Promise });
-for (const f of ['db.js', 'state.js', 'sync.js']) {
+// i18n.js first: state.js and sync.js use tr(); without a browser it stays Croatian.
+for (const f of ['i18n.js', 'db.js', 'state.js', 'sync.js']) {
   vm.runInContext(fs.readFileSync(path.join(root, 'js', f), 'utf8'), ctx, { filename: f });
 }
 ctx.dbPutAll = async (store, items) => { putCalls.push([store, items.map(i => i.id)]); };

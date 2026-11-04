@@ -38,9 +38,9 @@ function setupAuth() {
     loginBtn.addEventListener('click', function () {
       if (!isAuthConfigured() || !getAuth()) {
         if (typeof showToast === 'function') {
-          showToast('Prijava nije dostupna – provjeri internet i Firebase postavke.', true);
+          showToast(tr('Prijava nije dostupna – provjeri internet i Firebase postavke.'), true);
         } else {
-          alert('Prijava nije dostupna.');
+          alert(tr('Prijava nije dostupna.'));
         }
         return;
       }
@@ -75,9 +75,7 @@ function setupAuth() {
       try {
         var authInst = getAuth();
         // On a shared device the guest list should not stay behind.
-        var wipe = confirm('Obrisati podatke vjenčanja s ovog uređaja?\n\n'
-          + 'Ostaju spremljeni u vašem računu i vratit će se kad se ponovno prijavite. '
-          + 'Odaberite Odustani ako i dalje koristite ovaj uređaj.');
+        var wipe = confirm(tr('Obrisati podatke vjenčanja s ovog uređaja?\n\nOstaju spremljeni u vašem računu i vratit će se kad se ponovno prijavite. Odaberite Odustani ako i dalje koristite ovaj uređaj.'));
         if (typeof flushCloudPush === 'function') await flushCloudPush();
         if (authInst) await authInst.signOut();
         if (typeof nativeSignOut === 'function') await nativeSignOut();
@@ -88,9 +86,9 @@ function setupAuth() {
           return;
         }
         closeLoginModal();
-        showToast('Odjavljeni ste');
+        showToast(tr('Odjavljeni ste'));
       } catch (err) {
-        showToast('Greška pri odjavi: ' + err.message, true);
+        showToast(tr('Greška pri odjavi: {msg}', { msg: err.message }), true);
       }
     });
   }
@@ -110,7 +108,7 @@ function setupAuth() {
           await authInst.signInWithPopup(provider);
         }
         closeLoginModal();
-        showToast('Uspješna prijava!');
+        showToast(tr('Uspješna prijava!'));
       } catch (err) {
         handleAuthError(err);
       } finally {
@@ -128,7 +126,7 @@ function setupAuth() {
         var signIn = await nativeSignInCredential('apple.com');
         await getAuth().signInWithCredential(signIn.credential);
         closeLoginModal();
-        showToast('Uspješna prijava!');
+        showToast(tr('Uspješna prijava!'));
       } catch (err) {
         handleAuthError(err);
       } finally {
@@ -168,14 +166,14 @@ function setupAuth() {
       var email = document.getElementById('login-email').value.trim();
       var password = document.getElementById('login-password').value;
       if (!email || !password) {
-        showLoginError('Unesite email i lozinku.');
+        showLoginError(tr('Unesite email i lozinku.'));
         return;
       }
       setLoginLoading(true);
       try {
         await getAuth().signInWithEmailAndPassword(email, password);
         closeLoginModal();
-        showToast('Uspješna prijava!');
+        showToast(tr('Uspješna prijava!'));
       } catch (err) {
         handleAuthError(err);
       } finally {
@@ -191,22 +189,22 @@ function setupAuth() {
       var password = document.getElementById('register-password').value;
       var password2 = document.getElementById('register-password2').value;
       if (!email || !password) {
-        showLoginError('Unesite email i lozinku.');
+        showLoginError(tr('Unesite email i lozinku.'));
         return;
       }
       if (password.length < 6) {
-        showLoginError('Lozinka mora imati barem 6 znakova.');
+        showLoginError(tr('Lozinka mora imati barem 6 znakova.'));
         return;
       }
       if (password !== password2) {
-        showLoginError('Lozinke se ne podudaraju.');
+        showLoginError(tr('Lozinke se ne podudaraju.'));
         return;
       }
       setLoginLoading(true);
       try {
         await getAuth().createUserWithEmailAndPassword(email, password);
         closeLoginModal();
-        showToast('Račun uspješno kreiran!');
+        showToast(tr('Račun uspješno kreiran!'));
       } catch (err) {
         handleAuthError(err);
       } finally {
@@ -251,7 +249,7 @@ async function reauthenticateForDelete(user) {
   if (providerId === 'google.com') {
     await user.reauthenticateWithPopup(new firebase.auth.GoogleAuthProvider());
   } else if (providerId === 'password') {
-    var password = prompt('Za brisanje računa upišite svoju lozinku:');
+    var password = prompt(tr('Za brisanje računa upišite svoju lozinku:'));
     if (!password) throw { code: 'cancelled' };
     await user.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(user.email, password));
   } else {
@@ -264,9 +262,7 @@ async function deleteAccount() {
   var authInst = getAuth();
   var user = authInst && authInst.currentUser;
   if (!user) return;
-  if (!confirm('Trajno obrisati račun?\n\n'
-    + 'Obrisat će se račun i svi podaci vjenčanja spremljeni u njemu, na svim uređajima. '
-    + 'Ovo se ne može poništiti. Ako želite zadržati popis, prvo spremite sigurnosnu kopiju.')) return;
+  if (!confirm(tr('Trajno obrisati račun?\n\nObrisat će se račun i svi podaci vjenčanja spremljeni u njemu, na svim uređajima. Ovo se ne može poništiti. Ako želite zadržati popis, prvo spremite sigurnosnu kopiju.'))) return;
   if (typeof closeOptions === 'function') closeOptions();
   var cloudDeleted = false;
   try {
@@ -280,20 +276,20 @@ async function deleteAccount() {
     if (typeof nativeSignOut === 'function') await nativeSignOut();
     if (typeof wipeLocalData === 'function') await wipeLocalData();
     if (typeof clearFirestoreCache === 'function') await clearFirestoreCache();
-    alert('Račun i podaci su obrisani.');
+    alert(tr('Račun i podaci su obrisani.'));
     location.reload();
   } catch (err) {
     if (err && err.code === 'cancelled') return;
     if (isNativeApp && err && !String(err.code || '').startsWith('auth/') && /cancel/i.test(err.message || '')) return;
     console.error('[Auth] delete account', err);
     var msg = {
-      'auth/requires-recent-login': 'Radi sigurnosti se odjavite i ponovno prijavite, pa pokušajte opet.',
-      'auth/user-mismatch': 'Prijavili ste se drugim računom. Odaberite račun koji želite obrisati.',
-      'auth/wrong-password': 'Pogrešna lozinka.',
-      'auth/invalid-credential': 'Pogrešna lozinka.',
-      'auth/popup-closed-by-user': 'Prozor za prijavu je zatvoren, račun nije obrisan.',
-      'auth/network-request-failed': 'Nema internetske veze.'
-    }[err && err.code] || 'Brisanje računa nije uspjelo. Pokušajte ponovno.';
+      'auth/requires-recent-login': tr('Radi sigurnosti se odjavite i ponovno prijavite, pa pokušajte opet.'),
+      'auth/user-mismatch': tr('Prijavili ste se drugim računom. Odaberite račun koji želite obrisati.'),
+      'auth/wrong-password': tr('Pogrešna lozinka.'),
+      'auth/invalid-credential': tr('Pogrešna lozinka.'),
+      'auth/popup-closed-by-user': tr('Prozor za prijavu je zatvoren, račun nije obrisan.'),
+      'auth/network-request-failed': tr('Nema internetske veze.')
+    }[err && err.code] || tr('Brisanje računa nije uspjelo. Pokušajte ponovno.');
     showToast(msg, true);
     // The account stays, so put its data back in the cloud from this device.
     if (cloudDeleted && currentUser) onAuthForSync(currentUser);
@@ -316,7 +312,7 @@ function updateAuthUI(user) {
     if (userMenu) userMenu.style.display = 'flex';
     if (btnDelete) btnDelete.hidden = false;
     if (userName) {
-      userName.textContent = user.displayName || user.email || 'Korisnik';
+      userName.textContent = user.displayName || user.email || tr('Korisnik');
       userName.title = user.email || '';
     }
     if (userAvatar) {
@@ -369,7 +365,7 @@ function setLoginLoading(loading) {
     // Keep the original markup (the Google button has an SVG logo) so it can be restored.
     if (loading && b._origHTML === undefined) b._origHTML = b.innerHTML;
     b.disabled = loading;
-    if (loading) b.textContent = 'Pričekajte…';
+    if (loading) b.textContent = tr('Pričekajte…');
     else if (b._origHTML !== undefined) b.innerHTML = b._origHTML;
   });
 }
@@ -393,26 +389,26 @@ function clearLoginError() {
 function handleAuthError(err) {
   console.error('[Auth]', err);
   var code = (err && err.code) || '';
-  var msg = (err && err.message) || 'Došlo je do greške.';
+  var msg = (err && err.message) || tr('Došlo je do greške.');
   // The user closed the native Google/Apple sign-in screen.
   if (isNativeApp && !code.startsWith('auth/') && /cancel/i.test(msg)) {
     clearLoginError();
     return;
   }
   var map = {
-    'auth/popup-closed-by-user': 'Prozor za prijavu je zatvoren.',
-    'auth/cancelled-popup-request': 'Prijava je otkazana.',
-    'auth/popup-blocked': 'Preglednik je blokirao prozor. Dopustite pop-upove.',
-    'auth/user-not-found': 'Korisnik s tim emailom ne postoji.',
-    'auth/wrong-password': 'Pogrešna lozinka.',
-    'auth/invalid-email': 'Neispravan email.',
-    'auth/email-already-in-use': 'Email je već registriran.',
-    'auth/weak-password': 'Lozinka je previše slaba (min. 6 znakova).',
-    'auth/too-many-requests': 'Previše pokušaja. Pokušajte kasnije.',
-    'auth/network-request-failed': 'Nema internetske veze.',
-    'auth/invalid-credential': 'Neispravni podaci za prijavu.',
-    'auth/operation-not-allowed': 'Ova metoda prijave nije uključena u Firebase konzoli.',
-    'auth/unauthorized-domain': 'Ova domena nije autorizirana u Firebase konzoli (Authorized domains).'
+    'auth/popup-closed-by-user': tr('Prozor za prijavu je zatvoren.'),
+    'auth/cancelled-popup-request': tr('Prijava je otkazana.'),
+    'auth/popup-blocked': tr('Preglednik je blokirao prozor. Dopustite pop-upove.'),
+    'auth/user-not-found': tr('Korisnik s tim emailom ne postoji.'),
+    'auth/wrong-password': tr('Pogrešna lozinka.'),
+    'auth/invalid-email': tr('Neispravan email.'),
+    'auth/email-already-in-use': tr('Email je već registriran.'),
+    'auth/weak-password': tr('Lozinka je previše slaba (min. 6 znakova).'),
+    'auth/too-many-requests': tr('Previše pokušaja. Pokušajte kasnije.'),
+    'auth/network-request-failed': tr('Nema internetske veze.'),
+    'auth/invalid-credential': tr('Neispravni podaci za prijavu.'),
+    'auth/operation-not-allowed': tr('Ova metoda prijave nije uključena u Firebase konzoli.'),
+    'auth/unauthorized-domain': tr('Ova domena nije autorizirana u Firebase konzoli (Authorized domains).')
   };
   if (map[code]) msg = map[code];
   showLoginError(msg);

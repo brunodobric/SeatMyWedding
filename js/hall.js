@@ -5,9 +5,9 @@
  */
 
 const HALL_TEMPLATES = {
-  round: { name: 'Okrugli stolovi', hint: 'Klasični okrugli stolovi u redovima', defaultSeats: 8 },
-  long: { name: 'Dugi stolovi', hint: 'Dugi stolovi u redovima, gosti s obje strane', defaultSeats: 12 },
-  u: { name: 'U-oblik', hint: 'Mladenci na čelu, gosti uz dva duga kraka', defaultSeats: 12 }
+  round: { name: tr('Okrugli stolovi'), hint: tr('Klasični okrugli stolovi u redovima'), defaultSeats: 8 },
+  long: { name: tr('Dugi stolovi'), hint: tr('Dugi stolovi u redovima, gosti s obje strane'), defaultSeats: 12 },
+  u: { name: tr('U-oblik'), hint: tr('Mladenci na čelu, gosti uz dva duga kraka'), defaultSeats: 12 }
 };
 
 const HEAD_TABLE_FRONT_SEATS = 6;
@@ -54,7 +54,7 @@ function makeHallTable(template, perTable, name, x, y, rotation) {
 
 function makeHeadTable(seats = HEAD_TABLE_FRONT_SEATS) {
   return {
-    id: crypto.randomUUID(), name: 'Stol mladenaca', shape: 'head',
+    id: crypto.randomUUID(), name: tr('Stol mladenaca'), shape: 'head',
     seats, seatsLong: seats, seatsEnd: 0,
     x: 500, y: 60, rotation: 0
   };
@@ -106,7 +106,8 @@ function rowX(col, count, cols, step) {
 function nextTableNumber() {
   let max = 0;
   for (const t of state.tables) {
-    const m = /^Stol (\d+)$/.exec(t.name || '');
+    // "Stol 3" in any language (and the Croatian name, for tables made before a language switch).
+    const m = /^\S+ (\d+)$/.exec(t.name || '');
     if (m) max = Math.max(max, parseInt(m[1]));
   }
   return max + 1;
@@ -215,7 +216,7 @@ function planHall({ template, guestCount, perTable, mode }) {
     if (!heads.length) create.push(makeHeadTable());
     const count = tablesNeeded(regularGuests, perTable);
     hallPositions(template, count, perTable, HALL_TOP).forEach((p, i) =>
-      create.push(makeHallTable(template, perTable, 'Stol ' + (i + 1), p.x, p.y, p.rotation)));
+      create.push(makeHallTable(template, perTable, tr('Stol {n}', { n: i + 1 }), p.x, p.y, p.rotation)));
     return { create, remove: state.tables.filter(t => !isHeadTable(t)).map(t => t.id), count, perTable };
   }
   const regularSeats = state.tables.filter(t => !isHeadTable(t)).reduce((n, t) => n + t.seats, 0);
@@ -223,6 +224,6 @@ function planHall({ template, guestCount, perTable, mode }) {
   const first = nextTableNumber();
   const place = tablePlacer(template, perTable);
   for (let i = 0; i < count; i++)
-    create.push(place(p => makeHallTable(template, perTable, 'Stol ' + (first + i), p.x, p.y, p.rotation)));
+    create.push(place(p => makeHallTable(template, perTable, tr('Stol {n}', { n: first + i }), p.x, p.y, p.rotation)));
   return { create, remove: [], count, perTable };
 }
