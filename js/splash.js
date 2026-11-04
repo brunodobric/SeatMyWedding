@@ -1,7 +1,7 @@
 /**
- * Opening screen. The emblem animation itself is CSS (#splash in app.css);
+ * Opening screen. The icon animation itself is CSS (#splash in app.css);
  * this decides when it ends: once the intro has played and the app is ready,
- * the emblem flies into the header monogram and the screen fades away.
+ * the icon flies into the header monogram and the screen fades away.
  * A tap skips the rest of the intro.
  */
 
@@ -70,12 +70,11 @@ const splash = {
     const target = document.querySelector('.header-monogram');
     const to = target && target.getBoundingClientRect();
     if (!reduce && emblem && to && to.width) {
-      // The rings fill about 80% of the emblem's width; land them on the monogram.
+      // Land the icon on the monogram, centre on centre.
       const from = emblem.getBoundingClientRect();
-      const scale = (to.width * 1.1) / (from.width * 0.8);
+      const scale = to.width / from.width;
       const dx = (to.left + to.width / 2) - (from.left + from.width / 2);
-      // The rings sit at 60% of the emblem's height; scaling is about its centre.
-      const dy = (to.top + to.height / 2) - (from.top + from.height / 2) - from.height * 0.1 * scale;
+      const dy = (to.top + to.height / 2) - (from.top + from.height / 2);
       emblem.animate([
         { transform: 'none', opacity: 1 },
         { transform: `translate(${dx}px, ${dy}px) scale(${scale})`, opacity: 1, offset: 0.8 },
