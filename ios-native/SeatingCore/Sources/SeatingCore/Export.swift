@@ -33,8 +33,8 @@ extension WeddingData {
 
     /// CSV svih gostiju (s BOM-om da Excel ispravno prikaže č, ć, š, ž).
     public func csv() -> String {
-        var rows: [[String]] = [["Ime", "Uloga", "Kategorija", "Stol", "Mjesto", "Status", "Bilješka"]]
-        let labels = ["assigned": "Dodijeljen", "unassigned": "Nedodijeljen", "maybe": "Možda"]
+        var rows: [[String]] = [["Ime", "Uloga", "Kategorija", "Stol", "Mjesto", "Status", "Bilješka"].map { CoreText.t($0) }]
+        let labels = ["assigned": CoreText.t("Dodijeljen"), "unassigned": CoreText.t("Nedodijeljen"), "maybe": CoreText.t("Možda")]
         for g in guests.sorted(by: nameOrder) {
             let cat = categories.first { $0.id == g.string("categoryId") }?.string("name") ?? ""
             let tid = g.string("tableId") ?? ""
@@ -74,8 +74,8 @@ extension WeddingData {
     public func seatingShareText() -> String? {
         let lines = seatingListLines()
         if lines.isEmpty { return nil }
-        let title = settings.string("weddingTitle").flatMap { $0.isEmpty ? nil : $0 } ?? "Vjenčanje"
-        return "\(title) – gdje sjedim\n\n" + lines.joined(separator: "\n")
+        let title = settings.string("weddingTitle").flatMap { $0.isEmpty ? nil : $0 } ?? CoreText.t("Vjenčanje")
+        return CoreText.t("%@ – gdje sjedim", title) + "\n\n" + lines.joined(separator: "\n")
     }
 
     /// Za ispis po stolovima: stol po stol, gosti po mjestu.

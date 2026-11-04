@@ -6,7 +6,16 @@ public struct PartySlot: Equatable, Sendable {
     public let slot: String
     public let seat: Int
     public let isCouple: Bool
-    public let label: String
+    /// Hrvatski naziv uloge (ključ prijevoda); `label` je na jeziku aplikacije.
+    public let labelKey: String
+    public var label: String { CoreText.t(labelKey) }
+
+    public init(slot: String, seat: Int, isCouple: Bool, label: String) {
+        self.slot = slot
+        self.seat = seat
+        self.isCouple = isCouple
+        self.labelKey = label
+    }
 }
 
 public enum WeddingParty {
@@ -23,7 +32,7 @@ public enum WeddingParty {
     public static func role(_ guest: Record) -> String {
         guard guest.isTruthy("party") else { return "" }
         if let s = guest.string("partySlot"), let found = slots.first(where: { $0.slot == s }) { return found.label }
-        return guest.string("party") == "couple" ? "Mladenci" : "Kumovi"
+        return CoreText.t(guest.string("party") == "couple" ? "Mladenci" : "Kumovi")
     }
 }
 
@@ -64,7 +73,7 @@ extension WeddingData {
         if head == nil {
             if filled == 0 { return }
             let h = Record([
-                "id": .string(makeID()), "name": .string("Stol mladenaca"), "shape": .string("head"),
+                "id": .string(makeID()), "name": .string(CoreText.t("Stol mladenaca")), "shape": .string("head"),
                 "seats": .number(Double(filled)), "seatsLong": .number(Double(filled)), "seatsEnd": .number(0),
                 "x": .number(500), "y": .number(60), "rotation": .number(0)
             ])

@@ -54,3 +54,23 @@ final class WeddingPartyTests: XCTestCase {
         XCTAssertEqual(kuma?.number("seatIndex"), 0)
     }
 }
+
+final class CoreTextTests: XCTestCase {
+    func testFormatKeepsCroatianByDefault() {
+        XCTAssertEqual(CoreText.t("Stol %lld", 3), "Stol 3")
+        XCTAssertEqual(CoreText.t("%@ i %@ su zamijenili mjesta", "Ana", "Ivo"), "Ana i Ivo su zamijenili mjesta")
+    }
+
+    func testFormatPositionalAndPercent() {
+        XCTAssertEqual(CoreText.format("%2$@ before %1$@ (100%%)", ["a", "b"]), "b before a (100%)")
+        XCTAssertEqual(CoreText.format("%@ has %lld", ["x"]), "x has ")
+    }
+
+    func testTranslateHook() {
+        let saved = CoreText.translate
+        defer { CoreText.translate = saved }
+        CoreText.translate = { $0 == "Stol %lld" ? "Table %lld" : $0 }
+        XCTAssertEqual(CoreText.t("Stol %lld", 7), "Table 7")
+        XCTAssertEqual(WeddingParty.slots[2].labelKey, "Mladenka")
+    }
+}

@@ -23,16 +23,19 @@ enum ExportFiles {
         return url
     }
 
+    /// "raspored-sjedenja" / "seating-plan" (na jeziku aplikacije).
+    static var fileName: String { String(localized: "raspored-sjedenja") }
+
     static func csv(_ wedding: WeddingData) throws -> URL {
-        try write("raspored-sjedenja.csv", Data(wedding.csv().utf8))
+        try write(fileName + ".csv", Data(wedding.csv().utf8))
     }
 
     static func json(_ wedding: WeddingData) throws -> URL {
-        try write("raspored-sjedenja.json", Data(wedding.backupJSONString().utf8))
+        try write(fileName + ".json", Data(wedding.backupJSONString().utf8))
     }
 
     static func pdf(_ wedding: WeddingData, tables: Bool, alphabetical: Bool) throws -> URL {
-        try write("raspored-sjedenja.pdf", SeatingPDF.render(wedding, tables: tables, alphabetical: alphabetical))
+        try write(fileName + ".pdf", SeatingPDF.render(wedding, tables: tables, alphabetical: alphabetical))
     }
 }
 
@@ -42,7 +45,7 @@ enum SeatingPDF {
     private static let margin: CGFloat = 48
 
     static func render(_ wedding: WeddingData, tables: Bool, alphabetical: Bool) -> Data {
-        let title = wedding.settings.string("weddingTitle").flatMap { $0.isEmpty ? nil : $0 } ?? "Moje Vjenčanje"
+        let title = wedding.settings.string("weddingTitle").flatMap { $0.isEmpty ? nil : $0 } ?? String(localized: "Moje Vjenčanje")
         let monogram = wedding.settings.string("monogram").flatMap { $0.isEmpty ? nil : $0 } ?? "♡"
         let renderer = UIGraphicsPDFRenderer(bounds: page)
         return renderer.pdfData { ctx in
@@ -81,7 +84,7 @@ enum SeatingPDF {
 
     private static func drawTables(_ ctx: UIGraphicsPDFRendererContext, _ tables: [PrintTable], title: String, monogram: String) {
         ctx.beginPage()
-        let y = header("Raspored sjedenja", title: title, monogram: monogram)
+        let y = header(String(localized: "Raspored sjedenja"), title: title, monogram: monogram)
         let gap: CGFloat = 24
         let colWidth = (page.width - 2 * margin - gap) / 2
         var col = 0
@@ -120,7 +123,7 @@ enum SeatingPDF {
 
     private static func drawAlphabetical(_ ctx: UIGraphicsPDFRendererContext, _ rows: [PrintRow], title: String, monogram: String) {
         ctx.beginPage()
-        var y = header("Gdje sjedim", title: title, monogram: monogram)
+        var y = header(String(localized: "Gdje sjedim"), title: title, monogram: monogram)
         for r in rows {
             if y + 20 > page.height - margin {
                 ctx.beginPage()
@@ -177,10 +180,10 @@ struct ExportMenu: View {
             ShareLink(item: PDFExport(wedding: wedding), preview: SharePreview("Raspored sjedenja.pdf")) {
                 Label("Ispis / PDF rasporeda", systemImage: "printer")
             }
-            ShareLink(item: CSVExport(wedding: wedding), preview: SharePreview("raspored-sjedenja.csv")) {
+            ShareLink(item: CSVExport(wedding: wedding), preview: SharePreview(ExportFiles.fileName + ".csv")) {
                 Label("Izvoz CSV (Excel)", systemImage: "tablecells")
             }
-            ShareLink(item: JSONExport(wedding: wedding), preview: SharePreview("raspored-sjedenja.json")) {
+            ShareLink(item: JSONExport(wedding: wedding), preview: SharePreview(ExportFiles.fileName + ".json")) {
                 Label("Sigurnosna kopija (JSON)", systemImage: "externaldrive")
             }
         } label: {

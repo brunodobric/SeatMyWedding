@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import SeatingCore
 
 /// Početni ekran: datum i odbrojavanje, mladenci i kumovi, broj gostiju i statistika rasporeda.
@@ -23,7 +24,7 @@ struct DashboardView: View {
 
     private var title: String {
         let t = store.data.settings.string("weddingTitle") ?? ""
-        return t.isEmpty ? "Moje Vjenčanje" : t
+        return t.isEmpty ? String(localized: "Moje Vjenčanje") : t
     }
 
     private var guestCount: Int { store.data.capacityInfo().guests }
@@ -79,7 +80,7 @@ struct DashboardView: View {
                 let days = Calendar.current.dateComponents(
                     [.day], from: Calendar.current.startOfDay(for: .now), to: Calendar.current.startOfDay(for: date)).day ?? 0
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(date.formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "hr_HR"))))
+                    Text(date.formatted(.dateTime.day().month(.wide).year().locale(AppLanguage.locale)))
                         .font(Theme.uiBold(18))
                     Text(countdown(days))
                         .font(Theme.title(30))
@@ -92,9 +93,9 @@ struct DashboardView: View {
     }
 
     private func countdown(_ days: Int) -> String {
-        if days == 0 { return "Danas je veliki dan!" }
-        if days < 0 { return "Prošlo je \(-days) \(-days % 10 == 1 && -days % 100 != 11 ? "dan" : "dana")" }
-        return "Još \(days) \(days % 10 == 1 && days % 100 != 11 ? "dan" : "dana")"
+        if days == 0 { return String(localized: "Danas je veliki dan!") }
+        if days < 0 { return String(localized: "Prošlo je \(-days) dana") }
+        return String(localized: "Još \(days) dana")
     }
 
     private var partyCard: some View {
@@ -115,10 +116,10 @@ struct DashboardView: View {
         }
     }
 
-    private func row(_ label: String, _ values: [String]) -> some View {
+    private func row(_ label: LocalizedStringKey, _ values: [String]) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label).font(Theme.ui(13)).foregroundStyle(.secondary)
-            Text(values.joined(separator: " i ")).font(Theme.uiBold(17))
+            Text(AppLanguage.join(values)).font(Theme.uiBold(17))
         }
     }
 
@@ -133,9 +134,9 @@ struct DashboardView: View {
         }
     }
 
-    private func stat(_ label: String, _ value: Int) -> some View {
+    private func stat(_ label: LocalizedStringKey, _ value: Int) -> some View {
         VStack(spacing: 2) {
-            Text("\(value)").font(Theme.title(28)).foregroundStyle(Theme.goldDeep)
+            Text(verbatim: "\(value)").font(Theme.title(28)).foregroundStyle(Theme.goldDeep)
             Text(label).font(Theme.ui(13)).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
@@ -148,12 +149,12 @@ struct DashboardView: View {
 }
 
 private struct Card<Content: View>: View {
-    let title: String
-    var action: String? = nil
+    let title: LocalizedStringKey
+    var action: LocalizedStringKey? = nil
     var onAction: () -> Void = {}
     @ViewBuilder var content: Content
 
-    init(title: String, action: String? = nil, onAction: @escaping () -> Void = {}, @ViewBuilder content: () -> Content) {
+    init(title: LocalizedStringKey, action: LocalizedStringKey? = nil, onAction: @escaping () -> Void = {}, @ViewBuilder content: () -> Content) {
         self.title = title
         self.action = action
         self.onAction = onAction
@@ -187,7 +188,7 @@ private struct DateEditView: View {
             Form {
                 DatePicker("Datum", selection: $date, displayedComponents: .date)
                     .datePickerStyle(.graphical)
-                    .environment(\.locale, Locale(identifier: "hr_HR"))
+                    .environment(\.locale, AppLanguage.locale)
                 if !store.weddingDate.isEmpty {
                     Button("Ukloni datum", role: .destructive) {
                         store.setWeddingDate("")
@@ -239,7 +240,7 @@ private struct OnboardingView: View {
                     Toggle("Znam datum vjenčanja", isOn: $hasDate.animation())
                     if hasDate {
                         DatePicker("Datum", selection: $date, displayedComponents: .date)
-                            .environment(\.locale, Locale(identifier: "hr_HR"))
+                            .environment(\.locale, AppLanguage.locale)
                     }
                 }
                     .listRowBackground(Theme.surface)
@@ -269,9 +270,9 @@ enum AppearanceChoice: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var label: String {
         switch self {
-        case .system: return "Automatski"
-        case .light: return "Svijetli"
-        case .dark: return "Tamni"
+        case .system: return String(localized: "Automatski")
+        case .light: return String(localized: "Svijetli")
+        case .dark: return String(localized: "Tamni")
         }
     }
     var scheme: ColorScheme? {
@@ -305,6 +306,20 @@ private struct SettingsView: View {
                     Text("Naslov vjenčanja")
                 } footer: {
                     Text("Može biti bilo koji tekst. Kad promijeniš imena mladenaca, naslov postaje njihova imena.")
+                }
+                    .listRowBackground(Theme.surface)
+                // Jezik aplikacije bira se u postavkama iPhonea (Postavke → SeatMyWedding → Jezik).
+                Section {
+                    Button {
+                        if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                    } label: {
+                        LabeledContent("Jezik", value: AppLanguage.currentName)
+                    }
+                    .tint(.primary)
+                } header: {
+                    Text("Jezik")
+                } footer: {
+                    Text("Jezik se mijenja u postavkama iPhonea: Postavke → SeatMyWedding → Jezik.")
                 }
                     .listRowBackground(Theme.surface)
                 Section {

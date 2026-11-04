@@ -39,6 +39,11 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: SeatMyWedding
+        # Jezici aplikacije (App/hr.lproj, App/en.lproj). Uz više jezika iOS u
+        # Postavke → SeatMyWedding nudi izbor jezika samo za ovu aplikaciju.
+        CFBundleLocalizations:
+          - hr
+          - en
         CFBundleShortVersionString: "1.0.0"
         CFBundleVersion: "1"
         ITSAppUsesNonExemptEncryption: false

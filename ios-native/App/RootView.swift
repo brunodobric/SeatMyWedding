@@ -5,10 +5,10 @@ enum AppSection: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .dashboard: return "Pregled"
-        case .guests: return "Gosti"
-        case .hall: return "Sala"
-        case .seating: return "Raspored"
+        case .dashboard: return String(localized: "Pregled")
+        case .guests: return String(localized: "Gosti")
+        case .hall: return String(localized: "Sala")
+        case .seating: return String(localized: "Raspored")
         }
     }
     var icon: String {

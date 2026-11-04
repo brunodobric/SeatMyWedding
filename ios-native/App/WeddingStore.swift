@@ -80,7 +80,7 @@ final class WeddingStore {
             // Migrirana datoteka se odmah sprema u novom obliku.
             if migratedFrom != nil { persist(notify: false) }
         case .unreadable:
-            loadError = "Spremljeni podaci se ne mogu pročitati."
+            loadError = String(localized: "Spremljeni podaci se ne mogu pročitati.")
         case .tooNew:
             lockedByNewerVersion = true
         }
@@ -110,7 +110,7 @@ final class WeddingStore {
         wedding.migrateTables()
         wedding.repairSeating()
         let undo = commit(wedding)
-        show("Podaci su vraćeni iz kopije", undo: undo)
+        show(String(localized: "Podaci su vraćeni iz kopije"), undo: undo)
     }
 
     private func persist(notify: Bool = true) {
@@ -119,8 +119,8 @@ final class WeddingStore {
         do {
             try LocalFile.save(sync, to: fileURL)
         } catch {
-            loadError = "Podaci se ne mogu spremiti."
-            show("Podaci se ne mogu spremiti.", isError: true)
+            loadError = String(localized: "Podaci se ne mogu spremiti.")
+            show(String(localized: "Podaci se ne mogu spremiti."), isError: true)
         }
     }
 
@@ -198,7 +198,7 @@ final class WeddingStore {
         after.guests.removeAll { $0.id == id }
         after.rules = after.normalizeRules(after.rules)
         let undo = commit(after)
-        show("Obrisano: \(guest.string("name") ?? "gost")", undo: undo)
+        show(String(localized: "Obrisano: \(guest.string("name") ?? String(localized: "gost"))"), undo: undo)
     }
 
     // MARK: Pravila
@@ -253,7 +253,7 @@ final class WeddingStore {
     func drop(_ guestId: String, onto target: DropTarget) {
         if case .unseat = target {} else if let g = guests.first(where: { $0.id == guestId }),
            g.isTruthy("locked"), !(g.string("tableId") ?? "").isEmpty {
-            show("\(g.string("name") ?? "Gost") ima zaključano mjesto", isError: true)
+            show(String(localized: "\(g.string("name") ?? String(localized: "Gost")) ima zaključano mjesto"), isError: true)
             return
         }
         let result = data.dropGuest(guestId, onto: target)
@@ -326,6 +326,9 @@ final class WeddingStore {
         return Double((regular.firstIndex { $0.id == table.id } ?? regular.count) + 1)
     }
 
+    /// Naziv novog stola s rednim brojem ("Stol 3", "Table 3").
+    nonisolated static func defaultTableName(_ number: Int) -> String { String(localized: "Stol \(number)") }
+
     /// Sljedeći slobodni redni broj za stol gostiju (stol mladenaca se ne računa).
     var nextTableNumber: Int {
         (tables.filter { $0.string("shape") != "head" }.map { tableNumber($0) }.max() ?? 0).safeInt + 1
@@ -347,7 +350,7 @@ final class WeddingStore {
         }
         var t = existing ?? Record(["id": .string(UUID().uuidString.lowercased()), "x": .number(500), "y": .number(350)])
         let trimmed = form.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        t["name"] = .string(trimmed.isEmpty ? "Stol" : trimmed)
+        t["name"] = .string(trimmed.isEmpty ? String(localized: "Stol") : trimmed)
         t["shape"] = .string(form.shape)
         t["number"] = .number(Double(max(0, form.number)))
         t["seats"] = .number(Double(seats))
@@ -372,7 +375,7 @@ final class WeddingStore {
         guard let table = tables.first(where: { $0.id == id }), table.string("shape") != "head" else { return }
         let seated = guests.filter { $0.string("tableId") == id }
         let gone = rules.filter { $0.string("tableId") == id }
-        let name = table.string("name") ?? "Stol"
+        let name = table.string("name") ?? String(localized: "Stol")
         remove("tables", ids: [id])
         let freed = seated.map { g -> Record in
             var g = g
@@ -381,7 +384,7 @@ final class WeddingStore {
         }
         if !freed.isEmpty { put("guests", freed) }
         if !gone.isEmpty { remove("rules", ids: gone.compactMap { $0.id }) }
-        show("Obrisano: \(name)", undo: { [weak self] in
+        show(String(localized: "Obrisano: \(name)"), undo: { [weak self] in
             self?.put("tables", [table])
             if !seated.isEmpty { self?.put("guests", seated) }
             if !gone.isEmpty { self?.put("rules", gone) }
@@ -409,7 +412,7 @@ final class WeddingStore {
         after.tables.append(contentsOf: plan.create)
         after.rules = after.normalizeRules(after.rules)
         let undo = commit(after)
-        show(freed == 0 ? "Sala je složena" : "Sala je složena, \(freed) gostiju je bez mjesta", undo: undo)
+        show(freed == 0 ? String(localized: "Sala je složena") : String(localized: "Sala je složena, \(freed) gostiju je bez mjesta"), undo: undo)
     }
 
     // MARK: Zajednički zapis više promjena
@@ -488,7 +491,7 @@ final class WeddingStore {
             names[2] = b
             names[3] = g
             after.saveWeddingParty(names: names)
-            after.settings["weddingTitle"] = .string([b, g].filter { !$0.isEmpty }.joined(separator: " i "))
+            after.settings["weddingTitle"] = .string(AppLanguage.join([b, g].filter { !$0.isEmpty }))
         }
         if !date.isEmpty { after.settings["weddingDate"] = .string(date) }
         after.settings["onboardingDone"] = .bool(true)
@@ -511,10 +514,10 @@ final class WeddingStore {
         }
         let newCouple = couple(names)
         if newCouple != couple(before), newCouple.contains(where: { !$0.isEmpty }) {
-            after.settings["weddingTitle"] = .string(newCouple.filter { !$0.isEmpty }.joined(separator: " i "))
+            after.settings["weddingTitle"] = .string(AppLanguage.join(newCouple.filter { !$0.isEmpty }))
         }
         let undo = commit(after)
-        show("Mladenci i kumovi su spremljeni", undo: undo)
+        show(String(localized: "Mladenci i kumovi su spremljeni"), undo: undo)
     }
 
     // MARK: Uvoz popisa gostiju
@@ -560,7 +563,7 @@ final class WeddingStore {
         }
         if !groups.isEmpty { wedding.rules = wedding.rulesAfterAddingTogether(groups) }
         let undo = commit(wedding)
-        if preview.guests > 0 { show("Dodano gostiju: \(preview.guests)", undo: undo) }
+        if preview.guests > 0 { show(String(localized: "Dodano gostiju: \(preview.guests)"), undo: undo) }
         return preview
     }
 }

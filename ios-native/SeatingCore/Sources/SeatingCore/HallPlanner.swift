@@ -6,16 +6,16 @@ public enum HallTemplate: String, CaseIterable, Sendable {
 
     public var name: String {
         switch self {
-        case .round: return "Okrugli stolovi"
-        case .long: return "Dugi stolovi"
-        case .u: return "U-oblik"
+        case .round: return CoreText.t("Okrugli stolovi")
+        case .long: return CoreText.t("Dugi stolovi")
+        case .u: return CoreText.t("U-oblik")
         }
     }
     public var hint: String {
         switch self {
-        case .round: return "Klasični okrugli stolovi u redovima"
-        case .long: return "Dugi stolovi u redovima, gosti s obje strane"
-        case .u: return "Mladenci na čelu, gosti uz dva duga kraka"
+        case .round: return CoreText.t("Klasični okrugli stolovi u redovima")
+        case .long: return CoreText.t("Dugi stolovi u redovima, gosti s obje strane")
+        case .u: return CoreText.t("Mladenci na čelu, gosti uz dva duga kraka")
         }
     }
     public var defaultSeats: Int {
@@ -117,7 +117,7 @@ extension WeddingData {
 
     private func makeHeadTable(makeID: IDMaker) -> Record {
         Record([
-            "id": .string(makeID()), "name": .string("Stol mladenaca"), "shape": .string("head"),
+            "id": .string(makeID()), "name": .string(CoreText.t("Stol mladenaca")), "shape": .string("head"),
             "seats": .number(headFrontSeats), "seatsLong": .number(headFrontSeats), "seatsEnd": .number(0),
             "x": .number(500), "y": .number(60), "rotation": .number(0)
         ])
@@ -164,9 +164,11 @@ extension WeddingData {
     private func nextTableNumber() -> Int {
         var maxN = 0
         for t in tables {
-            guard let name = t.string("name"), name.hasPrefix("Stol ") else { continue }
-            let rest = name.dropFirst(5)
-            guard !rest.isEmpty, rest.allSatisfy({ $0.isASCII && $0.isNumber }), let n = Int(rest) else { continue }
+            // "Stol 3" na bilo kojem jeziku ("Table 3"), kao /^\S+ (\d+)$/ u js/hall.js.
+            guard let name = t.string("name"), let space = name.firstIndex(of: " ") else { continue }
+            let word = name[..<space], rest = name[name.index(after: space)...]
+            guard !word.isEmpty, !word.contains(where: { $0.isWhitespace }),
+                  !rest.isEmpty, rest.allSatisfy({ $0.isASCII && $0.isNumber }), let n = Int(rest) else { continue }
             maxN = max(maxN, n)
         }
         return maxN + 1
@@ -288,7 +290,7 @@ extension WeddingData {
             if heads.isEmpty { create.append(makeHeadTable(makeID: makeID)) }
             let count = tablesNeeded(regularGuests, Double(perTable))
             for (i, p) in hallPositions(template, count, perTable, hallTop).enumerated() {
-                create.append(makeHallTable(template, perTable, "Stol \(i + 1)", p.x, p.y, p.rotation, makeID: makeID))
+                create.append(makeHallTable(template, perTable, CoreText.t("Stol %lld", i + 1), p.x, p.y, p.rotation, makeID: makeID))
             }
             return HallPlan(create: create, remove: tables.filter { !$0.isHeadTable }.compactMap { $0.id },
                             count: count, perTable: perTable)
@@ -299,7 +301,7 @@ extension WeddingData {
         let place = tablePlacer(template, perTable, makeID: makeID)
         for i in 0..<count {
             create.append(place { p in
-                makeHallTable(template, perTable, "Stol \(first + i)", p.x, p.y, p.rotation, makeID: makeID)
+                makeHallTable(template, perTable, CoreText.t("Stol %lld", first + i), p.x, p.y, p.rotation, makeID: makeID)
             })
         }
         return HallPlan(create: create, remove: [], count: count, perTable: perTable)

@@ -88,7 +88,13 @@ struct GuestImportView: View {
                     .listRowBackground(Theme.surface)
                 if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Section("Pregled") {
-                        Text("Dodat će se \(preview.guests) gostiju" + (preview.groups > 0 ? ", \(preview.groups) skupina sjedi zajedno" : "") + ".")
+                        let guests = String(localized: "\(preview.guests) gostiju")
+                        let groups = String(localized: "\(preview.groups) skupina sjedi zajedno")
+                        if preview.groups > 0 {
+                            Text("Dodat će se \(guests), \(groups).")
+                        } else {
+                            Text("Dodat će se \(guests).")
+                        }
                         if preview.skipped > 0 {
                             Text("Preskočeno \(preview.skipped) (već su na popisu).").foregroundStyle(.secondary)
                         }

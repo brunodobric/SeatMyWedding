@@ -67,7 +67,7 @@ extension WeddingData {
             }
             let table = targetTableId.flatMap { id in tables.first { $0.id == id } }
             if table?.string("shape") != "head" {
-                result.notice = Notice("\(name) sjedi za stolom mladenaca", isError: true)
+                result.notice = Notice(CoreText.t("%@ sjedi za stolom mladenaca", name), isError: true)
                 return result
             }
         }
@@ -84,7 +84,7 @@ extension WeddingData {
             guard let table = tables.first(where: { $0.id == tableId }) else { return result }
             if currentTable == tableId { return result }
             guard let seat = firstFreeSeat(tableId: tableId) else {
-                result.notice = Notice("\(table.string("name") ?? "") nema slobodnih mjesta", isError: true)
+                result.notice = Notice(CoreText.t("%@ nema slobodnih mjesta", table.string("name") ?? ""), isError: true)
                 return result
             }
             result.moves = [SeatMove(id: guestId, tableId: tableId, seatIndex: Double(seat))]
@@ -96,7 +96,7 @@ extension WeddingData {
             }
             if let o = occupant, o.id == guestId { return result }
             if let o = occupant, o.isTruthy("locked") {
-                result.notice = Notice("\(o.string("name") ?? "") ima zaključano mjesto", isError: true)
+                result.notice = Notice(CoreText.t("%@ ima zaključano mjesto", o.string("name") ?? ""), isError: true)
                 return result
             }
             var moves = [SeatMove(id: guestId, tableId: tableId, seatIndex: Double(seatIndex))]
@@ -104,8 +104,8 @@ extension WeddingData {
                 moves.append(SeatMove(id: oid, tableId: currentTable, seatIndex: guest.number("seatIndex")))
                 let oname = o.string("name") ?? ""
                 result.undoMessage = currentTable != nil
-                    ? "\(name) i \(oname) su zamijenili mjesta"
-                    : "\(oname) je sada bez mjesta"
+                    ? CoreText.t("%@ i %@ su zamijenili mjesta", name, oname)
+                    : CoreText.t("%@ je sada bez mjesta", oname)
             }
             result.moves = moves
         }
