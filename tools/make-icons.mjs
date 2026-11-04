@@ -2,7 +2,7 @@
 // screens. Run from the repo root:  node tools/make-icons.mjs
 // Needs Playwright with Chromium (used only to rasterise the SVGs).
 import { chromium } from 'playwright';
-import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { writeFileSync, readFileSync, copyFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -14,65 +14,21 @@ mkdirSync(SPLASH, { recursive: true });
 const DARK = '#17120E';
 const CREAM = '#FDFBF7';
 
-// ── Shared defs: metallic gold, diamond facets, background ──────────────────
-const defs = `
-  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
-    <stop offset="0" stop-color="#FBEFC4"/>
-    <stop offset=".22" stop-color="#E2C273"/>
-    <stop offset=".45" stop-color="#A9802F"/>
-    <stop offset=".62" stop-color="#EBD08A"/>
-    <stop offset=".82" stop-color="#B98F3E"/>
-    <stop offset="1" stop-color="#7A5A22"/>
-  </linearGradient>
-  <radialGradient id="bg" cx=".5" cy=".38" r=".8">
-    <stop offset="0" stop-color="#3B2F25"/>
-    <stop offset=".55" stop-color="#231B15"/>
-    <stop offset="1" stop-color="${DARK}"/>
-  </radialGradient>
-  <radialGradient id="glow" cx=".5" cy=".5" r=".5">
-    <stop offset="0" stop-color="#E6C86E" stop-opacity=".22"/>
-    <stop offset="1" stop-color="#E6C86E" stop-opacity="0"/>
-  </radialGradient>
-  <clipPath id="weave"><circle cx="256" cy="218.8" r="30"/></clipPath>`;
+// ── App icon: white round table with chairs on smooth gold ──────────────────
+// The artwork lives as PNG sources in icons/source/ (1024 px, full bleed):
+//   app-icon.png           – the icon itself
+//   app-icon-maskable.png  – same, artwork shrunk into the maskable safe zone
+// Every size below is rasterised from those two files.
+const SRC = resolve(ICONS, 'source');
+const png64 = (name) => readFileSync(resolve(SRC, name)).toString('base64');
+const ICON_PNG = png64('app-icon.png');
+const MASKABLE_PNG = png64('app-icon-maskable.png');
 
-// Two interlocking rings (A over B at the top crossing, B over A at the
-// bottom) with a brilliant-cut diamond and a few sparkles, on a 512 grid.
-function emblem(gap) {
-  const ring = (cx) => `
-    <circle cx="${cx}" cy="296" r="92" fill="none" stroke="${gap}" stroke-width="34"/>
-    <circle cx="${cx}" cy="296" r="92" fill="none" stroke="url(#gold)" stroke-width="22"/>
-    <circle cx="${cx}" cy="296" r="83.5" fill="none" stroke="#FFF6D8" stroke-opacity=".45" stroke-width="1.6"/>
-    <circle cx="${cx}" cy="296" r="100.5" fill="none" stroke="#5E4419" stroke-opacity=".5" stroke-width="1.2"/>`;
-  const star = (x, y, s, o = 1) => `
-    <path transform="translate(${x} ${y}) scale(${s})" fill="#FFF4D2" fill-opacity="${o}"
-      d="M0-10C.9-2.6 2.6-.9 10 0 2.6.9.9 2.6 0 10-.9 2.6-2.6.9-10 0-2.6-.9-.9-2.6 0-10z"/>`;
-  return `
-  <circle cx="256" cy="262" r="190" fill="url(#glow)"/>
-  ${ring(206)}
-  ${ring(306)}
-  <g clip-path="url(#weave)">${ring(206)}</g>
-  <g stroke="#7A5A22" stroke-width="1.2" stroke-linejoin="round">
-    <polygon points="218,138 238,118 274,118 294,138 256,190" fill="#F3E3B6"/>
-    <polygon points="238,118 274,118 266,138 246,138" fill="#FFFDF5"/>
-    <polygon points="218,138 238,118 246,138" fill="#E9D193"/>
-    <polygon points="294,138 274,118 266,138" fill="#FBF0CF"/>
-    <polygon points="218,138 246,138 256,190" fill="#D9B866"/>
-    <polygon points="246,138 266,138 256,190" fill="#FFF8E4"/>
-    <polygon points="266,138 294,138 256,190" fill="#C9A24B"/>
-  </g>
-  ${star(276, 116, 1.5)}
-  ${star(366, 136, 1.1, .9)}
-  ${star(140, 176, .75, .75)}
-  ${star(392, 196, .5, .6)}`;
-}
-
-function iconSvg({ rounded = false } = {}) {
-  const body = `<rect width="512" height="512" fill="url(#bg)"/>${emblem('#20180F')}`;
+function iconSvg({ rounded = false, maskable = false } = {}) {
+  const img = `<image href="data:image/png;base64,${maskable ? MASKABLE_PNG : ICON_PNG}" width="512" height="512"/>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-<defs>${defs}
-  <clipPath id="corners"><rect width="512" height="512" rx="115"/></clipPath>
-</defs>
-${rounded ? `<g clip-path="url(#corners)">${body}</g>` : body}
+<defs><clipPath id="corners"><rect width="512" height="512" rx="115"/></clipPath></defs>
+${rounded ? `<g clip-path="url(#corners)">${img}</g>` : img}
 </svg>
 `;
 }
@@ -111,8 +67,9 @@ const full = iconSvg();
 await renderSvg(full, 180, 'apple-touch-icon.png');
 await renderSvg(full, 192, 'icon-192.png');
 await renderSvg(full, 512, 'icon-512.png');
-await renderSvg(full, 192, 'icon-192-maskable.png');
-await renderSvg(full, 512, 'icon-512-maskable.png');
+const maskable = iconSvg({ maskable: true });
+await renderSvg(maskable, 192, 'icon-192-maskable.png');
+await renderSvg(maskable, 512, 'icon-512-maskable.png');
 await renderSvg(iconSvg({ rounded: true }), 32, 'favicon-32.png');
 
 // iOS app (Capacitor): the App Store icon must be square, opaque, 1024 px.
@@ -122,6 +79,12 @@ if (existsSync(IOS_ASSETS)) {
   await page.setContent(`<style>html,body{margin:0;background:${DARK}}svg{display:block;width:1024px;height:1024px}</style>${full}`);
   await page.screenshot({ path: resolve(IOS_ASSETS, 'AppIcon.appiconset/AppIcon-512@2x.png') });
   console.log('wrote the iOS app icon');
+  // The native SwiftUI app uses the same icon.
+  const NATIVE = resolve(ROOT, 'ios-native/App/Assets.xcassets/AppIcon.appiconset');
+  if (existsSync(NATIVE)) {
+    copyFileSync(resolve(IOS_ASSETS, 'AppIcon.appiconset/AppIcon-512@2x.png'), resolve(NATIVE, 'AppIcon-512@2x.png'));
+    console.log('wrote the native iOS app icon');
+  }
   // Launch screen: the same cream background the web splash starts from.
   await page.setViewportSize({ width: 2732, height: 2732 });
   await page.setContent(splashHtml());
