@@ -1,6 +1,17 @@
 import SwiftUI
 import SeatingCore
 
+/// Stanje pogleda na tlocrt (zoom, pomak, način premještanja) koje može dijeliti više prikaza sale.
+@Observable
+final class HallCamera {
+    var scale: CGFloat = 1
+    var origin: CGPoint = .zero
+    var baseScale: CGFloat = 1
+    var baseOrigin: CGPoint = .zero
+    var adjusted = false
+    var arranging = false
+}
+
 /// Tlocrt sale: stolovi i mjesta crtaju se u istim koordinatama kao na webu.
 /// Pomicanje jednim prstom, zumiranje štipanjem ili gumbima.
 struct HallView: View {
@@ -8,18 +19,25 @@ struct HallView: View {
     /// Desno od popisa (spojeni prikaz): mali naslov u sredini trake. Veliki naslov bi tamo
     /// bio prilijepljen uz razdjelnik, jer traka nema lijevu marginu.
     var besideList = false
+    /// Zajednički pogled na salu (spojeni tabovi Sala i Raspored na širokom zaslonu): zoom,
+    /// pomak i premještanje stolova ostaju isti kad se promijeni tab. Bez njega pogled je vlastiti.
+    var camera: HallCamera? = nil
 
-    @State private var scale: CGFloat = 1
-    @State private var origin: CGPoint = .zero
-    @State private var baseScale: CGFloat = 1
-    @State private var baseOrigin: CGPoint = .zero
+    @State private var ownCamera = HallCamera()
+    private var cam: HallCamera { camera ?? ownCamera }
+
+    private var scale: CGFloat { get { cam.scale } nonmutating set { cam.scale = newValue } }
+    private var origin: CGPoint { get { cam.origin } nonmutating set { cam.origin = newValue } }
+    private var baseScale: CGFloat { get { cam.baseScale } nonmutating set { cam.baseScale = newValue } }
+    private var baseOrigin: CGPoint { get { cam.baseOrigin } nonmutating set { cam.baseOrigin = newValue } }
+    /// Dok je `false`, prikaz je uvijek "cijela sala centrirano" i računa se pri svakom crtanju
+    /// iz stvarne veličine platna; `scale` i `origin` vrijede tek nakon što korisnik pomakne ili zumira.
+    private var adjusted: Bool { get { cam.adjusted } nonmutating set { cam.adjusted = newValue } }
+    private var arranging: Bool { get { cam.arranging } nonmutating set { cam.arranging = newValue } }
+
     @State private var magnifying = false
     @State private var anchorWorld: CGPoint = .zero
     @State private var viewSize: CGSize = .zero
-    /// Dok je `false`, prikaz je uvijek "cijela sala centrirano" i računa se pri svakom crtanju
-    /// iz stvarne veličine platna; `scale` i `origin` vrijede tek nakon što korisnik pomakne ili zumira.
-    @State private var adjusted = false
-    @State private var arranging = false
     @State private var openTable: TableRef?
     @State private var addingTable = false
     @State private var settingUpHall = false
