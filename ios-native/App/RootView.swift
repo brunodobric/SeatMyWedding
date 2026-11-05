@@ -29,6 +29,8 @@ struct RootView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     /// Odabrani dio pamti se po prozoru (iPad može imati više prozora i vraća ih nakon gašenja).
     @SceneStorage("section") private var section: AppSection = .dashboard
+    /// Pogled na salu zajednički za tabove Sala i Raspored u širokom prikazu.
+    @State private var hallCamera = HallCamera()
 
     private var wide: Bool { sizeClass == .regular }
 
@@ -47,8 +49,14 @@ struct RootView: View {
         switch s {
         case .dashboard: DashboardView()
         case .guests: GuestsView()
-        case .hall: if wide { GuestsWithHall() } else { HallView() }
-        case .seating: SeatingWithHall()
+        case .hall:
+            if wide {
+                ListBesideHall(camera: hallCamera) { GuestsView() } narrow: { HallView(camera: hallCamera) }
+            } else {
+                HallView()
+            }
+        case .seating:
+            ListBesideHall(camera: hallCamera) { SeatingView() } narrow: { SeatingView() }
         }
     }
 
@@ -101,43 +109,25 @@ struct RootView: View {
     }
 }
 
-/// Široki zaslon: popis gostiju (uži) lijevo i sala desno; gosti se mogu povući na stol.
-private struct GuestsWithHall: View {
+/// Široki zaslon: popis lijevo, sala desno. Tabovi Sala (gosti) i Raspored (stolovi) dijele
+/// isti pogled na salu i istu širinu lijevog stupca, pa se pri promjeni taba mijenja samo popis.
+private struct ListBesideHall<Left: View, Narrow: View>: View {
+    let camera: HallCamera
+    @ViewBuilder let list: Left
+    @ViewBuilder let narrow: Narrow
     @State private var width: CGFloat = 0
 
     var body: some View {
         Group {
             if width >= 500 {
                 HStack(spacing: 0) {
-                    GuestsView()
-                        .frame(width: max(240, min(width * 0.34, 380)))
+                    list
+                        .frame(width: max(260, min(width * 0.36, 400)))
                     Divider()
-                    HallView(besideList: true)
+                    HallView(besideList: true, camera: camera)
                 }
             } else {
-                HallView()
-            }
-        }
-        .measureWidth($width)
-    }
-}
-
-/// Raspored: na užem prostoru samo popis; kad ima mjesta (otvoreni iPhone Duo, iPad),
-/// popis stolova i tlocrt jedno uz drugo, s istim stanjem i funkcijama.
-private struct SeatingWithHall: View {
-    @State private var width: CGFloat = 0
-
-    var body: some View {
-        Group {
-            if width >= 820 {
-                HStack(spacing: 0) {
-                    SeatingView()
-                        .frame(width: min(width * 0.4, 420))
-                    Divider()
-                    HallView(besideList: true)
-                }
-            } else {
-                SeatingView()
+                narrow
             }
         }
         .measureWidth($width)
